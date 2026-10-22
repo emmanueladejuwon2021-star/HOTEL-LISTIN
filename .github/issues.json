@@ -1,0 +1,1202 @@
+[
+  {
+    "number": 1,
+    "title": "[AUTH-01] Implement Authentication & User Management - Feature Component 1",
+    "labels": [
+      "auth",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Auth & User Management",
+    "body": "### Feature Title\n**[AUTH-01] Implement Authentication & User Management - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Authentication & User Management` (`Auth & User Management`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Auth & User Management` (`label: auth`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Authentication & User Management.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0001` pass successfully.\n"
+  },
+  {
+    "number": 2,
+    "title": "[AUTH-02] Implement Authentication & User Management - Feature Component 2",
+    "labels": [
+      "auth",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Auth & User Management",
+    "body": "### Feature Title\n**[AUTH-02] Implement Authentication & User Management - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Authentication & User Management` (`Auth & User Management`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Auth & User Management` (`label: auth`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Authentication & User Management.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0002` pass successfully.\n"
+  },
+  {
+    "number": 3,
+    "title": "[AUTH-03] Implement Authentication & User Management - Feature Component 3",
+    "labels": [
+      "auth",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Auth & User Management",
+    "body": "### Feature Title\n**[AUTH-03] Implement Authentication & User Management - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Authentication & User Management` (`Auth & User Management`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Auth & User Management` (`label: auth`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Authentication & User Management.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0003` pass successfully.\n"
+  },
+  {
+    "number": 4,
+    "title": "[AUTH-04] Implement Authentication & User Management - Feature Component 4",
+    "labels": [
+      "auth",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Auth & User Management",
+    "body": "### Feature Title\n**[AUTH-04] Implement Authentication & User Management - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Authentication & User Management` (`Auth & User Management`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Auth & User Management` (`label: auth`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Authentication & User Management.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0004` pass successfully.\n"
+  },
+  {
+    "number": 5,
+    "title": "[AUTH-05] Implement Authentication & User Management - Feature Component 5",
+    "labels": [
+      "auth",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Auth & User Management",
+    "body": "### Feature Title\n**[AUTH-05] Implement Authentication & User Management - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Authentication & User Management` (`Auth & User Management`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Auth & User Management` (`label: auth`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Authentication & User Management.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0005` pass successfully.\n"
+  },
+  {
+    "number": 6,
+    "title": "[ELIGIBILITY-01] Implement Student Eligibility Verification & Fees Check - Feature Component 1",
+    "labels": [
+      "eligibility",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Student Eligibility Sync",
+    "body": "### Feature Title\n**[ELIGIBILITY-01] Implement Student Eligibility Verification & Fees Check - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Student Eligibility Verification & Fees Check` (`Student Eligibility Sync`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Student Eligibility Sync` (`label: eligibility`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Student Eligibility Verification & Fees Check.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0006` pass successfully.\n"
+  },
+  {
+    "number": 7,
+    "title": "[ELIGIBILITY-02] Implement Student Eligibility Verification & Fees Check - Feature Component 2",
+    "labels": [
+      "eligibility",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Student Eligibility Sync",
+    "body": "### Feature Title\n**[ELIGIBILITY-02] Implement Student Eligibility Verification & Fees Check - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Student Eligibility Verification & Fees Check` (`Student Eligibility Sync`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Student Eligibility Sync` (`label: eligibility`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Student Eligibility Verification & Fees Check.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0007` pass successfully.\n"
+  },
+  {
+    "number": 8,
+    "title": "[ELIGIBILITY-03] Implement Student Eligibility Verification & Fees Check - Feature Component 3",
+    "labels": [
+      "eligibility",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Student Eligibility Sync",
+    "body": "### Feature Title\n**[ELIGIBILITY-03] Implement Student Eligibility Verification & Fees Check - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Student Eligibility Verification & Fees Check` (`Student Eligibility Sync`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Student Eligibility Sync` (`label: eligibility`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Student Eligibility Verification & Fees Check.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0008` pass successfully.\n"
+  },
+  {
+    "number": 9,
+    "title": "[ELIGIBILITY-04] Implement Student Eligibility Verification & Fees Check - Feature Component 4",
+    "labels": [
+      "eligibility",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Student Eligibility Sync",
+    "body": "### Feature Title\n**[ELIGIBILITY-04] Implement Student Eligibility Verification & Fees Check - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Student Eligibility Verification & Fees Check` (`Student Eligibility Sync`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Student Eligibility Sync` (`label: eligibility`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Student Eligibility Verification & Fees Check.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0009` pass successfully.\n"
+  },
+  {
+    "number": 10,
+    "title": "[ELIGIBILITY-05] Implement Student Eligibility Verification & Fees Check - Feature Component 5",
+    "labels": [
+      "eligibility",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Student Eligibility Sync",
+    "body": "### Feature Title\n**[ELIGIBILITY-05] Implement Student Eligibility Verification & Fees Check - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Student Eligibility Verification & Fees Check` (`Student Eligibility Sync`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Student Eligibility Sync` (`label: eligibility`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Student Eligibility Verification & Fees Check.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0010` pass successfully.\n"
+  },
+  {
+    "number": 11,
+    "title": "[BALLOTING-01] Implement Real-Time Priority Quota Balloting Engine - Feature Component 1",
+    "labels": [
+      "balloting",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Priority Balloting Engine",
+    "body": "### Feature Title\n**[BALLOTING-01] Implement Real-Time Priority Quota Balloting Engine - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Real-Time Priority Quota Balloting Engine` (`Priority Balloting Engine`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Priority Balloting Engine` (`label: balloting`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Real-Time Priority Quota Balloting Engine.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0011` pass successfully.\n"
+  },
+  {
+    "number": 12,
+    "title": "[BALLOTING-02] Implement Real-Time Priority Quota Balloting Engine - Feature Component 2",
+    "labels": [
+      "balloting",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Priority Balloting Engine",
+    "body": "### Feature Title\n**[BALLOTING-02] Implement Real-Time Priority Quota Balloting Engine - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Real-Time Priority Quota Balloting Engine` (`Priority Balloting Engine`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Priority Balloting Engine` (`label: balloting`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Real-Time Priority Quota Balloting Engine.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0012` pass successfully.\n"
+  },
+  {
+    "number": 13,
+    "title": "[BALLOTING-03] Implement Real-Time Priority Quota Balloting Engine - Feature Component 3",
+    "labels": [
+      "balloting",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Priority Balloting Engine",
+    "body": "### Feature Title\n**[BALLOTING-03] Implement Real-Time Priority Quota Balloting Engine - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Real-Time Priority Quota Balloting Engine` (`Priority Balloting Engine`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Priority Balloting Engine` (`label: balloting`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Real-Time Priority Quota Balloting Engine.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0013` pass successfully.\n"
+  },
+  {
+    "number": 14,
+    "title": "[BALLOTING-04] Implement Real-Time Priority Quota Balloting Engine - Feature Component 4",
+    "labels": [
+      "balloting",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Priority Balloting Engine",
+    "body": "### Feature Title\n**[BALLOTING-04] Implement Real-Time Priority Quota Balloting Engine - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Real-Time Priority Quota Balloting Engine` (`Priority Balloting Engine`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Priority Balloting Engine` (`label: balloting`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Real-Time Priority Quota Balloting Engine.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0014` pass successfully.\n"
+  },
+  {
+    "number": 15,
+    "title": "[BALLOTING-05] Implement Real-Time Priority Quota Balloting Engine - Feature Component 5",
+    "labels": [
+      "balloting",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Priority Balloting Engine",
+    "body": "### Feature Title\n**[BALLOTING-05] Implement Real-Time Priority Quota Balloting Engine - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Real-Time Priority Quota Balloting Engine` (`Priority Balloting Engine`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Priority Balloting Engine` (`label: balloting`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Real-Time Priority Quota Balloting Engine.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0015` pass successfully.\n"
+  },
+  {
+    "number": 16,
+    "title": "[PAYMENT-01] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 1",
+    "labels": [
+      "payment",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "72-Hour Payment Hold",
+    "body": "### Feature Title\n**[PAYMENT-01] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `72-Hour Payment Lock & Remita Gateway` (`72-Hour Payment Hold`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `72-Hour Payment Hold` (`label: payment`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in 72-Hour Payment Lock & Remita Gateway.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0016` pass successfully.\n"
+  },
+  {
+    "number": 17,
+    "title": "[PAYMENT-02] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 2",
+    "labels": [
+      "payment",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "72-Hour Payment Hold",
+    "body": "### Feature Title\n**[PAYMENT-02] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `72-Hour Payment Lock & Remita Gateway` (`72-Hour Payment Hold`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `72-Hour Payment Hold` (`label: payment`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in 72-Hour Payment Lock & Remita Gateway.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0017` pass successfully.\n"
+  },
+  {
+    "number": 18,
+    "title": "[PAYMENT-03] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 3",
+    "labels": [
+      "payment",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "72-Hour Payment Hold",
+    "body": "### Feature Title\n**[PAYMENT-03] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `72-Hour Payment Lock & Remita Gateway` (`72-Hour Payment Hold`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `72-Hour Payment Hold` (`label: payment`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in 72-Hour Payment Lock & Remita Gateway.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0018` pass successfully.\n"
+  },
+  {
+    "number": 19,
+    "title": "[PAYMENT-04] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 4",
+    "labels": [
+      "payment",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "72-Hour Payment Hold",
+    "body": "### Feature Title\n**[PAYMENT-04] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `72-Hour Payment Lock & Remita Gateway` (`72-Hour Payment Hold`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `72-Hour Payment Hold` (`label: payment`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in 72-Hour Payment Lock & Remita Gateway.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0019` pass successfully.\n"
+  },
+  {
+    "number": 20,
+    "title": "[PAYMENT-05] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 5",
+    "labels": [
+      "payment",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "72-Hour Payment Hold",
+    "body": "### Feature Title\n**[PAYMENT-05] Implement 72-Hour Payment Lock & Remita Gateway - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `72-Hour Payment Lock & Remita Gateway` (`72-Hour Payment Hold`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `72-Hour Payment Hold` (`label: payment`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in 72-Hour Payment Lock & Remita Gateway.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0020` pass successfully.\n"
+  },
+  {
+    "number": 21,
+    "title": "[CLEARANCE-01] Implement Digital Document Screening & Clearance - Feature Component 1",
+    "labels": [
+      "clearance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Document Clearance & Screening",
+    "body": "### Feature Title\n**[CLEARANCE-01] Implement Digital Document Screening & Clearance - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Digital Document Screening & Clearance` (`Document Clearance & Screening`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Document Clearance & Screening` (`label: clearance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Digital Document Screening & Clearance.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0021` pass successfully.\n"
+  },
+  {
+    "number": 22,
+    "title": "[CLEARANCE-02] Implement Digital Document Screening & Clearance - Feature Component 2",
+    "labels": [
+      "clearance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Document Clearance & Screening",
+    "body": "### Feature Title\n**[CLEARANCE-02] Implement Digital Document Screening & Clearance - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Digital Document Screening & Clearance` (`Document Clearance & Screening`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Document Clearance & Screening` (`label: clearance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Digital Document Screening & Clearance.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0022` pass successfully.\n"
+  },
+  {
+    "number": 23,
+    "title": "[CLEARANCE-03] Implement Digital Document Screening & Clearance - Feature Component 3",
+    "labels": [
+      "clearance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Document Clearance & Screening",
+    "body": "### Feature Title\n**[CLEARANCE-03] Implement Digital Document Screening & Clearance - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Digital Document Screening & Clearance` (`Document Clearance & Screening`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Document Clearance & Screening` (`label: clearance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Digital Document Screening & Clearance.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0023` pass successfully.\n"
+  },
+  {
+    "number": 24,
+    "title": "[CLEARANCE-04] Implement Digital Document Screening & Clearance - Feature Component 4",
+    "labels": [
+      "clearance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Document Clearance & Screening",
+    "body": "### Feature Title\n**[CLEARANCE-04] Implement Digital Document Screening & Clearance - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Digital Document Screening & Clearance` (`Document Clearance & Screening`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Document Clearance & Screening` (`label: clearance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Digital Document Screening & Clearance.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0024` pass successfully.\n"
+  },
+  {
+    "number": 25,
+    "title": "[CLEARANCE-05] Implement Digital Document Screening & Clearance - Feature Component 5",
+    "labels": [
+      "clearance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Document Clearance & Screening",
+    "body": "### Feature Title\n**[CLEARANCE-05] Implement Digital Document Screening & Clearance - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Digital Document Screening & Clearance` (`Document Clearance & Screening`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Document Clearance & Screening` (`label: clearance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Digital Document Screening & Clearance.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0025` pass successfully.\n"
+  },
+  {
+    "number": 26,
+    "title": "[INVENTORY-01] Implement Room Check-In Audit & Property Inspection - Feature Component 1",
+    "labels": [
+      "inventory",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Room Inventory & Inspection",
+    "body": "### Feature Title\n**[INVENTORY-01] Implement Room Check-In Audit & Property Inspection - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Room Check-In Audit & Property Inspection` (`Room Inventory & Inspection`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Room Inventory & Inspection` (`label: inventory`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Room Check-In Audit & Property Inspection.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0026` pass successfully.\n"
+  },
+  {
+    "number": 27,
+    "title": "[INVENTORY-02] Implement Room Check-In Audit & Property Inspection - Feature Component 2",
+    "labels": [
+      "inventory",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Room Inventory & Inspection",
+    "body": "### Feature Title\n**[INVENTORY-02] Implement Room Check-In Audit & Property Inspection - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Room Check-In Audit & Property Inspection` (`Room Inventory & Inspection`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Room Inventory & Inspection` (`label: inventory`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Room Check-In Audit & Property Inspection.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0027` pass successfully.\n"
+  },
+  {
+    "number": 28,
+    "title": "[INVENTORY-03] Implement Room Check-In Audit & Property Inspection - Feature Component 3",
+    "labels": [
+      "inventory",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Room Inventory & Inspection",
+    "body": "### Feature Title\n**[INVENTORY-03] Implement Room Check-In Audit & Property Inspection - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Room Check-In Audit & Property Inspection` (`Room Inventory & Inspection`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Room Inventory & Inspection` (`label: inventory`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Room Check-In Audit & Property Inspection.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0028` pass successfully.\n"
+  },
+  {
+    "number": 29,
+    "title": "[INVENTORY-04] Implement Room Check-In Audit & Property Inspection - Feature Component 4",
+    "labels": [
+      "inventory",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Room Inventory & Inspection",
+    "body": "### Feature Title\n**[INVENTORY-04] Implement Room Check-In Audit & Property Inspection - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Room Check-In Audit & Property Inspection` (`Room Inventory & Inspection`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Room Inventory & Inspection` (`label: inventory`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Room Check-In Audit & Property Inspection.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0029` pass successfully.\n"
+  },
+  {
+    "number": 30,
+    "title": "[INVENTORY-05] Implement Room Check-In Audit & Property Inspection - Feature Component 5",
+    "labels": [
+      "inventory",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Room Inventory & Inspection",
+    "body": "### Feature Title\n**[INVENTORY-05] Implement Room Check-In Audit & Property Inspection - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Room Check-In Audit & Property Inspection` (`Room Inventory & Inspection`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Room Inventory & Inspection` (`label: inventory`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Room Check-In Audit & Property Inspection.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0030` pass successfully.\n"
+  },
+  {
+    "number": 31,
+    "title": "[GATEPASS-01] Implement Dynamic QR Code Gate Pass Generation - Feature Component 1",
+    "labels": [
+      "gatepass",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Dynamic QR Pass & Gatekeeping",
+    "body": "### Feature Title\n**[GATEPASS-01] Implement Dynamic QR Code Gate Pass Generation - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Dynamic QR Code Gate Pass Generation` (`Dynamic QR Pass & Gatekeeping`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Dynamic QR Pass & Gatekeeping` (`label: gatepass`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Dynamic QR Code Gate Pass Generation.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0031` pass successfully.\n"
+  },
+  {
+    "number": 32,
+    "title": "[GATEPASS-02] Implement Dynamic QR Code Gate Pass Generation - Feature Component 2",
+    "labels": [
+      "gatepass",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Dynamic QR Pass & Gatekeeping",
+    "body": "### Feature Title\n**[GATEPASS-02] Implement Dynamic QR Code Gate Pass Generation - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Dynamic QR Code Gate Pass Generation` (`Dynamic QR Pass & Gatekeeping`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Dynamic QR Pass & Gatekeeping` (`label: gatepass`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Dynamic QR Code Gate Pass Generation.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0032` pass successfully.\n"
+  },
+  {
+    "number": 33,
+    "title": "[GATEPASS-03] Implement Dynamic QR Code Gate Pass Generation - Feature Component 3",
+    "labels": [
+      "gatepass",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Dynamic QR Pass & Gatekeeping",
+    "body": "### Feature Title\n**[GATEPASS-03] Implement Dynamic QR Code Gate Pass Generation - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Dynamic QR Code Gate Pass Generation` (`Dynamic QR Pass & Gatekeeping`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Dynamic QR Pass & Gatekeeping` (`label: gatepass`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Dynamic QR Code Gate Pass Generation.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0033` pass successfully.\n"
+  },
+  {
+    "number": 34,
+    "title": "[GATEPASS-04] Implement Dynamic QR Code Gate Pass Generation - Feature Component 4",
+    "labels": [
+      "gatepass",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Dynamic QR Pass & Gatekeeping",
+    "body": "### Feature Title\n**[GATEPASS-04] Implement Dynamic QR Code Gate Pass Generation - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Dynamic QR Code Gate Pass Generation` (`Dynamic QR Pass & Gatekeeping`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Dynamic QR Pass & Gatekeeping` (`label: gatepass`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Dynamic QR Code Gate Pass Generation.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0034` pass successfully.\n"
+  },
+  {
+    "number": 35,
+    "title": "[GATEPASS-05] Implement Dynamic QR Code Gate Pass Generation - Feature Component 5",
+    "labels": [
+      "gatepass",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Dynamic QR Pass & Gatekeeping",
+    "body": "### Feature Title\n**[GATEPASS-05] Implement Dynamic QR Code Gate Pass Generation - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Dynamic QR Code Gate Pass Generation` (`Dynamic QR Pass & Gatekeeping`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Dynamic QR Pass & Gatekeeping` (`label: gatepass`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Dynamic QR Code Gate Pass Generation.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0035` pass successfully.\n"
+  },
+  {
+    "number": 36,
+    "title": "[SCANNER-01] Implement Porter High-Visibility Gate Scanner View - Feature Component 1",
+    "labels": [
+      "scanner",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Porter Gate Scanner Screen",
+    "body": "### Feature Title\n**[SCANNER-01] Implement Porter High-Visibility Gate Scanner View - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Porter High-Visibility Gate Scanner View` (`Porter Gate Scanner Screen`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Porter Gate Scanner Screen` (`label: scanner`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Porter High-Visibility Gate Scanner View.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0036` pass successfully.\n"
+  },
+  {
+    "number": 37,
+    "title": "[SCANNER-02] Implement Porter High-Visibility Gate Scanner View - Feature Component 2",
+    "labels": [
+      "scanner",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Porter Gate Scanner Screen",
+    "body": "### Feature Title\n**[SCANNER-02] Implement Porter High-Visibility Gate Scanner View - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Porter High-Visibility Gate Scanner View` (`Porter Gate Scanner Screen`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Porter Gate Scanner Screen` (`label: scanner`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Porter High-Visibility Gate Scanner View.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0037` pass successfully.\n"
+  },
+  {
+    "number": 38,
+    "title": "[SCANNER-03] Implement Porter High-Visibility Gate Scanner View - Feature Component 3",
+    "labels": [
+      "scanner",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Porter Gate Scanner Screen",
+    "body": "### Feature Title\n**[SCANNER-03] Implement Porter High-Visibility Gate Scanner View - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Porter High-Visibility Gate Scanner View` (`Porter Gate Scanner Screen`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Porter Gate Scanner Screen` (`label: scanner`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Porter High-Visibility Gate Scanner View.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0038` pass successfully.\n"
+  },
+  {
+    "number": 39,
+    "title": "[SCANNER-04] Implement Porter High-Visibility Gate Scanner View - Feature Component 4",
+    "labels": [
+      "scanner",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Porter Gate Scanner Screen",
+    "body": "### Feature Title\n**[SCANNER-04] Implement Porter High-Visibility Gate Scanner View - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Porter High-Visibility Gate Scanner View` (`Porter Gate Scanner Screen`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Porter Gate Scanner Screen` (`label: scanner`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Porter High-Visibility Gate Scanner View.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0039` pass successfully.\n"
+  },
+  {
+    "number": 40,
+    "title": "[SCANNER-05] Implement Porter High-Visibility Gate Scanner View - Feature Component 5",
+    "labels": [
+      "scanner",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Porter Gate Scanner Screen",
+    "body": "### Feature Title\n**[SCANNER-05] Implement Porter High-Visibility Gate Scanner View - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Porter High-Visibility Gate Scanner View` (`Porter Gate Scanner Screen`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Porter Gate Scanner Screen` (`label: scanner`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Porter High-Visibility Gate Scanner View.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0040` pass successfully.\n"
+  },
+  {
+    "number": 41,
+    "title": "[OFFLINE-01] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 1",
+    "labels": [
+      "offline",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Offline Gate Signature Sync",
+    "body": "### Feature Title\n**[OFFLINE-01] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Offline JWT Verification & Local SQLite Queue` (`Offline Gate Signature Sync`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Offline Gate Signature Sync` (`label: offline`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Offline JWT Verification & Local SQLite Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0041` pass successfully.\n"
+  },
+  {
+    "number": 42,
+    "title": "[OFFLINE-02] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 2",
+    "labels": [
+      "offline",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Offline Gate Signature Sync",
+    "body": "### Feature Title\n**[OFFLINE-02] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Offline JWT Verification & Local SQLite Queue` (`Offline Gate Signature Sync`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Offline Gate Signature Sync` (`label: offline`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Offline JWT Verification & Local SQLite Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0042` pass successfully.\n"
+  },
+  {
+    "number": 43,
+    "title": "[OFFLINE-03] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 3",
+    "labels": [
+      "offline",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Offline Gate Signature Sync",
+    "body": "### Feature Title\n**[OFFLINE-03] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Offline JWT Verification & Local SQLite Queue` (`Offline Gate Signature Sync`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Offline Gate Signature Sync` (`label: offline`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Offline JWT Verification & Local SQLite Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0043` pass successfully.\n"
+  },
+  {
+    "number": 44,
+    "title": "[OFFLINE-04] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 4",
+    "labels": [
+      "offline",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Offline Gate Signature Sync",
+    "body": "### Feature Title\n**[OFFLINE-04] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Offline JWT Verification & Local SQLite Queue` (`Offline Gate Signature Sync`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Offline Gate Signature Sync` (`label: offline`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Offline JWT Verification & Local SQLite Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0044` pass successfully.\n"
+  },
+  {
+    "number": 45,
+    "title": "[OFFLINE-05] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 5",
+    "labels": [
+      "offline",
+      "porter",
+      "unilagstay"
+    ],
+    "role": "PORTER",
+    "category": "Offline Gate Signature Sync",
+    "body": "### Feature Title\n**[OFFLINE-05] Implement Offline JWT Verification & Local SQLite Queue - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Offline JWT Verification & Local SQLite Queue` (`Offline Gate Signature Sync`) targeting the **PORTER** user role. This ensures that non-technical users (porters) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `PORTER`\n- **Module Category**: `Offline Gate Signature Sync` (`label: offline`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Offline JWT Verification & Local SQLite Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0045` pass successfully.\n"
+  },
+  {
+    "number": 46,
+    "title": "[VISITOR-01] Implement Visitor Pass PIN Generation & Log - Feature Component 1",
+    "labels": [
+      "visitor",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Visitor Management System",
+    "body": "### Feature Title\n**[VISITOR-01] Implement Visitor Pass PIN Generation & Log - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Visitor Pass PIN Generation & Log` (`Visitor Management System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Visitor Management System` (`label: visitor`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Visitor Pass PIN Generation & Log.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0046` pass successfully.\n"
+  },
+  {
+    "number": 47,
+    "title": "[VISITOR-02] Implement Visitor Pass PIN Generation & Log - Feature Component 2",
+    "labels": [
+      "visitor",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Visitor Management System",
+    "body": "### Feature Title\n**[VISITOR-02] Implement Visitor Pass PIN Generation & Log - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Visitor Pass PIN Generation & Log` (`Visitor Management System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Visitor Management System` (`label: visitor`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Visitor Pass PIN Generation & Log.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0047` pass successfully.\n"
+  },
+  {
+    "number": 48,
+    "title": "[VISITOR-03] Implement Visitor Pass PIN Generation & Log - Feature Component 3",
+    "labels": [
+      "visitor",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Visitor Management System",
+    "body": "### Feature Title\n**[VISITOR-03] Implement Visitor Pass PIN Generation & Log - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Visitor Pass PIN Generation & Log` (`Visitor Management System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Visitor Management System` (`label: visitor`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Visitor Pass PIN Generation & Log.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0048` pass successfully.\n"
+  },
+  {
+    "number": 49,
+    "title": "[VISITOR-04] Implement Visitor Pass PIN Generation & Log - Feature Component 4",
+    "labels": [
+      "visitor",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Visitor Management System",
+    "body": "### Feature Title\n**[VISITOR-04] Implement Visitor Pass PIN Generation & Log - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Visitor Pass PIN Generation & Log` (`Visitor Management System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Visitor Management System` (`label: visitor`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Visitor Pass PIN Generation & Log.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0049` pass successfully.\n"
+  },
+  {
+    "number": 50,
+    "title": "[VISITOR-05] Implement Visitor Pass PIN Generation & Log - Feature Component 5",
+    "labels": [
+      "visitor",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Visitor Management System",
+    "body": "### Feature Title\n**[VISITOR-05] Implement Visitor Pass PIN Generation & Log - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Visitor Pass PIN Generation & Log` (`Visitor Management System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Visitor Management System` (`label: visitor`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Visitor Pass PIN Generation & Log.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0050` pass successfully.\n"
+  },
+  {
+    "number": 51,
+    "title": "[MAINTENANCE-01] Implement Photo-Backed Repair Request Creator - Feature Component 1",
+    "labels": [
+      "maintenance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Maintenance Ticket System",
+    "body": "### Feature Title\n**[MAINTENANCE-01] Implement Photo-Backed Repair Request Creator - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Photo-Backed Repair Request Creator` (`Maintenance Ticket System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Maintenance Ticket System` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Photo-Backed Repair Request Creator.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0051` pass successfully.\n"
+  },
+  {
+    "number": 52,
+    "title": "[MAINTENANCE-02] Implement Photo-Backed Repair Request Creator - Feature Component 2",
+    "labels": [
+      "maintenance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Maintenance Ticket System",
+    "body": "### Feature Title\n**[MAINTENANCE-02] Implement Photo-Backed Repair Request Creator - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Photo-Backed Repair Request Creator` (`Maintenance Ticket System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Maintenance Ticket System` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Photo-Backed Repair Request Creator.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0052` pass successfully.\n"
+  },
+  {
+    "number": 53,
+    "title": "[MAINTENANCE-03] Implement Photo-Backed Repair Request Creator - Feature Component 3",
+    "labels": [
+      "maintenance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Maintenance Ticket System",
+    "body": "### Feature Title\n**[MAINTENANCE-03] Implement Photo-Backed Repair Request Creator - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Photo-Backed Repair Request Creator` (`Maintenance Ticket System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Maintenance Ticket System` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Photo-Backed Repair Request Creator.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0053` pass successfully.\n"
+  },
+  {
+    "number": 54,
+    "title": "[MAINTENANCE-04] Implement Photo-Backed Repair Request Creator - Feature Component 4",
+    "labels": [
+      "maintenance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Maintenance Ticket System",
+    "body": "### Feature Title\n**[MAINTENANCE-04] Implement Photo-Backed Repair Request Creator - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Photo-Backed Repair Request Creator` (`Maintenance Ticket System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Maintenance Ticket System` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Photo-Backed Repair Request Creator.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0054` pass successfully.\n"
+  },
+  {
+    "number": 55,
+    "title": "[MAINTENANCE-05] Implement Photo-Backed Repair Request Creator - Feature Component 5",
+    "labels": [
+      "maintenance",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Maintenance Ticket System",
+    "body": "### Feature Title\n**[MAINTENANCE-05] Implement Photo-Backed Repair Request Creator - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Photo-Backed Repair Request Creator` (`Maintenance Ticket System`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Maintenance Ticket System` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Photo-Backed Repair Request Creator.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0055` pass successfully.\n"
+  },
+  {
+    "number": 56,
+    "title": "[MAINTENANCE-01] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 1",
+    "labels": [
+      "maintenance",
+      "maintenance",
+      "unilagstay"
+    ],
+    "role": "MAINTENANCE",
+    "category": "Artisan Repair Job Queue",
+    "body": "### Feature Title\n**[MAINTENANCE-01] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Artisan Repair Job Queue & Proof-of-Fix Upload` (`Artisan Repair Job Queue`) targeting the **MAINTENANCE** user role. This ensures that non-technical users (maintenances) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `MAINTENANCE`\n- **Module Category**: `Artisan Repair Job Queue` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Artisan Repair Job Queue & Proof-of-Fix Upload.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0056` pass successfully.\n"
+  },
+  {
+    "number": 57,
+    "title": "[MAINTENANCE-02] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 2",
+    "labels": [
+      "maintenance",
+      "maintenance",
+      "unilagstay"
+    ],
+    "role": "MAINTENANCE",
+    "category": "Artisan Repair Job Queue",
+    "body": "### Feature Title\n**[MAINTENANCE-02] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Artisan Repair Job Queue & Proof-of-Fix Upload` (`Artisan Repair Job Queue`) targeting the **MAINTENANCE** user role. This ensures that non-technical users (maintenances) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `MAINTENANCE`\n- **Module Category**: `Artisan Repair Job Queue` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Artisan Repair Job Queue & Proof-of-Fix Upload.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0057` pass successfully.\n"
+  },
+  {
+    "number": 58,
+    "title": "[MAINTENANCE-03] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 3",
+    "labels": [
+      "maintenance",
+      "maintenance",
+      "unilagstay"
+    ],
+    "role": "MAINTENANCE",
+    "category": "Artisan Repair Job Queue",
+    "body": "### Feature Title\n**[MAINTENANCE-03] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Artisan Repair Job Queue & Proof-of-Fix Upload` (`Artisan Repair Job Queue`) targeting the **MAINTENANCE** user role. This ensures that non-technical users (maintenances) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `MAINTENANCE`\n- **Module Category**: `Artisan Repair Job Queue` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Artisan Repair Job Queue & Proof-of-Fix Upload.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0058` pass successfully.\n"
+  },
+  {
+    "number": 59,
+    "title": "[MAINTENANCE-04] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 4",
+    "labels": [
+      "maintenance",
+      "maintenance",
+      "unilagstay"
+    ],
+    "role": "MAINTENANCE",
+    "category": "Artisan Repair Job Queue",
+    "body": "### Feature Title\n**[MAINTENANCE-04] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Artisan Repair Job Queue & Proof-of-Fix Upload` (`Artisan Repair Job Queue`) targeting the **MAINTENANCE** user role. This ensures that non-technical users (maintenances) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `MAINTENANCE`\n- **Module Category**: `Artisan Repair Job Queue` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Artisan Repair Job Queue & Proof-of-Fix Upload.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0059` pass successfully.\n"
+  },
+  {
+    "number": 60,
+    "title": "[MAINTENANCE-05] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 5",
+    "labels": [
+      "maintenance",
+      "maintenance",
+      "unilagstay"
+    ],
+    "role": "MAINTENANCE",
+    "category": "Artisan Repair Job Queue",
+    "body": "### Feature Title\n**[MAINTENANCE-05] Implement Artisan Repair Job Queue & Proof-of-Fix Upload - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Artisan Repair Job Queue & Proof-of-Fix Upload` (`Artisan Repair Job Queue`) targeting the **MAINTENANCE** user role. This ensures that non-technical users (maintenances) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `MAINTENANCE`\n- **Module Category**: `Artisan Repair Job Queue` (`label: maintenance`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Artisan Repair Job Queue & Proof-of-Fix Upload.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0060` pass successfully.\n"
+  },
+  {
+    "number": 61,
+    "title": "[EXEAT-01] Implement Night Exeat Application & Warden Approval - Feature Component 1",
+    "labels": [
+      "exeat",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Night Exeat & Overnight Pass",
+    "body": "### Feature Title\n**[EXEAT-01] Implement Night Exeat Application & Warden Approval - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Night Exeat Application & Warden Approval` (`Night Exeat & Overnight Pass`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Night Exeat & Overnight Pass` (`label: exeat`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Night Exeat Application & Warden Approval.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0061` pass successfully.\n"
+  },
+  {
+    "number": 62,
+    "title": "[EXEAT-02] Implement Night Exeat Application & Warden Approval - Feature Component 2",
+    "labels": [
+      "exeat",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Night Exeat & Overnight Pass",
+    "body": "### Feature Title\n**[EXEAT-02] Implement Night Exeat Application & Warden Approval - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Night Exeat Application & Warden Approval` (`Night Exeat & Overnight Pass`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Night Exeat & Overnight Pass` (`label: exeat`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Night Exeat Application & Warden Approval.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0062` pass successfully.\n"
+  },
+  {
+    "number": 63,
+    "title": "[EXEAT-03] Implement Night Exeat Application & Warden Approval - Feature Component 3",
+    "labels": [
+      "exeat",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Night Exeat & Overnight Pass",
+    "body": "### Feature Title\n**[EXEAT-03] Implement Night Exeat Application & Warden Approval - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Night Exeat Application & Warden Approval` (`Night Exeat & Overnight Pass`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Night Exeat & Overnight Pass` (`label: exeat`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Night Exeat Application & Warden Approval.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0063` pass successfully.\n"
+  },
+  {
+    "number": 64,
+    "title": "[EXEAT-04] Implement Night Exeat Application & Warden Approval - Feature Component 4",
+    "labels": [
+      "exeat",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Night Exeat & Overnight Pass",
+    "body": "### Feature Title\n**[EXEAT-04] Implement Night Exeat Application & Warden Approval - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Night Exeat Application & Warden Approval` (`Night Exeat & Overnight Pass`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Night Exeat & Overnight Pass` (`label: exeat`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Night Exeat Application & Warden Approval.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0064` pass successfully.\n"
+  },
+  {
+    "number": 65,
+    "title": "[EXEAT-05] Implement Night Exeat Application & Warden Approval - Feature Component 5",
+    "labels": [
+      "exeat",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Night Exeat & Overnight Pass",
+    "body": "### Feature Title\n**[EXEAT-05] Implement Night Exeat Application & Warden Approval - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Night Exeat Application & Warden Approval` (`Night Exeat & Overnight Pass`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Night Exeat & Overnight Pass` (`label: exeat`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Night Exeat Application & Warden Approval.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0065` pass successfully.\n"
+  },
+  {
+    "number": 66,
+    "title": "[EMERGENCY-01] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 1",
+    "labels": [
+      "emergency",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Emergency SOS & Security Alert",
+    "body": "### Feature Title\n**[EMERGENCY-01] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Emergency Panic SOS Trigger & Porter Alarm` (`Emergency SOS & Security Alert`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Emergency SOS & Security Alert` (`label: emergency`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Emergency Panic SOS Trigger & Porter Alarm.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0066` pass successfully.\n"
+  },
+  {
+    "number": 67,
+    "title": "[EMERGENCY-02] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 2",
+    "labels": [
+      "emergency",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Emergency SOS & Security Alert",
+    "body": "### Feature Title\n**[EMERGENCY-02] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Emergency Panic SOS Trigger & Porter Alarm` (`Emergency SOS & Security Alert`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Emergency SOS & Security Alert` (`label: emergency`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Emergency Panic SOS Trigger & Porter Alarm.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0067` pass successfully.\n"
+  },
+  {
+    "number": 68,
+    "title": "[EMERGENCY-03] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 3",
+    "labels": [
+      "emergency",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Emergency SOS & Security Alert",
+    "body": "### Feature Title\n**[EMERGENCY-03] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Emergency Panic SOS Trigger & Porter Alarm` (`Emergency SOS & Security Alert`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Emergency SOS & Security Alert` (`label: emergency`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Emergency Panic SOS Trigger & Porter Alarm.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0068` pass successfully.\n"
+  },
+  {
+    "number": 69,
+    "title": "[EMERGENCY-04] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 4",
+    "labels": [
+      "emergency",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Emergency SOS & Security Alert",
+    "body": "### Feature Title\n**[EMERGENCY-04] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Emergency Panic SOS Trigger & Porter Alarm` (`Emergency SOS & Security Alert`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Emergency SOS & Security Alert` (`label: emergency`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Emergency Panic SOS Trigger & Porter Alarm.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0069` pass successfully.\n"
+  },
+  {
+    "number": 70,
+    "title": "[EMERGENCY-05] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 5",
+    "labels": [
+      "emergency",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Emergency SOS & Security Alert",
+    "body": "### Feature Title\n**[EMERGENCY-05] Implement Emergency Panic SOS Trigger & Porter Alarm - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Emergency Panic SOS Trigger & Porter Alarm` (`Emergency SOS & Security Alert`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Emergency SOS & Security Alert` (`label: emergency`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Emergency Panic SOS Trigger & Porter Alarm.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0070` pass successfully.\n"
+  },
+  {
+    "number": 71,
+    "title": "[ROOMMATE-01] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 1",
+    "labels": [
+      "roommate",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Roommate Compatibility Match",
+    "body": "### Feature Title\n**[ROOMMATE-01] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Roommate Lifestyle Survey & Mutual Bedswap` (`Roommate Compatibility Match`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Roommate Compatibility Match` (`label: roommate`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Roommate Lifestyle Survey & Mutual Bedswap.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0071` pass successfully.\n"
+  },
+  {
+    "number": 72,
+    "title": "[ROOMMATE-02] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 2",
+    "labels": [
+      "roommate",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Roommate Compatibility Match",
+    "body": "### Feature Title\n**[ROOMMATE-02] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Roommate Lifestyle Survey & Mutual Bedswap` (`Roommate Compatibility Match`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Roommate Compatibility Match` (`label: roommate`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Roommate Lifestyle Survey & Mutual Bedswap.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0072` pass successfully.\n"
+  },
+  {
+    "number": 73,
+    "title": "[ROOMMATE-03] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 3",
+    "labels": [
+      "roommate",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Roommate Compatibility Match",
+    "body": "### Feature Title\n**[ROOMMATE-03] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Roommate Lifestyle Survey & Mutual Bedswap` (`Roommate Compatibility Match`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Roommate Compatibility Match` (`label: roommate`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Roommate Lifestyle Survey & Mutual Bedswap.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0073` pass successfully.\n"
+  },
+  {
+    "number": 74,
+    "title": "[ROOMMATE-04] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 4",
+    "labels": [
+      "roommate",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Roommate Compatibility Match",
+    "body": "### Feature Title\n**[ROOMMATE-04] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Roommate Lifestyle Survey & Mutual Bedswap` (`Roommate Compatibility Match`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Roommate Compatibility Match` (`label: roommate`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Roommate Lifestyle Survey & Mutual Bedswap.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0074` pass successfully.\n"
+  },
+  {
+    "number": 75,
+    "title": "[ROOMMATE-05] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 5",
+    "labels": [
+      "roommate",
+      "student",
+      "unilagstay"
+    ],
+    "role": "STUDENT",
+    "category": "Roommate Compatibility Match",
+    "body": "### Feature Title\n**[ROOMMATE-05] Implement Roommate Lifestyle Survey & Mutual Bedswap - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Roommate Lifestyle Survey & Mutual Bedswap` (`Roommate Compatibility Match`) targeting the **STUDENT** user role. This ensures that non-technical users (students) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `STUDENT`\n- **Module Category**: `Roommate Compatibility Match` (`label: roommate`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Roommate Lifestyle Survey & Mutual Bedswap.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0075` pass successfully.\n"
+  },
+  {
+    "number": 76,
+    "title": "[ADMIN-01] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 1",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Warden Executive Dashboard",
+    "body": "### Feature Title\n**[ADMIN-01] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Warden Occupancy Metrics & Approval Queue` (`Warden Executive Dashboard`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Warden Executive Dashboard` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Warden Occupancy Metrics & Approval Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0076` pass successfully.\n"
+  },
+  {
+    "number": 77,
+    "title": "[ADMIN-02] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 2",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Warden Executive Dashboard",
+    "body": "### Feature Title\n**[ADMIN-02] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Warden Occupancy Metrics & Approval Queue` (`Warden Executive Dashboard`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Warden Executive Dashboard` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Warden Occupancy Metrics & Approval Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0077` pass successfully.\n"
+  },
+  {
+    "number": 78,
+    "title": "[ADMIN-03] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 3",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Warden Executive Dashboard",
+    "body": "### Feature Title\n**[ADMIN-03] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Warden Occupancy Metrics & Approval Queue` (`Warden Executive Dashboard`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Warden Executive Dashboard` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Warden Occupancy Metrics & Approval Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0078` pass successfully.\n"
+  },
+  {
+    "number": 79,
+    "title": "[ADMIN-04] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 4",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Warden Executive Dashboard",
+    "body": "### Feature Title\n**[ADMIN-04] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Warden Occupancy Metrics & Approval Queue` (`Warden Executive Dashboard`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Warden Executive Dashboard` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Warden Occupancy Metrics & Approval Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0079` pass successfully.\n"
+  },
+  {
+    "number": 80,
+    "title": "[ADMIN-05] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 5",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Warden Executive Dashboard",
+    "body": "### Feature Title\n**[ADMIN-05] Implement Warden Occupancy Metrics & Approval Queue - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Warden Occupancy Metrics & Approval Queue` (`Warden Executive Dashboard`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Warden Executive Dashboard` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Warden Occupancy Metrics & Approval Queue.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0080` pass successfully.\n"
+  },
+  {
+    "number": 81,
+    "title": "[ADMIN-01] Implement Student Disciplinary Flagging & Blacklists - Feature Component 1",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Disciplinary Blacklist & Flags",
+    "body": "### Feature Title\n**[ADMIN-01] Implement Student Disciplinary Flagging & Blacklists - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Student Disciplinary Flagging & Blacklists` (`Disciplinary Blacklist & Flags`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Disciplinary Blacklist & Flags` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Student Disciplinary Flagging & Blacklists.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0081` pass successfully.\n"
+  },
+  {
+    "number": 82,
+    "title": "[ADMIN-02] Implement Student Disciplinary Flagging & Blacklists - Feature Component 2",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Disciplinary Blacklist & Flags",
+    "body": "### Feature Title\n**[ADMIN-02] Implement Student Disciplinary Flagging & Blacklists - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Student Disciplinary Flagging & Blacklists` (`Disciplinary Blacklist & Flags`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Disciplinary Blacklist & Flags` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Student Disciplinary Flagging & Blacklists.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0082` pass successfully.\n"
+  },
+  {
+    "number": 83,
+    "title": "[ADMIN-03] Implement Student Disciplinary Flagging & Blacklists - Feature Component 3",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Disciplinary Blacklist & Flags",
+    "body": "### Feature Title\n**[ADMIN-03] Implement Student Disciplinary Flagging & Blacklists - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Student Disciplinary Flagging & Blacklists` (`Disciplinary Blacklist & Flags`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Disciplinary Blacklist & Flags` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Student Disciplinary Flagging & Blacklists.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0083` pass successfully.\n"
+  },
+  {
+    "number": 84,
+    "title": "[ADMIN-04] Implement Student Disciplinary Flagging & Blacklists - Feature Component 4",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Disciplinary Blacklist & Flags",
+    "body": "### Feature Title\n**[ADMIN-04] Implement Student Disciplinary Flagging & Blacklists - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Student Disciplinary Flagging & Blacklists` (`Disciplinary Blacklist & Flags`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Disciplinary Blacklist & Flags` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Student Disciplinary Flagging & Blacklists.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0084` pass successfully.\n"
+  },
+  {
+    "number": 85,
+    "title": "[ADMIN-05] Implement Student Disciplinary Flagging & Blacklists - Feature Component 5",
+    "labels": [
+      "admin",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Disciplinary Blacklist & Flags",
+    "body": "### Feature Title\n**[ADMIN-05] Implement Student Disciplinary Flagging & Blacklists - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Student Disciplinary Flagging & Blacklists` (`Disciplinary Blacklist & Flags`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Disciplinary Blacklist & Flags` (`label: admin`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Student Disciplinary Flagging & Blacklists.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0085` pass successfully.\n"
+  },
+  {
+    "number": 86,
+    "title": "[COMMUNITY-01] Implement Hostel Noticeboard Broadcast System - Feature Component 1",
+    "labels": [
+      "community",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Noticeboard & Announcements",
+    "body": "### Feature Title\n**[COMMUNITY-01] Implement Hostel Noticeboard Broadcast System - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Hostel Noticeboard Broadcast System` (`Noticeboard & Announcements`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Noticeboard & Announcements` (`label: community`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Hostel Noticeboard Broadcast System.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0086` pass successfully.\n"
+  },
+  {
+    "number": 87,
+    "title": "[COMMUNITY-02] Implement Hostel Noticeboard Broadcast System - Feature Component 2",
+    "labels": [
+      "community",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Noticeboard & Announcements",
+    "body": "### Feature Title\n**[COMMUNITY-02] Implement Hostel Noticeboard Broadcast System - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Hostel Noticeboard Broadcast System` (`Noticeboard & Announcements`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Noticeboard & Announcements` (`label: community`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Hostel Noticeboard Broadcast System.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0087` pass successfully.\n"
+  },
+  {
+    "number": 88,
+    "title": "[COMMUNITY-03] Implement Hostel Noticeboard Broadcast System - Feature Component 3",
+    "labels": [
+      "community",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Noticeboard & Announcements",
+    "body": "### Feature Title\n**[COMMUNITY-03] Implement Hostel Noticeboard Broadcast System - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Hostel Noticeboard Broadcast System` (`Noticeboard & Announcements`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Noticeboard & Announcements` (`label: community`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Hostel Noticeboard Broadcast System.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0088` pass successfully.\n"
+  },
+  {
+    "number": 89,
+    "title": "[COMMUNITY-04] Implement Hostel Noticeboard Broadcast System - Feature Component 4",
+    "labels": [
+      "community",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Noticeboard & Announcements",
+    "body": "### Feature Title\n**[COMMUNITY-04] Implement Hostel Noticeboard Broadcast System - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Hostel Noticeboard Broadcast System` (`Noticeboard & Announcements`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Noticeboard & Announcements` (`label: community`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Hostel Noticeboard Broadcast System.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0089` pass successfully.\n"
+  },
+  {
+    "number": 90,
+    "title": "[COMMUNITY-05] Implement Hostel Noticeboard Broadcast System - Feature Component 5",
+    "labels": [
+      "community",
+      "warden",
+      "unilagstay"
+    ],
+    "role": "WARDEN",
+    "category": "Noticeboard & Announcements",
+    "body": "### Feature Title\n**[COMMUNITY-05] Implement Hostel Noticeboard Broadcast System - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Hostel Noticeboard Broadcast System` (`Noticeboard & Announcements`) targeting the **WARDEN** user role. This ensures that non-technical users (wardens) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `WARDEN`\n- **Module Category**: `Noticeboard & Announcements` (`label: community`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Hostel Noticeboard Broadcast System.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0090` pass successfully.\n"
+  },
+  {
+    "number": 91,
+    "title": "[DATABASE-01] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 1",
+    "labels": [
+      "database",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "Turso Database Schema & Seed",
+    "body": "### Feature Title\n**[DATABASE-01] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `Turso libSQL Database Schema DDL & Indexes` (`Turso Database Schema & Seed`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `Turso Database Schema & Seed` (`label: database`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in Turso libSQL Database Schema DDL & Indexes.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0091` pass successfully.\n"
+  },
+  {
+    "number": 92,
+    "title": "[DATABASE-02] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 2",
+    "labels": [
+      "database",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "Turso Database Schema & Seed",
+    "body": "### Feature Title\n**[DATABASE-02] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `Turso libSQL Database Schema DDL & Indexes` (`Turso Database Schema & Seed`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `Turso Database Schema & Seed` (`label: database`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in Turso libSQL Database Schema DDL & Indexes.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0092` pass successfully.\n"
+  },
+  {
+    "number": 93,
+    "title": "[DATABASE-03] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 3",
+    "labels": [
+      "database",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "Turso Database Schema & Seed",
+    "body": "### Feature Title\n**[DATABASE-03] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `Turso libSQL Database Schema DDL & Indexes` (`Turso Database Schema & Seed`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `Turso Database Schema & Seed` (`label: database`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in Turso libSQL Database Schema DDL & Indexes.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0093` pass successfully.\n"
+  },
+  {
+    "number": 94,
+    "title": "[DATABASE-04] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 4",
+    "labels": [
+      "database",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "Turso Database Schema & Seed",
+    "body": "### Feature Title\n**[DATABASE-04] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `Turso libSQL Database Schema DDL & Indexes` (`Turso Database Schema & Seed`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `Turso Database Schema & Seed` (`label: database`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in Turso libSQL Database Schema DDL & Indexes.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0094` pass successfully.\n"
+  },
+  {
+    "number": 95,
+    "title": "[DATABASE-05] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 5",
+    "labels": [
+      "database",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "Turso Database Schema & Seed",
+    "body": "### Feature Title\n**[DATABASE-05] Implement Turso libSQL Database Schema DDL & Indexes - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `Turso libSQL Database Schema DDL & Indexes` (`Turso Database Schema & Seed`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `Turso Database Schema & Seed` (`label: database`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in Turso libSQL Database Schema DDL & Indexes.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0095` pass successfully.\n"
+  },
+  {
+    "number": 96,
+    "title": "[INFRASTRUCTURE-01] Implement React Native & Expo Release Engineering - Feature Component 1",
+    "labels": [
+      "infrastructure",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "CI/CD & Mobile Release Pipeline",
+    "body": "### Feature Title\n**[INFRASTRUCTURE-01] Implement React Native & Expo Release Engineering - Feature Component 1**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #1 for `React Native & Expo Release Engineering` (`CI/CD & Mobile Release Pipeline`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `CI/CD & Mobile Release Pipeline` (`label: infrastructure`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #1 in React Native & Expo Release Engineering.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0096` pass successfully.\n"
+  },
+  {
+    "number": 97,
+    "title": "[INFRASTRUCTURE-02] Implement React Native & Expo Release Engineering - Feature Component 2",
+    "labels": [
+      "infrastructure",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "CI/CD & Mobile Release Pipeline",
+    "body": "### Feature Title\n**[INFRASTRUCTURE-02] Implement React Native & Expo Release Engineering - Feature Component 2**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #2 for `React Native & Expo Release Engineering` (`CI/CD & Mobile Release Pipeline`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `CI/CD & Mobile Release Pipeline` (`label: infrastructure`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #2 in React Native & Expo Release Engineering.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0097` pass successfully.\n"
+  },
+  {
+    "number": 98,
+    "title": "[INFRASTRUCTURE-03] Implement React Native & Expo Release Engineering - Feature Component 3",
+    "labels": [
+      "infrastructure",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "CI/CD & Mobile Release Pipeline",
+    "body": "### Feature Title\n**[INFRASTRUCTURE-03] Implement React Native & Expo Release Engineering - Feature Component 3**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #3 for `React Native & Expo Release Engineering` (`CI/CD & Mobile Release Pipeline`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `CI/CD & Mobile Release Pipeline` (`label: infrastructure`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #3 in React Native & Expo Release Engineering.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0098` pass successfully.\n"
+  },
+  {
+    "number": 99,
+    "title": "[INFRASTRUCTURE-04] Implement React Native & Expo Release Engineering - Feature Component 4",
+    "labels": [
+      "infrastructure",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "CI/CD & Mobile Release Pipeline",
+    "body": "### Feature Title\n**[INFRASTRUCTURE-04] Implement React Native & Expo Release Engineering - Feature Component 4**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #4 for `React Native & Expo Release Engineering` (`CI/CD & Mobile Release Pipeline`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `CI/CD & Mobile Release Pipeline` (`label: infrastructure`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #4 in React Native & Expo Release Engineering.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-0099` pass successfully.\n"
+  },
+  {
+    "number": 100,
+    "title": "[INFRASTRUCTURE-05] Implement React Native & Expo Release Engineering - Feature Component 5",
+    "labels": [
+      "infrastructure",
+      "system",
+      "unilagstay"
+    ],
+    "role": "SYSTEM",
+    "category": "CI/CD & Mobile Release Pipeline",
+    "body": "### Feature Title\n**[INFRASTRUCTURE-05] Implement React Native & Expo Release Engineering - Feature Component 5**\n\n#### Overview & Non-Technical Goal\nImplement atomic feature unit #5 for `React Native & Expo Release Engineering` (`CI/CD & Mobile Release Pipeline`) targeting the **SYSTEM** user role. This ensures that non-technical users (systems) experience smooth, bug-free hostel operations as specified in `PRD.md`.\n\n#### Technical Requirements & Scope\n- **Target Role View**: `SYSTEM`\n- **Module Category**: `CI/CD & Mobile Release Pipeline` (`label: infrastructure`)\n- **Frontend Framework**: React Native with NativeWind v4 (Tailwind CSS)\n- **Database Entity**: Turso (libSQL Edge SQLite)\n- **Specific Component Action**: Execute frontend UI rendering, state management, and backend database interaction for atomic step #5 in React Native & Expo Release Engineering.\n\n#### Acceptance Criteria (Definition of Done)\n1. Screen/Component renders according to Tailwind styling specifications in Section 6 of `PRD.md`.\n2. All inputs, validations, and user interactions perform smoothly without app crashes.\n3. Database record status updates correctly in Turso with proper foreign key integrity.\n4. Unit and UAT test scenarios for `UAT-00100` pass successfully.\n"
+  }
+]
