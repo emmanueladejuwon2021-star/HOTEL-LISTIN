@@ -33,3 +33,37 @@ export interface LockBedspaceResult {
   holdExpiresAt: string;
   message: string;
 }
+
+/**
+ * Interface representing the details of an active 72-hour hostel room payment hold.
+ * Contains information about the reserved bed, hostel location, payment amount, and countdown timer.
+ */
+export interface PaymentHoldDetails {
+  paymentId: string;
+  userId: string;
+  bedspaceId: string;
+  hostelName: string;
+  blockName: string;
+  roomNumber: string;
+  bedLabel: string;
+  amount: number;
+  transactionReference: string;
+  paymentStatus: 'PENDING' | 'SUCCESSFUL' | 'FAILED';
+  holdExpiresAt: string;
+  secondsRemaining: number;
+  isExpired: boolean;
+}
+
+/**
+ * Interface representing the result of confirming a payment through the Remita gateway.
+ * Confirms that payment was successful and the bed reservation is officially finalized.
+ */
+export interface PaymentConfirmationResult {
+  success: boolean;
+  paymentId: string;
+  transactionReference: string;
+  paymentStatus: 'SUCCESSFUL';
+  bedspaceStatus: 'CONFIRMED';
+  confirmedAt: string;
+  message: string;
+}

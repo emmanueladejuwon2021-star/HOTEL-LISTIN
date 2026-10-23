@@ -1,6 +1,6 @@
 import { Client } from '@libsql/client';
 import { AuthService } from './authService';
-import { Bedspace, RoomDetails, LockBedspaceResult } from '../types/reservation';
+import { Bedspace, RoomDetails, LockBedspaceResult, PaymentHoldDetails, PaymentConfirmationResult } from '../types/reservation';
 
 export class ReservationService {
   /**
@@ -178,5 +178,195 @@ export class ReservationService {
       holdExpiresAt,
       message: 'Bedspace locked successfully! Hold valid for 72 Hours.'
     };
+  }
+
+  /**
+   * Retrieves active 72-hour payment hold details for a student from Turso DB.
+   * Calculates the remaining time on the countdown timer in seconds.
+   * Automatically recycles expired payment holds and restores bedspace availability if expired.
+   *
+   * @param userId - Unique student user ID
+   * @returns PaymentHoldDetails or null if no active hold exists
+   */
+  public static async getPaymentHoldDetails(userId: string): Promise<PaymentHoldDetails | null> {
+    await ReservationService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT p.id as payment_id, p.user_id, p.bedspace_id, p.transaction_reference, p.amount, p.payment_status,
+                   b.bed_label, b.hold_expires_at, b.status as bedspace_status,
+                   r.room_number, r.block_name, h.name as hostel_name
+            FROM payments p
+            JOIN bedspaces b ON p.bedspace_id = b.id
+            JOIN rooms r ON b.room_id = r.id
+            JOIN hostels h ON r.hostel_id = h.id
+            WHERE p.user_id = ? AND p.payment_status = 'PENDING'
+            ORDER BY p.paid_at DESC, p.id DESC LIMIT 1`,
+      args: [userId]
+    });
+
+    if (res.rows.length === 0) {
+      return null;
+    }
+
+    const row = res.rows[0];
+    const holdExpiresAtStr = String(row.hold_expires_at || new Date().toISOString());
+    const expireTime = new Date(holdExpiresAtStr).getTime();
+    const nowTime = Date.now();
+    const secondsRemaining = Math.max(0, Math.floor((expireTime - nowTime) / 1000));
+    const isExpired = secondsRemaining <= 0;
+
+    // Auto-recycle expired hold in Turso DB if timer reached zero
+    if (isExpired && String(row.bedspace_status) === 'LOCKED_HOLD') {
+      await ReservationService.releaseExpiredOrCancelledHold(userId, String(row.bedspace_id));
+      return {
+        paymentId: String(row.payment_id),
+        userId: String(row.user_id),
+        bedspaceId: String(row.bedspace_id),
+        hostelName: String(row.hostel_name),
+        blockName: String(row.block_name),
+        roomNumber: String(row.room_number),
+        bedLabel: String(row.bed_label),
+        amount: Number(row.amount),
+        transactionReference: String(row.transaction_reference),
+        paymentStatus: 'FAILED',
+        holdExpiresAt: holdExpiresAtStr,
+        secondsRemaining: 0,
+        isExpired: true
+      };
+    }
+
+    return {
+      paymentId: String(row.payment_id),
+      userId: String(row.user_id),
+      bedspaceId: String(row.bedspace_id),
+      hostelName: String(row.hostel_name),
+      blockName: String(row.block_name),
+      roomNumber: String(row.room_number),
+      bedLabel: String(row.bed_label),
+      amount: Number(row.amount),
+      transactionReference: String(row.transaction_reference),
+      paymentStatus: 'PENDING',
+      holdExpiresAt: holdExpiresAtStr,
+      secondsRemaining,
+      isExpired: false
+    };
+  }
+
+  /**
+   * Confirms payment through the Remita gateway and finalizes bedspace reservation in Turso DB.
+   * Updates payment status to SUCCESSFUL and bedspace status to CONFIRMED.
+   *
+   * @param userId - Unique student user ID
+   * @param paymentId - Unique payment transaction ID
+   * @param customRef - Optional updated transaction reference from Remita
+   * @returns PaymentConfirmationResult object
+   */
+  public static async confirmRemitaPayment(
+    userId: string,
+    paymentId: string,
+    customRef?: string
+  ): Promise<PaymentConfirmationResult> {
+    await ReservationService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Query payment record
+    const payRes = await client.execute({
+      sql: `SELECT id, user_id, bedspace_id, transaction_reference, payment_status
+            FROM payments WHERE id = ? AND user_id = ?`,
+      args: [paymentId, userId]
+    });
+
+    if (payRes.rows.length === 0) {
+      throw new Error('Payment record not found for student account.');
+    }
+
+    const payRow = payRes.rows[0];
+    if (String(payRow.payment_status) === 'SUCCESSFUL') {
+      throw new Error('This payment transaction has already been confirmed.');
+    }
+
+    const bedspaceId = String(payRow.bedspace_id);
+    const finalTxRef = customRef?.trim().toUpperCase() || String(payRow.transaction_reference);
+    const confirmedAt = new Date().toISOString();
+
+    // Execute atomic batch to update payment and bedspace status
+    await client.batch([
+      {
+        sql: `UPDATE payments
+              SET payment_status = 'SUCCESSFUL',
+                  transaction_reference = ?,
+                  paid_at = CURRENT_TIMESTAMP
+              WHERE id = ?`,
+        args: [finalTxRef, paymentId]
+      },
+      {
+        sql: `UPDATE bedspaces
+              SET status = 'CONFIRMED',
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?`,
+        args: [bedspaceId]
+      }
+    ], 'write');
+
+    return {
+      success: true,
+      paymentId,
+      transactionReference: finalTxRef,
+      paymentStatus: 'SUCCESSFUL',
+      bedspaceStatus: 'CONFIRMED',
+      confirmedAt,
+      message: 'Remita payment confirmed successfully! Your bedspace allocation is fully locked and confirmed.'
+    };
+  }
+
+  /**
+   * Releases a locked bedspace hold (manual cancellation or auto-expiration).
+   * Reverts bedspace status to AVAILABLE and increases hostel's available count in Turso DB.
+   *
+   * @param userId - Unique student user ID
+   * @param bedspaceId - Unique bedspace ID
+   * @returns Boolean indicating release success
+   */
+  public static async releaseExpiredOrCancelledHold(userId: string, bedspaceId: string): Promise<boolean> {
+    await ReservationService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Find room and hostel for this bedspace
+    const bRes = await client.execute({
+      sql: `SELECT b.id, r.hostel_id FROM bedspaces b JOIN rooms r ON b.room_id = r.id WHERE b.id = ?`,
+      args: [bedspaceId]
+    });
+
+    if (bRes.rows.length === 0) {
+      return false;
+    }
+
+    const hostelId = String(bRes.rows[0].hostel_id);
+
+    // Execute batch update to release hold and restore hostel capacity
+    await client.batch([
+      {
+        sql: `UPDATE bedspaces
+              SET status = 'AVAILABLE',
+                  allocated_to_user_id = NULL,
+                  hold_expires_at = NULL,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = ? AND (allocated_to_user_id = ? OR allocated_to_user_id IS NULL)`,
+        args: [bedspaceId, userId]
+      },
+      {
+        sql: `UPDATE payments
+              SET payment_status = 'FAILED'
+              WHERE bedspace_id = ? AND user_id = ? AND payment_status = 'PENDING'`,
+        args: [bedspaceId, userId]
+      },
+      {
+        sql: `UPDATE hostels SET available_bedspaces = available_bedspaces + 1 WHERE id = ?`,
+        args: [hostelId]
+      }
+    ], 'write');
+
+    return true;
   }
 }
