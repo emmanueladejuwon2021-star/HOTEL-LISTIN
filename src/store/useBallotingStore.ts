@@ -1,25 +1,46 @@
 import { create } from 'zustand';
-import { BallotingCountdownState } from '../types/balloting';
+import { BallotingCountdownState, QueueToken } from '../types/balloting';
 import { BallotingService } from '../api/ballotingService';
 import { PriorityCategory } from '../types/auth';
 
+/**
+ * State definition for the real-time priority quota balloting store.
+ * Manages balloting windows, countdown timers, hostel quota availability, and fair queue tokens.
+ */
 interface BallotingState {
+  // Current balloting countdown state summary
   countdownState: BallotingCountdownState | null;
+  // Boolean flag indicating if countdown or queue token operation is in progress
   isLoading: boolean;
+  // Error message string if an error occurs
   error: string | null;
-  fetchCountdown: (category: PriorityCategory) => Promise<BallotingCountdownState>;
+  // Action to fetch balloting window countdown and hostel quotas
+  fetchCountdown: (category: PriorityCategory, userId?: string) => Promise<BallotingCountdownState>;
+  // Action to issue a fair queue ticket token for a student
+  issueQueueTicket: (userId: string, category: PriorityCategory) => Promise<QueueToken>;
+  // Action to decrement active countdown timer by 1 second
   tickTimer: () => void;
 }
 
+/**
+ * Zustand store for real-time priority balloting and queue management.
+ */
 export const useBallotingStore = create<BallotingState>((set, get) => ({
   countdownState: null,
   isLoading: false,
   error: null,
 
-  fetchCountdown: async (category: PriorityCategory) => {
+  /**
+   * Fetches real-time balloting countdown window and quota summaries from Turso DB.
+   *
+   * @param category - Priority quota category tag
+   * @param userId - Optional student user ID to attach queue token
+   * @returns BallotingCountdownState summary
+   */
+  fetchCountdown: async (category: PriorityCategory, userId?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const state = await BallotingService.getCountdownState(category);
+      const state = await BallotingService.getCountdownState(category, userId);
       set({ countdownState: state, isLoading: false });
       return state;
     } catch (err: any) {
@@ -29,6 +50,31 @@ export const useBallotingStore = create<BallotingState>((set, get) => ({
     }
   },
 
+  /**
+   * Issues a fair queue token for a student entering the balloting window.
+   *
+   * @param userId - Unique student user ID
+   * @param category - Priority category tag
+   * @returns QueueToken object
+   */
+  issueQueueTicket: async (userId: string, category: PriorityCategory) => {
+    set({ isLoading: true, error: null });
+    try {
+      const token = await BallotingService.issueQueueToken(userId, category);
+      // Re-fetch countdown state with newly issued queue token attached
+      const state = await BallotingService.getCountdownState(category, userId);
+      set({ countdownState: state, isLoading: false });
+      return token;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to issue queue token.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Decrements active countdown timer by 1 second.
+   */
   tickTimer: () => {
     const { countdownState } = get();
     if (!countdownState || countdownState.timeRemainingSeconds <= 0) return;
