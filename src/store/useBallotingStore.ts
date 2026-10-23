@@ -4,7 +4,8 @@ import {
   QueueToken,
   FilteredHostelSummary,
   BallotingRoomDetails,
-  HostelFilterParams
+  HostelFilterParams,
+  QuotaAnalyticsSummary
 } from '../types/balloting';
 import { BallotingService } from '../api/ballotingService';
 import { PriorityCategory, Gender, Campus } from '../types/auth';
@@ -30,6 +31,8 @@ interface BallotingState {
   // Active filter settings
   genderFilter?: Gender;
   campusFilter?: Campus;
+  // Summary analytics for category priority quotas
+  quotaAnalytics: QuotaAnalyticsSummary | null;
   // Boolean flag indicating if countdown or queue token operation is in progress
   isLoading: boolean;
   // Error message string if an error occurs
@@ -57,6 +60,8 @@ interface BallotingState {
   releaseExpiredHolds: () => Promise<{ releasedCount: number; message: string }>;
   // Action to cancel student queue token
   cancelQueueToken: (userId: string) => Promise<boolean>;
+  // Action to fetch quota analytics breakdown for a hostel or system-wide
+  fetchQuotaAnalytics: (hostelId?: string) => Promise<QuotaAnalyticsSummary>;
 }
 
 /**
@@ -71,6 +76,7 @@ export const useBallotingStore = create<BallotingState>((set, get) => ({
   selectedBedId: null,
   genderFilter: undefined,
   campusFilter: undefined,
+  quotaAnalytics: null,
   isLoading: false,
   error: null,
 
@@ -254,6 +260,25 @@ export const useBallotingStore = create<BallotingState>((set, get) => ({
       return cancelled;
     } catch (err: any) {
       const msg = err.message || 'Failed to cancel queue token.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Fetches real-time category priority quota breakdown analytics from Turso DB.
+   *
+   * @param hostelId Optional hostel ID to filter analytics
+   * @returns QuotaAnalyticsSummary
+   */
+  fetchQuotaAnalytics: async (hostelId?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const analytics = await BallotingService.getQuotaAnalytics(hostelId);
+      set({ quotaAnalytics: analytics, isLoading: false });
+      return analytics;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to fetch priority quota analytics.';
       set({ error: msg, isLoading: false });
       throw err;
     }

@@ -344,4 +344,62 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       expect(cancelled).toBe(true);
     });
   });
+
+  describe('[BALLOTING-04 / UAT-0014] Priority Quota Allocation Breakdown & Category Quota Enforcement', () => {
+    test('fetches priority quota analytics summary across all hostels in Turso DB (UAT-0014)', async () => {
+      const analytics = await BallotingService.getQuotaAnalytics();
+
+      expect(analytics).toBeDefined();
+      expect(analytics.totalCapacity).toBeGreaterThan(0);
+      expect(analytics.categoryBreakdown.length).toBe(4);
+
+      // Verify category quota percentages match PRD Section 5.1
+      const fresherQuota = analytics.categoryBreakdown.find((c) => c.category === 'FRESHER');
+      expect(fresherQuota).toBeDefined();
+      expect(fresherQuota?.sharePercentage).toBe(40);
+
+      const finalistQuota = analytics.categoryBreakdown.find((c) => c.category === 'FINALIST');
+      expect(finalistQuota).toBeDefined();
+      expect(finalistQuota?.sharePercentage).toBe(30);
+
+      const scholarQuota = analytics.categoryBreakdown.find((c) => c.category === 'SCHOLAR');
+      expect(scholarQuota).toBeDefined();
+      expect(scholarQuota?.sharePercentage).toBe(10);
+
+      const stalliteQuota = analytics.categoryBreakdown.find((c) => c.category === 'STALLITE');
+      expect(stalliteQuota).toBeDefined();
+      expect(stalliteQuota?.sharePercentage).toBe(20);
+    });
+
+    test('fetches quota analytics for a specific hostel and validates remaining beds', async () => {
+      const analytics = await BallotingService.getQuotaAnalytics('h_jaja');
+
+      expect(analytics).toBeDefined();
+      expect(analytics.hostelId).toBe('h_jaja');
+      expect(analytics.hostelName).toBe('King Jaja Hall');
+      expect(analytics.totalCapacity).toBe(1200);
+
+      const fresherItem = analytics.categoryBreakdown.find((c) => c.category === 'FRESHER');
+      expect(fresherItem?.totalQuotaBeds).toBe(480); // 40% of 1200 = 480
+    });
+
+    test('validates category quota availability for student attempting to reserve space', async () => {
+      const validation = await BallotingService.validateCategoryQuota('h_jaja', 'FRESHER');
+
+      expect(validation).toBeDefined();
+      expect(validation.isQuotaAvailable).toBe(true);
+      expect(validation.categoryQuotaBeds).toBe(480);
+      expect(validation.remainingBeds).toBeGreaterThan(0);
+    });
+
+    test('executes Zustand store action to fetch priority quota analytics', async () => {
+      const store = useBallotingStore.getState();
+
+      const analytics = await store.fetchQuotaAnalytics('h_jaja');
+
+      expect(analytics).toBeDefined();
+      expect(useBallotingStore.getState().quotaAnalytics).toBeDefined();
+      expect(useBallotingStore.getState().quotaAnalytics?.hostelId).toBe('h_jaja');
+    });
+  });
 });

@@ -20,11 +20,13 @@ export const BallotingSelectorScreen: React.FC = () => {
     hostelRooms,
     selectedRoomId,
     selectedBedId,
+    quotaAnalytics,
     isLoading: isBallotingLoading,
     error: ballotingError,
     fetchCountdown,
     fetchFilteredHostels,
     fetchHostelRooms,
+    fetchQuotaAnalytics,
     setSelectedHostel,
     setSelectedRoomAndBed,
     validateQueueAndWindow,
@@ -58,12 +60,13 @@ export const BallotingSelectorScreen: React.FC = () => {
   // State to store notice banner feedback message
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
 
-  // Initialize countdown, filtered hostels, and automatically trigger recycling of expired 72-hour holds on mount
+  // Initialize countdown, filtered hostels, quota analytics, and automatically trigger recycling of expired 72-hour holds on mount
   useEffect(() => {
     fetchCountdown(userCategory, userId).catch(() => {});
     fetchFilteredHostels({ gender: activeGender, campus: activeCampus }).catch(() => {});
+    fetchQuotaAnalytics(selectedHostelId || undefined).catch(() => {});
     releaseExpiredHolds().catch(() => {});
-  }, [userCategory, userId, activeGender, activeCampus]);
+  }, [userCategory, userId, activeGender, activeCampus, selectedHostelId]);
 
   // Tick active timer every second
   useEffect(() => {
@@ -73,10 +76,13 @@ export const BallotingSelectorScreen: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // When selected hostel changes, fetch rooms for that hostel
+  // When selected hostel changes, fetch rooms and quota analytics for that hostel
   useEffect(() => {
     if (selectedHostelId) {
       fetchHostelRooms(selectedHostelId).catch(() => {});
+      fetchQuotaAnalytics(selectedHostelId).catch(() => {});
+    } else {
+      fetchQuotaAnalytics(undefined).catch(() => {});
     }
   }, [selectedHostelId]);
 
@@ -275,7 +281,72 @@ export const BallotingSelectorScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Gender Filter Pills */}
+        {/* Priority Quota Analytics Breakdown Card (PRD Section 5.1 Quota Matrix: Freshers 40%, Finalists 30%, Scholars 10%, Stallites 20%) */}
+        {quotaAnalytics && (
+          <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Priority Quota Allocation Breakdown
+              </Text>
+              <Text className="text-xs font-bold text-[#7A0000]">
+                {quotaAnalytics.hostelName ? quotaAnalytics.hostelName : 'All Hostels Combined'}
+              </Text>
+            </View>
+
+            <Text className="text-xs text-slate-500 mb-3">
+              Automated quota distribution according to UNILAG Hostel Management Policy
+            </Text>
+
+            <View className="space-y-3">
+              {quotaAnalytics.categoryBreakdown.map((item) => {
+                const isUserCategory = item.category === userCategory;
+                const percentAllocated =
+                  item.totalQuotaBeds > 0
+                    ? Math.min(100, Math.round((item.allocatedBeds / item.totalQuotaBeds) * 100))
+                    : 0;
+
+                return (
+                  <View
+                    key={item.category}
+                    className={`p-3 rounded-xl border ${
+                      isUserCategory ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <View className="flex-row justify-between items-center mb-1">
+                      <View className="flex-row items-center">
+                        <Text className="text-xs font-bold text-slate-900 mr-1.5">{item.categoryLabel}</Text>
+                        {isUserCategory && (
+                          <View className="bg-[#7A0000] px-1.5 py-0.5 rounded">
+                            <Text className="text-[10px] text-white font-bold">Your Category</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className="text-xs font-bold text-slate-700">{item.sharePercentage}% Share</Text>
+                    </View>
+
+                    <View className="w-full bg-slate-200 h-2 rounded-full overflow-hidden my-1.5">
+                      <View
+                        className="bg-[#7A0000] h-full rounded-full"
+                        style={{ width: `${percentAllocated}%` }}
+                      />
+                    </View>
+
+                    <View className="flex-row justify-between items-center">
+                      <Text className="text-[11px] text-slate-500 font-medium">
+                        Total Quota: {item.totalQuotaBeds} beds
+                      </Text>
+                      <Text className="text-[11px] text-emerald-800 font-bold">
+                        {item.availableBeds} beds remaining
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Gender Filter Pills */}
           <View className="flex-row space-x-2 py-1">
             <TouchableOpacity
               className={`px-4 py-2 rounded-xl border ${
