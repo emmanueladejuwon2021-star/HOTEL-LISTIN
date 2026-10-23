@@ -10,15 +10,19 @@ describe('[AUTH-01] Authentication & Turso DB Integration Tests', () => {
     await AuthService.initializeSchema();
     const client = AuthService.getDbClient();
 
+    // Clean existing user records with matric 190407088
+    await client.execute({ sql: `DELETE FROM student_profiles WHERE user_id IN (SELECT id FROM users WHERE matric_or_staff_no = '190407088')`, args: [] });
+    await client.execute({ sql: `DELETE FROM users WHERE matric_or_staff_no = '190407088'`, args: [] });
+
     // Seed test student with password_hash column
     await client.execute({
-      sql: `INSERT OR REPLACE INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: ['usr_190407088', '190407088', 'Olaoluwa Adebayo', '190407088@live.unilag.edu.ng', '+2348123456789', 'STUDENT', 'MALE', hashedPassword, 1]
     });
 
     await client.execute({
-      sql: `INSERT OR REPLACE INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: ['usr_190407088', 'Engineering', 'Systems Engineering', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 'APPROVED']
     });
