@@ -397,4 +397,121 @@ export class BallotingService {
 
     return now >= start && now <= end && window.status === 'ACTIVE';
   }
+
+  /**
+   * Validates that a student possesses an issued queue token and that the priority window for their category is active.
+   * Ensures fair queue access control before bedspace selection or locking.
+   *
+   * @param userId - Unique student user ID
+   * @param category - Priority category tag
+   * @returns Object containing validity flag, descriptive status message, queue token, and window status
+   */
+  public static async validateQueueTokenAndWindow(
+    userId: string,
+    category: PriorityCategory
+  ): Promise<{ isValid: boolean; message: string; token?: QueueToken; isWindowActive: boolean }> {
+    await BallotingService.initializeSchema();
+
+    const isWindowActive = await BallotingService.verifyBallotingWindowActive(category);
+    if (!isWindowActive) {
+      return {
+        isValid: false,
+        message: `Balloting window for ${category} is currently inactive or closed.`,
+        isWindowActive: false
+      };
+    }
+
+    const token = await BallotingService.getQueueToken(userId);
+    if (!token) {
+      return {
+        isValid: false,
+        message: 'No queue access ticket found for your account. Please request a queue token first.',
+        isWindowActive: true
+      };
+    }
+
+    return {
+      isValid: true,
+      message: `Queue token #${token.positionInQueue} validated successfully for active ${category} window.`,
+      token,
+      isWindowActive: true
+    };
+  }
+
+  /**
+   * Automatically scans for expired 72-hour bedspace holds and recycles them back into the AVAILABLE pool.
+   * Restores available bedspace capacity counts in the hostels table (PRD Section 5.2).
+   *
+   * @returns Object containing number of released bedspace holds and status message
+   */
+  public static async releaseExpiredHolds(): Promise<{ releasedCount: number; message: string }> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Query expired LOCKED_HOLD bedspaces
+    const expiredRes = await client.execute({
+      sql: `SELECT b.id, b.room_id, r.hostel_id
+            FROM bedspaces b
+            JOIN rooms r ON b.room_id = r.id
+            WHERE b.status = 'LOCKED_HOLD'
+              AND b.hold_expires_at IS NOT NULL
+              AND DATETIME(b.hold_expires_at) < DATETIME('now')`,
+      args: []
+    });
+
+    if (expiredRes.rows.length === 0) {
+      return {
+        releasedCount: 0,
+        message: 'No expired bedspace holds found to release.'
+      };
+    }
+
+    let releasedCount = 0;
+
+    for (const row of expiredRes.rows) {
+      const bedId = String(row.id);
+      const hostelId = String(row.hostel_id);
+
+      await client.batch([
+        {
+          sql: `UPDATE bedspaces
+                SET status = 'AVAILABLE',
+                    allocated_to_user_id = NULL,
+                    hold_expires_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?`,
+          args: [bedId]
+        },
+        {
+          sql: `UPDATE hostels SET available_bedspaces = available_bedspaces + 1 WHERE id = ?`,
+          args: [hostelId]
+        }
+      ], 'write');
+
+      releasedCount++;
+    }
+
+    return {
+      releasedCount,
+      message: `Successfully released and recycled ${releasedCount} expired bedspace hold(s) back to AVAILABLE status.`
+    };
+  }
+
+  /**
+   * Cancels/removes an issued queue token for a student if requested.
+   *
+   * @param userId - Unique student user ID
+   * @returns Boolean indicating whether token was found and deleted
+   */
+  public static async cancelQueueToken(userId: string): Promise<boolean> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const result = await client.execute({
+      sql: `DELETE FROM balloting_queue_tokens WHERE user_id = ?`,
+      args: [userId]
+    });
+
+    return (result.rowsAffected || 0) > 0;
+  }
 }

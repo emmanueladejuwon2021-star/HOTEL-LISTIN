@@ -51,6 +51,12 @@ interface BallotingState {
   setSelectedRoomAndBed: (roomId: string | null, bedId: string | null) => void;
   // Action to set filter options
   setFilterParams: (gender?: Gender, campus?: Campus) => void;
+  // Action to validate queue token and active window
+  validateQueueAndWindow: (userId: string, category: PriorityCategory) => Promise<{ isValid: boolean; message: string; token?: QueueToken; isWindowActive: boolean }>;
+  // Action to trigger automatic recycling of expired 72-hour holds
+  releaseExpiredHolds: () => Promise<{ releasedCount: number; message: string }>;
+  // Action to cancel student queue token
+  cancelQueueToken: (userId: string) => Promise<boolean>;
 }
 
 /**
@@ -194,5 +200,62 @@ export const useBallotingStore = create<BallotingState>((set, get) => ({
    */
   setFilterParams: (gender?: Gender, campus?: Campus) => {
     set({ genderFilter: gender, campusFilter: campus });
+  },
+
+  /**
+   * Validates student's queue token and priority window active status.
+   *
+   * @param userId - Unique student user ID
+   * @param category - Priority category tag
+   * @returns Validation result object
+   */
+  validateQueueAndWindow: async (userId: string, category: PriorityCategory) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await BallotingService.validateQueueTokenAndWindow(userId, category);
+      set({ isLoading: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to validate queue token and window.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Automatically recycles expired 72-hour bedspace holds back to AVAILABLE pool.
+   *
+   * @returns Released holds count and summary message
+   */
+  releaseExpiredHolds: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await BallotingService.releaseExpiredHolds();
+      set({ isLoading: false });
+      return res;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to release expired bedspace holds.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Cancels student queue token in Turso DB.
+   *
+   * @param userId - Unique student user ID
+   * @returns Boolean indicating cancellation success
+   */
+  cancelQueueToken: async (userId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const cancelled = await BallotingService.cancelQueueToken(userId);
+      set({ isLoading: false });
+      return cancelled;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to cancel queue token.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
   }
 }));
