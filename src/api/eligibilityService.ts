@@ -1,13 +1,13 @@
 import { Client } from '@libsql/client';
 import CryptoJS from 'crypto-js';
 import { AuthService } from './authService';
-import { EligibilityVerificationResult, FeeSyncParams, DisciplinaryStatus, MedicalStatus, FeePaymentRecord, SpecialNeedsParams } from '../types/eligibility';
+import { EligibilityVerificationResult, FeeSyncParams, DisciplinaryStatus, MedicalStatus, FeePaymentRecord, SpecialNeedsParams, DisciplinaryStandingHistory, ClearanceReviewParams } from '../types/eligibility';
 import { PriorityCategory, Campus, ClearanceStatus } from '../types/auth';
 
 /**
  * Service class that handles student eligibility verification, school fee payment synchronization,
  * Jaja Clinic medical screening status, special needs quota registration, digital clearance certificates,
- * and payment history audit trails.
+ * warden clearance reviews with feedback reasons, and payment history audit trails.
  * Checks student standing directly against the Turso libSQL database following a strict zero-mock policy.
  */
 export class EligibilityService {
@@ -20,7 +20,7 @@ export class EligibilityService {
     await AuthService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    // Create table for student disciplinary flags (e.g. Cleared, Flagged, Suspended, Rusticated)
+    // Create table for student disciplinary flags and clearance documents
     await client.batch([
       `CREATE TABLE IF NOT EXISTS disciplinary_records (
         user_id TEXT PRIMARY KEY,
@@ -43,13 +43,14 @@ export class EligibilityService {
       );`
     ], 'write');
 
-    // Safe schema migrations: add course_registered, medical_status, special_needs_registered, special_needs_details, clearance_certificate_hash
+    // Safe schema migrations
     const migrationColumns = [
       `ALTER TABLE student_profiles ADD COLUMN course_registered INTEGER DEFAULT 1`,
       `ALTER TABLE student_profiles ADD COLUMN medical_status TEXT DEFAULT 'CLEARED'`,
       `ALTER TABLE student_profiles ADD COLUMN special_needs_registered INTEGER DEFAULT 0`,
       `ALTER TABLE student_profiles ADD COLUMN special_needs_details TEXT`,
-      `ALTER TABLE student_profiles ADD COLUMN clearance_certificate_hash TEXT`
+      `ALTER TABLE student_profiles ADD COLUMN clearance_certificate_hash TEXT`,
+      `ALTER TABLE student_profiles ADD COLUMN clearance_rejection_reason TEXT`
     ];
 
     for (const stmt of migrationColumns) {
@@ -102,7 +103,7 @@ export class EligibilityService {
                    sp.faculty, sp.department, sp.level, sp.campus, sp.priority_category,
                    sp.fees_paid, sp.course_registered, sp.medical_status,
                    sp.special_needs_registered, sp.special_needs_details,
-                   sp.clearance_status, sp.clearance_certificate_hash
+                   sp.clearance_status, sp.clearance_rejection_reason, sp.clearance_certificate_hash
             FROM users u
             JOIN student_profiles sp ON u.id = sp.user_id
             WHERE u.id = ? AND u.is_active = 1`,
@@ -118,16 +119,26 @@ export class EligibilityService {
 
     // Step 2: Query disciplinary standing from disciplinary_records table
     const discResult = await client.execute({
-      sql: `SELECT status, reason FROM disciplinary_records WHERE user_id = ?`,
+      sql: `SELECT status, reason, flagged_at FROM disciplinary_records WHERE user_id = ? ORDER BY flagged_at DESC`,
       args: [userId]
     });
 
     let disciplinaryStatus: DisciplinaryStatus = 'CLEARED';
     let discReason = '';
+    const disciplinaryHistory: DisciplinaryStandingHistory[] = [];
 
     if (discResult.rows.length > 0) {
       disciplinaryStatus = String(discResult.rows[0].status) as DisciplinaryStatus;
       discReason = discResult.rows[0].reason ? String(discResult.rows[0].reason) : '';
+
+      discResult.rows.forEach((d) => {
+        disciplinaryHistory.push({
+          userId,
+          status: String(d.status) as DisciplinaryStatus,
+          reason: d.reason ? String(d.reason) : 'N/A',
+          flaggedAt: String(d.flagged_at || new Date().toISOString())
+        });
+      });
     }
 
     // Step 3: Fetch verified payment history from payments table
@@ -153,6 +164,7 @@ export class EligibilityService {
     const specialNeedsRegistered = Boolean(row.special_needs_registered);
     const specialNeedsDetails = row.special_needs_details ? String(row.special_needs_details) : undefined;
     const clearanceStatus = String(row.clearance_status) as ClearanceStatus;
+    const clearanceRejectionReason = row.clearance_rejection_reason ? String(row.clearance_rejection_reason) : undefined;
     const isDisciplinaryCleared = disciplinaryStatus === 'CLEARED';
 
     // A student is eligible for hostel balloting ONLY IF tuition fees are paid, courses are registered, medical status is cleared AND disciplinary status is cleared
@@ -198,12 +210,14 @@ export class EligibilityService {
       specialNeedsRegistered,
       specialNeedsDetails,
       disciplinaryStatus,
+      disciplinaryHistory,
       priorityCategory: String(row.priority_category) as PriorityCategory,
       campus: String(row.campus) as Campus,
       level: Number(row.level),
       faculty: String(row.faculty),
       department: String(row.department),
       clearanceStatus,
+      clearanceRejectionReason,
       clearanceCertificateHash,
       statusMessage,
       verifiedAt: new Date().toISOString(),
@@ -282,7 +296,30 @@ export class EligibilityService {
   }
 
   /**
-   * Registers special accommodation needs for a student (e.g., physical accessibility, chronic health condition).
+   * Allows a Hall Warden or Admin to approve or reject a student's digital document clearance request with reason feedback.
+   *
+   * @param params - Object containing userId, clearanceStatus, and optional rejectionReason
+   * @returns Updated EligibilityVerificationResult
+   */
+  public static async reviewClearanceDocument(params: ClearanceReviewParams): Promise<EligibilityVerificationResult> {
+    await EligibilityService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const rejectionReason = params.clearanceStatus === 'REJECTED' ? (params.rejectionReason || 'Uploaded clearance documents are invalid or unreadable.') : null;
+
+    await client.execute({
+      sql: `UPDATE student_profiles
+            SET clearance_status = ?,
+                clearance_rejection_reason = ?
+            WHERE user_id = ?`,
+      args: [params.clearanceStatus, rejectionReason, params.userId]
+    });
+
+    return await EligibilityService.verifyEligibility(params.userId);
+  }
+
+  /**
+   * Registers special accommodation needs for a student (e.g., physical disability, chronic condition).
    * Automatically updates student priority quota category to `SPECIAL_NEEDS`.
    *
    * @param params - Object containing userId and specialNeedsDetails
