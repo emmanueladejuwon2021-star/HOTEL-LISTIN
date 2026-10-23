@@ -49,10 +49,20 @@ export const BallotingSelectorScreen: React.FC = () => {
   const [activeCampus, setActiveCampus] = useState<Campus>(userCampus);
   const [activeGender, setActiveGender] = useState<Gender>(userGender);
 
-  // Initialize countdown and filtered hostels on mount
+  const {
+    issueQueueTicket,
+    cancelQueueToken,
+    releaseExpiredHolds
+  } = useBallotingStore();
+
+  // State to store notice banner feedback message
+  const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
+
+  // Initialize countdown, filtered hostels, and automatically trigger recycling of expired 72-hour holds on mount
   useEffect(() => {
     fetchCountdown(userCategory, userId).catch(() => {});
     fetchFilteredHostels({ gender: activeGender, campus: activeCampus }).catch(() => {});
+    releaseExpiredHolds().catch(() => {});
   }, [userCategory, userId, activeGender, activeCampus]);
 
   // Tick active timer every second
@@ -143,9 +153,55 @@ export const BallotingSelectorScreen: React.FC = () => {
             <Text className="text-slate-900 text-3xl font-extrabold tracking-tight my-1">
               {formatCountdown(countdownState.timeRemainingSeconds)}
             </Text>
-            <Text className="text-slate-900 text-xs font-semibold">
+            <Text className="text-slate-900 text-xs font-semibold mb-2">
               Category: {userCategory} | Queue Ticket #{countdownState.queueToken?.positionInQueue || 'None'}
             </Text>
+
+            {/* Queue Access Ticket Controls */}
+            {userId && (
+              <View className="flex-row space-x-2 mt-1">
+                {!countdownState.queueToken ? (
+                  <TouchableOpacity
+                    className="bg-slate-900 px-4 py-2 rounded-xl shadow-sm active:opacity-90"
+                    onPress={async () => {
+                      try {
+                        const token = await issueQueueTicket(userId, userCategory);
+                        setNoticeMessage(`Queue access ticket #${token.positionInQueue} issued successfully!`);
+                      } catch (err: any) {
+                        setNoticeMessage(err.message || 'Unable to issue queue ticket.');
+                      }
+                    }}
+                  >
+                    <Text className="text-white text-xs font-bold">Get Queue Access Ticket</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    className="bg-red-800 px-4 py-2 rounded-xl shadow-sm active:opacity-90"
+                    onPress={async () => {
+                      try {
+                        await cancelQueueToken(userId);
+                        await fetchCountdown(userCategory, userId);
+                        setNoticeMessage('Queue access ticket cancelled successfully.');
+                      } catch (err: any) {
+                        setNoticeMessage(err.message || 'Unable to cancel queue ticket.');
+                      }
+                    }}
+                  >
+                    <Text className="text-white text-xs font-bold">Cancel Queue Ticket</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Feedback / Notice Banner */}
+        {noticeMessage && (
+          <View className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-4 flex-row justify-between items-center">
+            <Text className="text-amber-900 text-xs font-semibold flex-1 mr-2">{noticeMessage}</Text>
+            <TouchableOpacity onPress={() => setNoticeMessage(null)} className="px-2 py-1 bg-amber-200 rounded-lg">
+              <Text className="text-amber-900 text-xs font-bold">Dismiss</Text>
+            </TouchableOpacity>
           </View>
         )}
 
