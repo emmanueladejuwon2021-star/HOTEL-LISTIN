@@ -1,10 +1,31 @@
 import { AuthService } from '../api/authService';
 import { BallotingService } from '../api/ballotingService';
+import { useBallotingStore } from '../store/useBallotingStore';
 
-describe('[BALLOTING-01 / UAT-0003] Real-Time Priority Quota Balloting Engine Countdown Tests', () => {
+describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & Queue Token Tests', () => {
+  const testUserId1 = 'usr_1001_queue_student1';
+  const testUserId2 = 'usr_1002_queue_student2';
+
   beforeAll(async () => {
     await BallotingService.initializeSchema();
     const client = AuthService.getDbClient();
+
+    // Clean test queue tokens and users
+    await client.execute({ sql: 'DELETE FROM balloting_queue_tokens WHERE user_id IN (?, ?)', args: [testUserId1, testUserId2] });
+    await client.execute({ sql: 'DELETE FROM users WHERE id IN (?, ?)', args: [testUserId1, testUserId2] });
+
+    // Seed test users
+    await client.execute({
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [testUserId1, '190407111', 'Queue Student One', 'q1@live.unilag.edu.ng', '+2348011110000', 'STUDENT', 'MALE', 'hash', 1]
+    });
+
+    await client.execute({
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [testUserId2, '190407222', 'Queue Student Two', 'q2@live.unilag.edu.ng', '+2348022220000', 'STUDENT', 'MALE', 'hash', 1]
+    });
 
     // 1. Seed Balloting Windows in Turso DB
     const now = new Date();
@@ -59,6 +80,41 @@ describe('[BALLOTING-01 / UAT-0003] Real-Time Priority Quota Balloting Engine Co
       expect(jaja?.totalCapacity).toBe(1200);
       expect(jaja?.availableBedspaces).toBe(450);
       expect(jaja?.allocatedBedspaces).toBe(750);
+    });
+
+    test('issues real-time priority queue token and calculates sequential position (UAT-0011)', async () => {
+      const token1 = await BallotingService.issueQueueToken(testUserId1, 'FRESHER');
+      expect(token1).toBeDefined();
+      expect(token1.positionInQueue).toBe(1);
+      expect(token1.priorityCategory).toBe('FRESHER');
+
+      const token2 = await BallotingService.issueQueueToken(testUserId2, 'FRESHER');
+      expect(token2).toBeDefined();
+      expect(token2.positionInQueue).toBe(2);
+
+      // Re-issuing for same student returns existing token
+      const token1Retry = await BallotingService.issueQueueToken(testUserId1, 'FRESHER');
+      expect(token1Retry.tokenId).toBe(token1.tokenId);
+      expect(token1Retry.positionInQueue).toBe(1);
+    });
+
+    test('attaches queue token to countdown state when userId is passed', async () => {
+      const state = await BallotingService.getCountdownState('FRESHER', testUserId1);
+
+      expect(state.queueToken).toBeDefined();
+      expect(state.queueToken?.positionInQueue).toBe(1);
+      expect(state.totalQueuedUsers).toBeGreaterThanOrEqual(2);
+    });
+
+    test('issues queue token via Zustand store action', async () => {
+      const store = useBallotingStore.getState();
+      const token = await store.issueQueueTicket(testUserId1, 'FRESHER');
+
+      expect(token.positionInQueue).toBe(1);
+
+      const updatedState = useBallotingStore.getState().countdownState;
+      expect(updatedState?.queueToken).toBeDefined();
+      expect(updatedState?.queueToken?.positionInQueue).toBe(1);
     });
 
     test('evaluates upcoming countdown state when window has not started yet', async () => {

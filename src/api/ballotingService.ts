@@ -1,11 +1,16 @@
 import { Client } from '@libsql/client';
 import { AuthService } from './authService';
-import { BallotingWindow, HostelQuotaSummary, BallotingCountdownState } from '../types/balloting';
+import { BallotingWindow, HostelQuotaSummary, BallotingCountdownState, QueueToken } from '../types/balloting';
 import { PriorityCategory } from '../types/auth';
 
+/**
+ * Service class that manages real-time priority quota balloting windows,
+ * fair queue token issuance, real-time hostel bedspace quota summaries,
+ * and countdown timers following a strict zero-mock policy.
+ */
 export class BallotingService {
   /**
-   * Initializes balloting engine schema and seed data in Turso DB if not existing.
+   * Initializes balloting engine schema, queue token table, and seed data in Turso DB if not existing.
    */
   public static async initializeSchema(): Promise<void> {
     await AuthService.initializeSchema();
@@ -19,6 +24,15 @@ export class BallotingService {
         start_time DATETIME NOT NULL,
         end_time DATETIME NOT NULL,
         status TEXT CHECK(status IN ('UPCOMING', 'ACTIVE', 'CLOSED', 'PAUSED')) DEFAULT 'UPCOMING'
+      );`,
+      `CREATE TABLE IF NOT EXISTS balloting_queue_tokens (
+        token_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        priority_category TEXT NOT NULL,
+        position_in_queue INTEGER NOT NULL,
+        estimated_wait_time_seconds INTEGER NOT NULL,
+        issued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );`,
       `CREATE TABLE IF NOT EXISTS hostels (
         id TEXT PRIMARY KEY,
@@ -64,6 +78,94 @@ export class BallotingService {
   }
 
   /**
+   * Issues a fair queue token for a student attempting to ballot.
+   * Computes position in queue based on existing issued queue tokens for the student's priority category.
+   *
+   * @param userId - Unique student user ID
+   * @param category - Priority category tag (FRESHER, FINALIST, SCHOLAR, SPECIAL_NEEDS, STALLITE)
+   * @returns QueueToken object containing queue position and estimated wait time
+   */
+  public static async issueQueueToken(userId: string, category: PriorityCategory): Promise<QueueToken> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Check if user already has an active queue token
+    const existingResult = await client.execute({
+      sql: `SELECT token_id, user_id, priority_category, position_in_queue, estimated_wait_time_seconds, issued_at
+            FROM balloting_queue_tokens WHERE user_id = ?`,
+      args: [userId]
+    });
+
+    if (existingResult.rows.length > 0) {
+      const row = existingResult.rows[0];
+      return {
+        tokenId: String(row.token_id),
+        userId: String(row.user_id),
+        priorityCategory: String(row.priority_category) as PriorityCategory,
+        positionInQueue: Number(row.position_in_queue),
+        estimatedWaitTimeSeconds: Number(row.estimated_wait_time_seconds),
+        issuedAt: String(row.issued_at)
+      };
+    }
+
+    // Calculate queue position based on count of queued users in category
+    const countResult = await client.execute({
+      sql: `SELECT COUNT(*) as queue_count FROM balloting_queue_tokens WHERE priority_category = ?`,
+      args: [category]
+    });
+
+    const currentQueueCount = Number(countResult.rows[0].queue_count || 0);
+    const positionInQueue = currentQueueCount + 1;
+    // Estimated wait time: ~5 seconds per user in queue ahead
+    const estimatedWaitTimeSeconds = positionInQueue * 5;
+    const tokenId = `tok_${category.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+    await client.execute({
+      sql: `INSERT INTO balloting_queue_tokens (token_id, user_id, priority_category, position_in_queue, estimated_wait_time_seconds, issued_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      args: [tokenId, userId, category, positionInQueue, estimatedWaitTimeSeconds]
+    });
+
+    return {
+      tokenId,
+      userId,
+      priorityCategory: category,
+      positionInQueue,
+      estimatedWaitTimeSeconds,
+      issuedAt: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Fetches an active queue token for a student if issued previously.
+   *
+   * @param userId - Unique student user ID
+   * @returns QueueToken or null if not queued
+   */
+  public static async getQueueToken(userId: string): Promise<QueueToken | null> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const result = await client.execute({
+      sql: `SELECT token_id, user_id, priority_category, position_in_queue, estimated_wait_time_seconds, issued_at
+            FROM balloting_queue_tokens WHERE user_id = ?`,
+      args: [userId]
+    });
+
+    if (result.rows.length === 0) return null;
+
+    const row = result.rows[0];
+    return {
+      tokenId: String(row.token_id),
+      userId: String(row.user_id),
+      priorityCategory: String(row.priority_category) as PriorityCategory,
+      positionInQueue: Number(row.position_in_queue),
+      estimatedWaitTimeSeconds: Number(row.estimated_wait_time_seconds),
+      issuedAt: String(row.issued_at)
+    };
+  }
+
+  /**
    * Fetches real-time hostel quota availability summaries directly from Turso DB.
    */
   public static async getHostelQuotas(): Promise<HostelQuotaSummary[]> {
@@ -87,18 +189,38 @@ export class BallotingService {
   }
 
   /**
-   * Evaluates active countdown state for student's priority category.
+   * Evaluates active countdown state and queue tokens for student's priority category.
+   *
+   * @param category - Priority category tag
+   * @param userId - Optional student user ID to attach queue token details
    */
-  public static async getCountdownState(category: PriorityCategory): Promise<BallotingCountdownState> {
+  public static async getCountdownState(category: PriorityCategory, userId?: string): Promise<BallotingCountdownState> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
     const window = await BallotingService.getBallotingWindowForCategory(category);
     const quotas = await BallotingService.getHostelQuotas();
+
+    const totalQueuedRes = await client.execute({
+      sql: `SELECT COUNT(*) as total FROM balloting_queue_tokens WHERE priority_category = ?`,
+      args: [category]
+    });
+    const totalQueuedUsers = Number(totalQueuedRes.rows[0].total || 0);
+
+    let queueToken: QueueToken | undefined = undefined;
+    if (userId) {
+      const tok = await BallotingService.getQueueToken(userId);
+      if (tok) queueToken = tok;
+    }
 
     if (!window) {
       return {
         currentWindow: null,
         timeRemainingSeconds: 0,
         isWindowActive: false,
-        quotas
+        quotas,
+        queueToken,
+        totalQueuedUsers
       };
     }
 
@@ -126,7 +248,9 @@ export class BallotingService {
       currentWindow: window,
       timeRemainingSeconds,
       isWindowActive,
-      quotas
+      quotas,
+      queueToken,
+      totalQueuedUsers
     };
   }
 }
