@@ -1,36 +1,45 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaView, Modal } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { usePaymentStore } from '../store/usePaymentStore';
+import { PaymentReceipt } from '../types/payment';
 
 /**
  * 72-Hour Payment Hold & Remita Gateway Screen (PRD S-04).
  * Displays a countdown timer ring, provisional room reservation details,
- * Remita reference input field, and payment confirmation status.
+ * Remita reference input field, voluntary hold cancellation, and digital receipts history.
  */
 export const PaymentHoldScreen: React.FC = () => {
   const { session } = useAuthStore();
   const {
     holdDetails,
     paymentResult,
+    paymentHistory,
+    selectedReceipt,
     isLoading,
     isProcessing,
+    isCancellingHold,
     error,
     formattedCountdown,
     fetchHoldStatus,
     payHostelFee,
+    fetchPaymentHistory,
+    releaseCurrentHold,
+    setSelectedReceipt,
     updateCountdownTimer
   } = usePaymentStore();
 
   const [remitaRefInput, setRemitaRefInput] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
 
   const userId = session?.user.id;
 
-  // Fetch hold status on screen mount
+  // Fetch hold status and payment history on screen mount
   useEffect(() => {
     if (userId) {
       fetchHoldStatus(userId).catch(() => {});
+      fetchPaymentHistory(userId).catch(() => {});
     }
   }, [userId]);
 
@@ -44,6 +53,7 @@ export const PaymentHoldScreen: React.FC = () => {
 
   const handlePayNow = async () => {
     setLocalError(null);
+    setNoticeMessage(null);
     if (!userId) {
       setLocalError('User session invalid. Please log in.');
       return;
@@ -55,10 +65,30 @@ export const PaymentHoldScreen: React.FC = () => {
     }
 
     try {
-      await payHostelFee(userId, remitaRefInput.trim());
+      const res = await payHostelFee(userId, remitaRefInput.trim());
       setRemitaRefInput('');
+      setNoticeMessage(res.message);
+      if (userId) {
+        fetchPaymentHistory(userId).catch(() => {});
+      }
     } catch (e: any) {
       // Error is caught in store state or local error
+    }
+  };
+
+  const handleReleaseHold = async () => {
+    setLocalError(null);
+    setNoticeMessage(null);
+    if (!userId) {
+      setLocalError('User session invalid. Please log in.');
+      return;
+    }
+
+    try {
+      const res = await releaseCurrentHold(userId);
+      setNoticeMessage(res.message);
+    } catch (e: any) {
+      // Error caught in store or local state
     }
   };
 
@@ -84,6 +114,13 @@ export const PaymentHoldScreen: React.FC = () => {
           <View className="w-full bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
             <Text className="text-red-800 font-semibold text-base mb-1">Notice</Text>
             <Text className="text-red-700 text-sm">{localError || error}</Text>
+          </View>
+        )}
+
+        {noticeMessage && (
+          <View className="w-full bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
+            <Text className="text-blue-900 font-semibold text-base mb-1">Update</Text>
+            <Text className="text-blue-800 text-sm">{noticeMessage}</Text>
           </View>
         )}
 
@@ -153,14 +190,27 @@ export const PaymentHoldScreen: React.FC = () => {
 
               {/* Pay Now Button (PRD S-04 Spec: bg-emerald-600) */}
               <TouchableOpacity
-                className="bg-emerald-600 w-full py-4 rounded-xl items-center justify-center shadow-md active:opacity-90"
-                disabled={isProcessing}
+                className="bg-emerald-600 w-full py-4 rounded-xl items-center justify-center shadow-md active:opacity-90 mb-3"
+                disabled={isProcessing || isCancellingHold}
                 onPress={handlePayNow}
               >
                 {isProcessing ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <Text className="text-white font-bold text-lg">Pay Hostel Fee (Confirm Reservation)</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Release / Cancel Hold Button */}
+              <TouchableOpacity
+                className="bg-rose-50 border border-rose-200 w-full py-3 rounded-xl items-center justify-center active:opacity-80"
+                disabled={isProcessing || isCancellingHold}
+                onPress={handleReleaseHold}
+              >
+                {isCancellingHold ? (
+                  <ActivityIndicator color="#991B1B" />
+                ) : (
+                  <Text className="text-rose-800 font-semibold text-sm">Release Bedspace Hold (Cancel Reservation)</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -179,13 +229,113 @@ export const PaymentHoldScreen: React.FC = () => {
 
         {/* Empty State when no active hold exists */}
         {!isLoading && !holdDetails && (
-          <View className="bg-white p-8 rounded-2xl w-full items-center border border-slate-200">
+          <View className="bg-white p-8 rounded-2xl w-full items-center border border-slate-200 mb-6">
             <Text className="text-slate-800 font-bold text-lg mb-2">No Active Bedspace Hold</Text>
             <Text className="text-slate-500 text-sm text-center">
               You do not currently have a provisional bedspace hold. Please go to the Balloting screen to select and lock an available bedspace.
             </Text>
           </View>
         )}
+
+        {/* Payment History & Digital Clearance Receipts */}
+        {paymentHistory.length > 0 && (
+          <View className="w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mt-2">
+            <Text className="text-lg font-bold text-slate-900 mb-3">Payment History & Digital Receipts</Text>
+            {paymentHistory.map((receipt) => (
+              <TouchableOpacity
+                key={receipt.paymentId}
+                className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-3 flex-row justify-between items-center"
+                onPress={() => setSelectedReceipt(receipt)}
+              >
+                <View className="flex-1 pr-2">
+                  <Text className="text-xs text-slate-400 font-bold uppercase">{receipt.hostelName}</Text>
+                  <Text className="text-sm font-bold text-slate-800">
+                    Room {receipt.roomNumber} ({receipt.bedLabel})
+                  </Text>
+                  <Text className="text-xs text-slate-500 mt-1">
+                    Ref: {receipt.transactionReference} • ₦{receipt.amount.toLocaleString()}
+                  </Text>
+                </View>
+                <View className={`px-3 py-1 rounded-full ${
+                  receipt.paymentStatus === 'SUCCESSFUL'
+                    ? 'bg-emerald-100'
+                    : receipt.paymentStatus === 'PENDING'
+                    ? 'bg-amber-100'
+                    : 'bg-rose-100'
+                }`}>
+                  <Text className={`text-xs font-bold ${
+                    receipt.paymentStatus === 'SUCCESSFUL'
+                      ? 'text-emerald-800'
+                      : receipt.paymentStatus === 'PENDING'
+                      ? 'text-amber-800'
+                      : 'text-rose-800'
+                  }`}>
+                    {receipt.paymentStatus}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Digital Receipt Modal / Detail Card */}
+        <Modal
+          visible={!!selectedReceipt}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setSelectedReceipt(null)}
+        >
+          <View className="flex-1 bg-black/60 justify-center items-center p-6">
+            <View className="bg-white w-full p-6 rounded-3xl border border-slate-200 shadow-2xl">
+              <View className="items-center mb-4 pb-4 border-b border-slate-100">
+                <Text className="text-xl font-bold text-slate-900">Official Clearance Receipt</Text>
+                <Text className="text-xs text-slate-500 mt-1">UNILAG Hostel Accommodation Fee</Text>
+              </View>
+
+              {selectedReceipt && (
+                <View className="space-y-3 mb-6">
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Student Name:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{selectedReceipt.studentFullName}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Matric / UTME No:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{selectedReceipt.studentMatricNo}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Hostel Name:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{selectedReceipt.hostelName}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Block & Room:</Text>
+                    <Text className="text-xs font-bold text-slate-800">
+                      Block {selectedReceipt.blockName} — Room {selectedReceipt.roomNumber}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Bedspace Position:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{selectedReceipt.bedLabel}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Transaction Reference:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{selectedReceipt.transactionReference}</Text>
+                  </View>
+                  <View className="flex-row justify-between pt-2 border-t border-slate-100">
+                    <Text className="text-sm text-slate-600 font-semibold">Amount Paid:</Text>
+                    <Text className="text-lg font-extrabold text-emerald-700">₦{selectedReceipt.amount.toLocaleString()}</Text>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                className="bg-[#7A0000] w-full py-3 rounded-xl items-center"
+                onPress={() => setSelectedReceipt(null)}
+              >
+                <Text className="text-white font-bold text-base">Close Receipt</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );

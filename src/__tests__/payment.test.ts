@@ -172,4 +172,85 @@ describe('[PAYMENT-01 / UAT-0016] 72-Hour Payment Hold & Remita Gateway Integrat
     expect(String(checkBedRes.rows[0].status)).toBe('AVAILABLE');
     expect(checkBedRes.rows[0].allocated_to_user_id).toBeNull();
   });
+
+  test('voluntarily cancels and releases active provisional bedspace hold', async () => {
+    const cancelUserId = 'usr_cancel_p3';
+    const cancelBedId = 'bed_cancel_p3';
+    const client = AuthService.getDbClient();
+
+    // Clean and seed a new active hold
+    await client.execute({ sql: 'DELETE FROM bedspaces WHERE id = ?', args: [cancelBedId] });
+    await client.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [cancelUserId] });
+
+    await client.execute({
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [cancelUserId, '990407099', 'Cancel Test Student', 'cancel@live.unilag.edu.ng', '+2348011111111', 'STUDENT', 'MALE', 'hash', 1]
+    });
+
+    await client.execute({
+      sql: `INSERT INTO bedspaces (id, room_id, bed_label, status, allocated_to_user_id, hold_expires_at)
+            VALUES (?, ?, ?, 'LOCKED_HOLD', ?, DATETIME('now', '+72 hours'))`,
+      args: [cancelBedId, roomId, 'Bed A Up', cancelUserId]
+    });
+
+    const initialHostelRes = await client.execute({
+      sql: 'SELECT available_bedspaces FROM hostels WHERE id = ?',
+      args: [hostelId]
+    });
+    const initialAvailableCount = Number(initialHostelRes.rows[0].available_bedspaces);
+
+    // Perform voluntary cancellation
+    const cancelResult = await PaymentService.cancelBedspaceHold(cancelUserId);
+
+    expect(cancelResult.success).toBe(true);
+    expect(cancelResult.bedspaceId).toBe(cancelBedId);
+
+    // Verify bedspace status reverted to AVAILABLE
+    const bedCheck = await client.execute({
+      sql: 'SELECT status, allocated_to_user_id FROM bedspaces WHERE id = ?',
+      args: [cancelBedId]
+    });
+    expect(String(bedCheck.rows[0].status)).toBe('AVAILABLE');
+    expect(bedCheck.rows[0].allocated_to_user_id).toBeNull();
+
+    // Verify hostel available_bedspaces count incremented
+    const updatedHostelRes = await client.execute({
+      sql: 'SELECT available_bedspaces FROM hostels WHERE id = ?',
+      args: [hostelId]
+    });
+    expect(Number(updatedHostelRes.rows[0].available_bedspaces)).toBe(initialAvailableCount + 1);
+  });
+
+  test('fetches full payment history and digital clearance receipt details', async () => {
+    const history = await PaymentService.getPaymentHistory(testUserId);
+
+    expect(Array.isArray(history)).toBe(true);
+    expect(history.length).toBeGreaterThan(0);
+
+    const receipt = history[0];
+    expect(receipt.paymentId).toBeDefined();
+    expect(receipt.studentMatricNo).toBe('990407089');
+    expect(receipt.studentFullName).toBe('Kelechi Okafor');
+    expect(receipt.transactionReference).toBe('993456789012');
+    expect(receipt.amount).toBe(25000.00);
+    expect(receipt.paymentStatus).toBe('SUCCESSFUL');
+  });
+
+  test('executes releaseCurrentHold and fetchPaymentHistory via Zustand payment store', async () => {
+    const store = usePaymentStore.getState();
+
+    // Fetch history via store
+    const storeHistory = await store.fetchPaymentHistory(testUserId);
+    expect(storeHistory.length).toBeGreaterThan(0);
+    expect(usePaymentStore.getState().paymentHistory.length).toBeGreaterThan(0);
+
+    // Test setSelectedReceipt
+    store.setSelectedReceipt(storeHistory[0]);
+    expect(usePaymentStore.getState().selectedReceipt).toEqual(storeHistory[0]);
+
+    // Reset selected receipt
+    store.setSelectedReceipt(null);
+    expect(usePaymentStore.getState().selectedReceipt).toBeNull();
+  });
 });

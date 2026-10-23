@@ -1,6 +1,6 @@
 import { Client } from '@libsql/client';
 import { AuthService } from './authService';
-import { PaymentHoldDetails, RemitaPaymentParams, PaymentProcessResult } from '../types/payment';
+import { PaymentHoldDetails, RemitaPaymentParams, PaymentProcessResult, PaymentReceipt, HoldReleaseResult } from '../types/payment';
 import { validateRemitaRef } from '../utils/validation';
 
 /**
@@ -257,5 +257,115 @@ export class PaymentService {
       paidAt,
       message: 'Hostel fee payment confirmed! Your accommodation is officially reserved.'
     };
+  }
+
+  /**
+   * Cancels and releases a student's active provisional bedspace hold voluntarily before payment.
+   * Atomically reverts the bedspace status to AVAILABLE, increments the hostel available space count,
+   * and updates any pending payment record in Turso DB.
+   *
+   * @param userId - Student's unique user ID
+   * @param targetBedspaceId - Optional specific bedspace ID to release
+   * @returns HoldReleaseResult containing confirmation details
+   */
+  public static async cancelBedspaceHold(userId: string, targetBedspaceId?: string): Promise<HoldReleaseResult> {
+    await PaymentService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Query active hold for the student
+    const holdRes = await client.execute({
+      sql: `SELECT b.id as bedspace_id, b.room_id, r.hostel_id
+            FROM bedspaces b
+            JOIN rooms r ON b.room_id = r.id
+            WHERE b.allocated_to_user_id = ? AND b.status = 'LOCKED_HOLD'
+            ${targetBedspaceId ? 'AND b.id = ?' : ''}
+            LIMIT 1`,
+      args: targetBedspaceId ? [userId, targetBedspaceId] : [userId]
+    });
+
+    if (holdRes.rows.length === 0) {
+      throw new Error('No active provisional bedspace hold found to release.');
+    }
+
+    const bedId = String(holdRes.rows[0].bedspace_id);
+    const hostelId = String(holdRes.rows[0].hostel_id);
+    const recycledAt = new Date().toISOString();
+
+    // Execute atomic batch transaction to release bedspace and increment hostel capacity
+    await client.batch([
+      {
+        sql: `UPDATE bedspaces
+              SET status = 'AVAILABLE',
+                  allocated_to_user_id = NULL,
+                  hold_expires_at = NULL,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = ? AND allocated_to_user_id = ? AND status = 'LOCKED_HOLD'`,
+        args: [bedId, userId]
+      },
+      {
+        sql: `UPDATE hostels
+              SET available_bedspaces = available_bedspaces + 1
+              WHERE id = ?`,
+        args: [hostelId]
+      },
+      {
+        sql: `UPDATE payments
+              SET payment_status = 'FAILED'
+              WHERE user_id = ? AND bedspace_id = ? AND payment_status = 'PENDING'`,
+        args: [userId, bedId]
+      }
+    ], 'write');
+
+    return {
+      success: true,
+      bedspaceId: bedId,
+      message: 'Your provisional bedspace hold has been cancelled and returned to the available room pool.',
+      recycledAt
+    };
+  }
+
+  /**
+   * Retrieves the full payment history and digital clearance receipts for a student.
+   * Queries Turso DB for all past and active accommodation fee transactions.
+   *
+   * @param userId - Student's unique user ID
+   * @returns Array of PaymentReceipt objects
+   */
+  public static async getPaymentHistory(userId: string): Promise<PaymentReceipt[]> {
+    await PaymentService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT p.id as payment_id, p.transaction_reference, p.amount, p.payment_type, p.payment_status, p.paid_at,
+                   b.id as bedspace_id, b.bed_label,
+                   r.room_number, r.block_name,
+                   h.name as hostel_name, h.campus,
+                   u.matric_or_staff_no, u.full_name
+            FROM payments p
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN bedspaces b ON p.bedspace_id = b.id
+            LEFT JOIN rooms r ON b.room_id = r.id
+            LEFT JOIN hostels h ON r.hostel_id = h.id
+            WHERE p.user_id = ?
+            ORDER BY COALESCE(p.paid_at, CURRENT_TIMESTAMP) DESC`,
+      args: [userId]
+    });
+
+    return res.rows.map(row => ({
+      paymentId: String(row.payment_id),
+      transactionReference: String(row.transaction_reference || 'N/A'),
+      amount: Number(row.amount || 25000.00),
+      paymentType: String(row.payment_type || 'HOSTEL_FEE'),
+      paymentStatus: (row.payment_status ? String(row.payment_status) : 'PENDING') as 'PENDING' | 'SUCCESSFUL' | 'FAILED',
+      paidAt: row.paid_at ? String(row.paid_at) : new Date().toISOString(),
+      bedspaceId: row.bedspace_id ? String(row.bedspace_id) : 'N/A',
+      bedLabel: row.bed_label ? String(row.bed_label) : 'N/A',
+      roomNumber: row.room_number ? String(row.room_number) : 'N/A',
+      blockName: row.block_name ? String(row.block_name) : 'N/A',
+      hostelName: row.hostel_name ? String(row.hostel_name) : 'UNILAG Hostel',
+      campus: row.campus ? String(row.campus) : 'MAIN_CAMPUS',
+      studentMatricNo: String(row.matric_or_staff_no),
+      studentFullName: String(row.full_name)
+    }));
   }
 }

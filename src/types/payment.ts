@@ -46,3 +46,34 @@ export interface PaymentProcessResult {
   paidAt: string;
   message: string;
 }
+
+/**
+ * Details of an official digital payment receipt for a confirmed accommodation transaction.
+ * Used for displaying receipt summaries and payment history to students.
+ */
+export interface PaymentReceipt {
+  paymentId: string;
+  transactionReference: string;
+  amount: number;
+  paymentType: string;
+  paymentStatus: 'PENDING' | 'SUCCESSFUL' | 'FAILED';
+  paidAt: string;
+  bedspaceId: string;
+  bedLabel: string;
+  roomNumber: string;
+  blockName: string;
+  hostelName: string;
+  campus: string;
+  studentMatricNo: string;
+  studentFullName: string;
+}
+
+/**
+ * Result returned when a student voluntarily cancels or releases their provisional bedspace hold.
+ */
+export interface HoldReleaseResult {
+  success: boolean;
+  bedspaceId: string;
+  message: string;
+  recycledAt: string;
+}
