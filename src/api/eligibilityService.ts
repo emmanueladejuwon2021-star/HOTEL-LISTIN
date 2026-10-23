@@ -16,8 +16,10 @@ export class EligibilityService {
    * This ensures the database schema is fully initialized before checking eligibility.
    */
   public static async initializeSchema(): Promise<void> {
-    // Ensure base tables (users, student_profiles) are set up first
+    // Ensure base tables (users, student_profiles, bedspaces) are set up first
     await AuthService.initializeSchema();
+    const { ReservationService } = await import('./reservationService');
+    await ReservationService.initializeSchema();
     const client = AuthService.getDbClient();
 
     // Create table for student disciplinary flags and clearance documents

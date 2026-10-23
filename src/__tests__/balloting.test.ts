@@ -5,14 +5,15 @@ import { useBallotingStore } from '../store/useBallotingStore';
 describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & Queue Token Tests', () => {
   const testUserId1 = 'usr_1001_queue_student1';
   const testUserId2 = 'usr_1002_queue_student2';
+  const testUserId3 = 'usr_1003_queue_student3';
 
   beforeAll(async () => {
     await BallotingService.initializeSchema();
     const client = AuthService.getDbClient();
 
     // Clean test queue tokens and users
-    await client.execute({ sql: 'DELETE FROM balloting_queue_tokens WHERE user_id IN (?, ?)', args: [testUserId1, testUserId2] });
-    await client.execute({ sql: 'DELETE FROM users WHERE id IN (?, ?)', args: [testUserId1, testUserId2] });
+    await client.execute({ sql: 'DELETE FROM balloting_queue_tokens WHERE user_id IN (?, ?, ?)', args: [testUserId1, testUserId2, testUserId3] });
+    await client.execute({ sql: 'DELETE FROM users WHERE id IN (?, ?, ?)', args: [testUserId1, testUserId2, testUserId3] });
 
     // Seed test users
     await client.execute({
@@ -25,6 +26,12 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [testUserId2, '190407222', 'Queue Student Two', 'q2@live.unilag.edu.ng', '+2348022220000', 'STUDENT', 'MALE', 'hash', 1]
+    });
+
+    await client.execute({
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [testUserId3, '190407333', 'Queue Student Three', 'q3@live.unilag.edu.ng', '+2348033330000', 'STUDENT', 'MALE', 'hash', 1]
     });
 
     // 1. Seed Balloting Windows in Turso DB
@@ -251,6 +258,37 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       store.setSelectedRoomAndBed('room_jaja_balloting_201', 'bed_jaja_201_a_down');
       expect(useBallotingStore.getState().selectedRoomId).toBe('room_jaja_balloting_201');
       expect(useBallotingStore.getState().selectedBedId).toBe('bed_jaja_201_a_down');
+    });
+  });
+
+  describe('[BALLOTING-05 / UAT-0015] Priority Quota Engine Component 5 Integration', () => {
+    test('executes end-to-end priority quota balloting flow for graduating student (FINALIST)', async () => {
+      // Step 1: Verify active balloting window for FINALIST category
+      const isActive = await BallotingService.verifyBallotingWindowActive('FINALIST');
+      expect(isActive).toBe(true);
+
+      // Step 2: Issue queue token for student and verify position
+      const token = await BallotingService.issueQueueToken(testUserId3, 'FINALIST');
+      expect(token).toBeDefined();
+      expect(token.priorityCategory).toBe('FINALIST');
+      expect(token.positionInQueue).toBeGreaterThanOrEqual(1);
+
+      // Step 3: Fetch filtered hostels available for MALE students
+      const hostels = await BallotingService.getFilteredHostels({ gender: 'MALE', campus: 'MAIN_CAMPUS' });
+      expect(hostels.length).toBeGreaterThan(0);
+
+      // Step 4: Query rooms and select available bedspace
+      const rooms = await BallotingService.getRoomsForHostel('h_jaja', 'A', 2);
+      expect(rooms.length).toBeGreaterThan(0);
+
+      const targetRoom = rooms.find((r) => r.id === 'room_jaja_balloting_201');
+      const availableBed = targetRoom?.bedspaces.find((b) => b.status === 'AVAILABLE');
+      expect(availableBed).toBeDefined();
+
+      // Step 5: Verify countdown state updates and queue token attachment
+      const countdown = await BallotingService.getCountdownState('FINALIST', testUserId3);
+      expect(countdown.isWindowActive).toBe(true);
+      expect(countdown.queueToken?.tokenId).toBe(token.tokenId);
     });
   });
 });
