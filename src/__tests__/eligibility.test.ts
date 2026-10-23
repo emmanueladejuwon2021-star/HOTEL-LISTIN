@@ -1,21 +1,26 @@
 import { AuthService } from '../api/authService';
 import { EligibilityService } from '../api/eligibilityService';
 
-describe('[ELIGIBILITY-01 / UAT-0002] Student Eligibility Verification & Fees Check Integration Tests', () => {
+/**
+ * Integration test suite for [ELIGIBILITY-01] / [UAT-0006] Student Eligibility Verification & Fees Check.
+ * Verifies live Turso DB interaction with zero mocks.
+ */
+describe('[ELIGIBILITY-01 / UAT-0006] Student Eligibility Verification & Fees Check Integration Tests', () => {
   const testUserId = 'usr_190407089_eligibility';
   const unpaidUserId = 'usr_200102031_unpaid';
   const flaggedUserId = 'usr_200405061_flagged';
 
   beforeAll(async () => {
+    // Initialize database tables in Turso libSQL DB
     await EligibilityService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    // Clean existing records if re-running
+    // Clean existing test records before running tests
     await client.execute({ sql: 'DELETE FROM disciplinary_records WHERE user_id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
     await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
     await client.execute({ sql: 'DELETE FROM users WHERE id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
 
-    // 1. Seed Eligible Student (Fees Paid = 1, Disciplinary Status = CLEARED)
+    // 1. Seed Eligible Student Record (Fees Paid = 1, Disciplinary Status = CLEARED)
     await client.execute({
       sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -28,7 +33,7 @@ describe('[ELIGIBILITY-01 / UAT-0002] Student Eligibility Verification & Fees Ch
       args: [testUserId, 'Engineering', 'Electrical Engineering', 100, 'MAIN_CAMPUS', 'FRESHER', 1, 'APPROVED']
     });
 
-    // 2. Seed Unpaid Fee Student (Fees Paid = 0)
+    // 2. Seed Unpaid Fee Student Record (Fees Paid = 0)
     await client.execute({
       sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -41,7 +46,7 @@ describe('[ELIGIBILITY-01 / UAT-0002] Student Eligibility Verification & Fees Ch
       args: [unpaidUserId, 'Arts', 'English', 200, 'MAIN_CAMPUS', 'STALLITE', 0, 'NOT_STARTED']
     });
 
-    // 3. Seed Disciplinary Flagged Student
+    // 3. Seed Disciplinary Suspended Student Record
     await client.execute({
       sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -83,7 +88,7 @@ describe('[ELIGIBILITY-01 / UAT-0002] Student Eligibility Verification & Fees Ch
     });
   });
 
-  describe('Live Turso DB Eligibility Verification (UAT-0002)', () => {
+  describe('Live Turso DB Eligibility Verification (UAT-0006)', () => {
     test('confirms eligibility for student with paid fees and cleared disciplinary standing', async () => {
       const result = await EligibilityService.verifyEligibility(testUserId);
 
