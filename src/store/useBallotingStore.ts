@@ -57,6 +57,10 @@ interface BallotingState {
   releaseExpiredHolds: () => Promise<{ releasedCount: number; message: string }>;
   // Action to cancel student queue token
   cancelQueueToken: (userId: string) => Promise<boolean>;
+  // Action to fetch priority category quota analytics
+  fetchQuotaAnalytics: () => Promise<void>;
+  // Action to enforce category quota limit before bed selection
+  enforceCategoryQuota: (category: PriorityCategory, hostelId: string) => Promise<{ isQuotaAvailable: boolean; message: string; remainingQuota: number }>;
 }
 
 /**
@@ -254,6 +258,52 @@ export const useBallotingStore = create<BallotingState>((set, get) => ({
       return cancelled;
     } catch (err: any) {
       const msg = err.message || 'Failed to cancel queue token.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Fetches real-time priority category quota analytics.
+   */
+  fetchQuotaAnalytics: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const analytics = await BallotingService.getQuotaAnalytics();
+      const current = get().countdownState;
+      if (current) {
+        set({
+          countdownState: {
+            ...current,
+            quotaAnalytics: analytics
+          },
+          isLoading: false
+        });
+      } else {
+        set({ isLoading: false });
+      }
+    } catch (err: any) {
+      const msg = err.message || 'Failed to fetch priority quota analytics.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Checks whether student's priority category has available quota in selected hostel.
+   *
+   * @param category - Student's priority category
+   * @param hostelId - Selected hostel ID
+   * @returns Quota enforcement result object
+   */
+  enforceCategoryQuota: async (category: PriorityCategory, hostelId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await BallotingService.enforceCategoryQuotaLimit(category, hostelId);
+      set({ isLoading: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to enforce category quota limit.';
       set({ error: msg, isLoading: false });
       throw err;
     }

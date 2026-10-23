@@ -43,6 +43,18 @@ export interface HostelQuotaSummary {
 }
 
 /**
+ * Real-time analytics for priority category bedspace quota allocations.
+ */
+export interface PriorityQuotaAnalytics {
+  category: PriorityCategory;
+  categoryTitle: string;
+  quotaSharePercentage: number; // e.g. 40 for 40%
+  totalQuotaCapacity: number;
+  allocatedCount: number;
+  remainingCapacity: number;
+}
+
+/**
  * State object returned by balloting countdown engine.
  */
 export interface BallotingCountdownState {
@@ -52,6 +64,7 @@ export interface BallotingCountdownState {
   quotas: HostelQuotaSummary[];
   queueToken?: QueueToken;
   totalQueuedUsers?: number;
+  quotaAnalytics?: PriorityQuotaAnalytics[];
 }
 
 /**

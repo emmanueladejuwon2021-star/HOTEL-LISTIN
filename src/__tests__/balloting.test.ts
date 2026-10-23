@@ -344,4 +344,57 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       expect(cancelled).toBe(true);
     });
   });
+
+  describe('[BALLOTING-05 / UAT-0015] Priority Quota Analytics & Category Limit Enforcement', () => {
+    test('calculates priority quota analytics across all student categories (UAT-0015)', async () => {
+      const analytics = await BallotingService.getQuotaAnalytics();
+
+      expect(analytics).toBeDefined();
+      expect(analytics.length).toBe(4);
+
+      const fresherCat = analytics.find((a) => a.category === 'FRESHER');
+      expect(fresherCat).toBeDefined();
+      expect(fresherCat?.quotaSharePercentage).toBe(40);
+      expect(fresherCat?.totalQuotaCapacity).toBeGreaterThan(0);
+
+      const finalistCat = analytics.find((a) => a.category === 'FINALIST');
+      expect(finalistCat).toBeDefined();
+      expect(finalistCat?.quotaSharePercentage).toBe(30);
+
+      const scholarCat = analytics.find((a) => a.category === 'SCHOLAR');
+      expect(scholarCat).toBeDefined();
+      expect(scholarCat?.quotaSharePercentage).toBe(10);
+
+      const stalliteCat = analytics.find((a) => a.category === 'STALLITE');
+      expect(stalliteCat).toBeDefined();
+      expect(stalliteCat?.quotaSharePercentage).toBe(20);
+    });
+
+    test('enforces category quota limits on selected hostels', async () => {
+      const check = await BallotingService.enforceCategoryQuotaLimit('FRESHER', 'h_jaja');
+
+      expect(check).toBeDefined();
+      expect(check.isQuotaAvailable).toBe(true);
+      expect(check.remainingQuota).toBeGreaterThan(0);
+      expect(check.message).toContain('Category quota check passed');
+    });
+
+    test('includes quota analytics in countdown state object', async () => {
+      const state = await BallotingService.getCountdownState('FRESHER');
+
+      expect(state.quotaAnalytics).toBeDefined();
+      expect(state.quotaAnalytics?.length).toBe(4);
+    });
+
+    test('executes Zustand store actions for quota analytics and enforcement', async () => {
+      const store = useBallotingStore.getState();
+
+      await store.fetchQuotaAnalytics();
+      const updatedState = useBallotingStore.getState().countdownState;
+      expect(updatedState?.quotaAnalytics).toBeDefined();
+
+      const enf = await store.enforceCategoryQuota('FRESHER', 'h_jaja');
+      expect(enf.isQuotaAvailable).toBe(true);
+    });
+  });
 });

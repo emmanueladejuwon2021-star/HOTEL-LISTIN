@@ -187,6 +187,29 @@ export const BallotingCountdownScreen: React.FC = () => {
               </View>
             )}
 
+            {/* Priority Quota Category Analytics Card */}
+            {countdownState.quotaAnalytics && countdownState.quotaAnalytics.length > 0 && (
+              <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+                <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Priority Quota Category Breakdown
+                </Text>
+                <View className="space-y-2">
+                  {countdownState.quotaAnalytics.map((qa) => (
+                    <View key={qa.category} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex-row justify-between items-center">
+                      <View className="flex-1 mr-2">
+                        <Text className="text-xs font-bold text-slate-900">{qa.categoryTitle}</Text>
+                        <Text className="text-[11px] text-slate-500">{qa.quotaSharePercentage}% Policy Quota Share</Text>
+                      </View>
+                      <View className="items-end">
+                        <Text className="text-xs font-bold text-slate-800">{qa.allocatedCount} / {qa.totalQuotaCapacity}</Text>
+                        <Text className="text-[10px] text-emerald-700 font-semibold">{qa.remainingCapacity} Beds Free</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Quota Allocation Matrix Header */}
             <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
               <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">

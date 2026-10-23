@@ -107,14 +107,26 @@ export const BallotingSelectorScreen: React.FC = () => {
     selectBedspace(bed);
   };
 
-  // Handler for confirming atomic lock
+  const { enforceCategoryQuota } = useBallotingStore();
+
+  // Handler for confirming atomic lock with priority category quota limit enforcement
   const handleConfirmLock = async () => {
     if (!userId || !selectedBedspace) return;
     try {
       const validation = await validateQueueAndWindow(userId, userCategory);
       if (!validation.isValid) {
+        setNoticeMessage(validation.message);
         return;
       }
+
+      if (selectedHostelId) {
+        const quotaCheck = await enforceCategoryQuota(userCategory, selectedHostelId);
+        if (!quotaCheck.isQuotaAvailable) {
+          setNoticeMessage(quotaCheck.message);
+          return;
+        }
+      }
+
       await lockSelectedBedspace(userId);
       if (selectedHostelId) {
         await fetchHostelRooms(selectedHostelId); // Refresh room grid
@@ -210,6 +222,55 @@ export const BallotingSelectorScreen: React.FC = () => {
           <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">
             <Text className="text-red-800 font-semibold text-base mb-1">Notice</Text>
             <Text className="text-red-700 text-sm">{ballotingError || reservationError}</Text>
+          </View>
+        )}
+
+        {/* Priority Quota Analytics & Distribution Card (PRD Section 5.1 Quota Allocation Matrix) */}
+        {countdownState?.quotaAnalytics && countdownState.quotaAnalytics.length > 0 && (
+          <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+            <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              Priority Quota Allocation & Analytics
+            </Text>
+            <Text className="text-xs text-slate-500 mb-3">
+              Real-time quota limits enforced by UNILAG accommodation policy:
+            </Text>
+
+            <View className="space-y-2">
+              {countdownState.quotaAnalytics.map((qa) => {
+                const isUserCat = qa.category === userCategory;
+                return (
+                  <View
+                    key={qa.category}
+                    className={`p-3 rounded-xl border ${
+                      isUserCat ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <View className="flex-row justify-between items-center mb-1">
+                      <Text className="text-xs font-bold text-slate-900 flex-1">
+                        {qa.categoryTitle} ({qa.quotaSharePercentage}%)
+                      </Text>
+                      {isUserCat && (
+                        <View className="bg-amber-500 px-2 py-0.5 rounded-full">
+                          <Text className="text-slate-900 text-[10px] font-bold">Your Category</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View className="flex-row justify-between items-center text-xs">
+                      <Text className="text-slate-600 text-[11px]">
+                        Allocated: {qa.allocatedCount} / {qa.totalQuotaCapacity} beds
+                      </Text>
+                      <Text
+                        className={`text-[11px] font-bold ${
+                          qa.remainingCapacity > 0 ? 'text-emerald-700' : 'text-red-700'
+                        }`}
+                      >
+                        {qa.remainingCapacity} Left
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </View>
         )}
 

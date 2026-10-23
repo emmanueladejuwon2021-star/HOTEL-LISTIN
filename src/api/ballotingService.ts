@@ -8,7 +8,8 @@ import {
   QueueToken,
   HostelFilterParams,
   FilteredHostelSummary,
-  BallotingRoomDetails
+  BallotingRoomDetails,
+  PriorityQuotaAnalytics
 } from '../types/balloting';
 import { PriorityCategory, Gender, Campus } from '../types/auth';
 
@@ -223,6 +224,8 @@ export class BallotingService {
       if (tok) queueToken = tok;
     }
 
+    const quotaAnalytics = await BallotingService.getQuotaAnalytics();
+
     if (!window) {
       return {
         currentWindow: null,
@@ -230,7 +233,8 @@ export class BallotingService {
         isWindowActive: false,
         quotas,
         queueToken,
-        totalQueuedUsers
+        totalQueuedUsers,
+        quotaAnalytics
       };
     }
 
@@ -260,7 +264,8 @@ export class BallotingService {
       isWindowActive,
       quotas,
       queueToken,
-      totalQueuedUsers
+      totalQueuedUsers,
+      quotaAnalytics
     };
   }
 
@@ -513,5 +518,133 @@ export class BallotingService {
     });
 
     return (result.rowsAffected || 0) > 0;
+  }
+
+  /**
+   * Calculates real-time priority quota analytics and bedspace allocation distribution across categories.
+   * Based on PRD Section 5.1 Quota Allocation Matrix:
+   * - FRESHER: 40%
+   * - FINALIST: 30%
+   * - SCHOLAR: 10%
+   * - STALLITE: 20%
+   *
+   * @returns Array of PriorityQuotaAnalytics objects for each priority category
+   */
+  public static async getQuotaAnalytics(): Promise<PriorityQuotaAnalytics[]> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Query total capacity across all hostels
+    const capacityRes = await client.execute({
+      sql: `SELECT SUM(total_capacity) as grand_total FROM hostels`,
+      args: []
+    });
+
+    const grandTotal = Number(capacityRes.rows[0].grand_total || 0);
+
+    const categories: Array<{
+      category: PriorityCategory;
+      title: string;
+      percentage: number;
+    }> = [
+      { category: 'FRESHER', title: '100L Freshers & CMUL Direct Entry', percentage: 40 },
+      { category: 'FINALIST', title: 'Finalists & Graduating Students', percentage: 30 },
+      { category: 'SCHOLAR', title: 'Scholars, Athletes & Special Needs', percentage: 10 },
+      { category: 'STALLITE', title: 'Returning 200L-400L Stallites', percentage: 20 }
+    ];
+
+    const analytics: PriorityQuotaAnalytics[] = [];
+
+    for (const cat of categories) {
+      const categoryCapacity = Math.floor((grandTotal * cat.percentage) / 100);
+
+      // Query allocated bedspaces for this priority category
+      const allocatedRes = await client.execute({
+        sql: `SELECT COUNT(*) as count FROM bedspaces b
+              JOIN student_profiles sp ON b.allocated_to_user_id = sp.user_id
+              WHERE sp.priority_category = ? AND b.status IN ('LOCKED_HOLD', 'CONFIRMED')`,
+        args: [cat.category]
+      });
+
+      const allocatedCount = Number(allocatedRes.rows[0].count || 0);
+      const remainingCapacity = Math.max(0, categoryCapacity - allocatedCount);
+
+      analytics.push({
+        category: cat.category,
+        categoryTitle: cat.title,
+        quotaSharePercentage: cat.percentage,
+        totalQuotaCapacity: categoryCapacity,
+        allocatedCount,
+        remainingCapacity
+      });
+    }
+
+    return analytics;
+  }
+
+  /**
+   * Enforces priority category quota limits for student balloting applications.
+   * Checks if the student's category has exceeded its allowed quota allocation for the selected hostel/bedspace.
+   *
+   * @param category - Priority category of the student
+   * @param hostelId - Selected hostel ID
+   * @returns Object indicating whether quota is available and detailed message
+   */
+  public static async enforceCategoryQuotaLimit(
+    category: PriorityCategory,
+    hostelId: string
+  ): Promise<{ isQuotaAvailable: boolean; message: string; remainingQuota: number }> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Query hostel capacity
+    const hostelRes = await client.execute({
+      sql: `SELECT name, total_capacity FROM hostels WHERE id = ?`,
+      args: [hostelId]
+    });
+
+    if (hostelRes.rows.length === 0) {
+      return { isQuotaAvailable: false, message: 'Selected hostel not found.', remainingQuota: 0 };
+    }
+
+    const hostelName = String(hostelRes.rows[0].name);
+    const totalCapacity = Number(hostelRes.rows[0].total_capacity);
+
+    const shareMap: Record<PriorityCategory, number> = {
+      FRESHER: 40,
+      FINALIST: 30,
+      SCHOLAR: 10,
+      SPECIAL_NEEDS: 10,
+      STALLITE: 20
+    };
+
+    const percentage = shareMap[category] || 20;
+    const allowedCategoryQuota = Math.floor((totalCapacity * percentage) / 100);
+
+    // Query current category allocations in this hostel
+    const allocatedRes = await client.execute({
+      sql: `SELECT COUNT(*) as count FROM bedspaces b
+            JOIN rooms r ON b.room_id = r.id
+            JOIN student_profiles sp ON b.allocated_to_user_id = sp.user_id
+            WHERE r.hostel_id = ? AND sp.priority_category = ? AND b.status IN ('LOCKED_HOLD', 'CONFIRMED')`,
+      args: [hostelId, category]
+    });
+
+    const currentAllocated = Number(allocatedRes.rows[0].count || 0);
+    const remainingQuota = allowedCategoryQuota - currentAllocated;
+
+    if (remainingQuota <= 0) {
+      return {
+        isQuotaAvailable: false,
+        message: `Quota limit reached for ${category} category in ${hostelName} (${allowedCategoryQuota} beds max).`,
+        remainingQuota: 0
+      };
+    }
+
+    return {
+      isQuotaAvailable: true,
+      message: `Category quota check passed for ${category} in ${hostelName}. ${remainingQuota} space(s) remaining.`,
+      remainingQuota
+    };
   }
 }
