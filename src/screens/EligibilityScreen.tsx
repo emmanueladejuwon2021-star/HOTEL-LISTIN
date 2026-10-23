@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaView, TextInput } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useEligibilityStore } from '../store/useEligibilityStore';
+import { validateRemitaRef } from '../utils/validation';
 
 /**
  * EligibilityScreen Component.
  * Displays student hostel application eligibility status, school fee payment verification status,
- * priority quota tag, disciplinary standing, and digital clearance progress.
- * Allows students to manually sync tuition fee payment using Remita references and submit documents for digital clearance.
+ * course registration verification, priority quota tag, disciplinary standing, fee payment audit trail, and digital clearance progress.
+ * Allows students to manually sync tuition fee payment using Remita RRR references and submit documents for digital clearance.
  */
 export const EligibilityScreen: React.FC = () => {
   // Get active user session from global auth store
@@ -17,6 +18,8 @@ export const EligibilityScreen: React.FC = () => {
 
   // Local state for typed Remita payment reference code
   const [remitaRef, setRemitaRef] = useState('');
+  // Local state for input validation error
+  const [validationError, setValidationError] = useState<string | null>(null);
   // Local state for success message notification upon fee sync or clearance submission
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -31,14 +34,23 @@ export const EligibilityScreen: React.FC = () => {
 
   /**
    * Triggers fee sync when user taps 'Sync & Verify Payment'.
+   * Validates Remita RRR format before sending request to Turso DB.
    */
   const handleSyncFee = async () => {
     if (!userId) return;
-    if (!remitaRef.trim()) return;
 
+    setValidationError(null);
     setSuccessMsg(null);
+
+    // Validate Remita RRR / Transaction Reference format
+    const val = validateRemitaRef(remitaRef);
+    if (!val.isValid) {
+      setValidationError(val.error || 'Invalid Remita reference format.');
+      return;
+    }
+
     try {
-      const updated = await syncFees(userId, remitaRef.trim(), 25000);
+      const updated = await syncFees(userId, remitaRef.trim(), 25000, 'TUITION_FEE');
       if (updated.feesPaid) {
         setSuccessMsg('Tuition fee payment verified and synced successfully!');
         setRemitaRef('');
@@ -54,6 +66,7 @@ export const EligibilityScreen: React.FC = () => {
   const handleSubmitClearance = async () => {
     if (!userId) return;
 
+    setValidationError(null);
     setSuccessMsg(null);
     try {
       const updated = await updateClearance(userId, 'PENDING');
@@ -81,6 +94,14 @@ export const EligibilityScreen: React.FC = () => {
           <View className="p-8 items-center justify-center">
             <ActivityIndicator size="large" color="#7A0000" />
             <Text className="text-slate-600 font-medium mt-3">Verifying records against Turso DB...</Text>
+          </View>
+        )}
+
+        {/* Local Input Validation Error */}
+        {validationError && (
+          <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
+            <Text className="text-amber-800 font-semibold text-base mb-1">Input Validation Error</Text>
+            <Text className="text-amber-700 text-sm">{validationError}</Text>
           </View>
         )}
 
@@ -125,7 +146,7 @@ export const EligibilityScreen: React.FC = () => {
                   }`}
                 >
                   <Text className="text-white text-xs font-bold uppercase">
-                    {eligibilityResult.isEligible ? 'Approved' : 'Pending Sync'}
+                    {eligibilityResult.isEligible ? 'Approved' : 'Pending Verification'}
                   </Text>
                 </View>
               </View>
@@ -185,6 +206,7 @@ export const EligibilityScreen: React.FC = () => {
               </Text>
 
               <View className="space-y-3">
+                {/* Tuition Fees Check */}
                 <View className="flex-row justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-100">
                   <View>
                     <Text className="text-slate-800 font-semibold text-sm">Tuition Fees Status</Text>
@@ -199,6 +221,22 @@ export const EligibilityScreen: React.FC = () => {
                   </Text>
                 </View>
 
+                {/* Semester Course Registration Check */}
+                <View className="flex-row justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <View>
+                    <Text className="text-slate-800 font-semibold text-sm">Course Registration</Text>
+                    <Text className="text-xs text-slate-500">Academic Affairs Portal</Text>
+                  </View>
+                  <Text
+                    className={`text-sm font-bold ${
+                      eligibilityResult.courseRegistered ? 'text-emerald-600' : 'text-red-600'
+                    }`}
+                  >
+                    {eligibilityResult.courseRegistered ? 'VERIFIED' : 'UNREGISTERED'}
+                  </Text>
+                </View>
+
+                {/* Disciplinary Standing Check */}
                 <View className="flex-row justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-100">
                   <View>
                     <Text className="text-slate-800 font-semibold text-sm">Disciplinary Record</Text>
@@ -214,6 +252,29 @@ export const EligibilityScreen: React.FC = () => {
                 </View>
               </View>
             </View>
+
+            {/* Verified Fee Payment History Section */}
+            {eligibilityResult.paymentHistory && eligibilityResult.paymentHistory.length > 0 && (
+              <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+                <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                  Fee Payment History
+                </Text>
+                <View className="space-y-2">
+                  {eligibilityResult.paymentHistory.map((item) => (
+                    <View key={item.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-slate-900 font-semibold text-xs">{item.transactionReference}</Text>
+                        <Text className="text-emerald-700 font-bold text-xs">₦{item.amount.toLocaleString()}</Text>
+                      </View>
+                      <View className="flex-row justify-between items-center">
+                        <Text className="text-slate-500 text-xs">{item.paymentType}</Text>
+                        <Text className="text-slate-400 text-xs">{new Date(item.paidAt).toLocaleDateString()}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
 
             {/* Digital Document Clearance Section */}
             <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
@@ -264,14 +325,17 @@ export const EligibilityScreen: React.FC = () => {
               <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
                 <Text className="text-sm font-bold text-slate-900 mb-1">Sync Tuition Fee Payment</Text>
                 <Text className="text-xs text-slate-500 mb-3">
-                  If you have paid your tuition fees, enter your Remita RRR or Transaction Reference to sync with the database.
+                  If you have paid your tuition fees, enter your 12-digit Remita Retrieval Reference (RRR) to sync with the database.
                 </Text>
 
                 <TextInput
                   className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm mb-3"
-                  placeholder="Enter Remita RRR / Transaction Reference"
+                  placeholder="Enter Remita RRR (e.g. 123456789012)"
                   value={remitaRef}
-                  onChangeText={setRemitaRef}
+                  onChangeText={(text) => {
+                    setRemitaRef(text);
+                    if (validationError) setValidationError(null);
+                  }}
                   autoCapitalize="characters"
                 />
 

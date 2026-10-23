@@ -1,13 +1,14 @@
 import { AuthService } from '../api/authService';
 import { EligibilityService } from '../api/eligibilityService';
 import { useEligibilityStore } from '../store/useEligibilityStore';
+import { validateRemitaRef } from '../utils/validation';
 
 /**
- * Integration test suite for [ELIGIBILITY-01 & ELIGIBILITY-02] / [UAT-0006 & UAT-0007]
- * Student Eligibility Verification, Fees Check & Digital Document Clearance.
+ * Integration test suite for [ELIGIBILITY-01, ELIGIBILITY-02, ELIGIBILITY-03] / [UAT-0006, UAT-0007, UAT-0008]
+ * Student Eligibility Verification, Remita Fees Sync, Payment Audit Trail & Digital Clearance.
  * Verifies live Turso DB interaction with zero mocks.
  */
-describe('[ELIGIBILITY-01 & ELIGIBILITY-02] Student Eligibility Verification & Digital Clearance Integration Tests', () => {
+describe('[ELIGIBILITY-01, ELIGIBILITY-02 & ELIGIBILITY-03] Student Eligibility & Fee Sync Integration Tests', () => {
   const testUserId = 'usr_190407089_eligibility';
   const unpaidUserId = 'usr_200102031_unpaid';
   const flaggedUserId = 'usr_200405061_flagged';
@@ -18,11 +19,12 @@ describe('[ELIGIBILITY-01 & ELIGIBILITY-02] Student Eligibility Verification & D
     const client = AuthService.getDbClient();
 
     // Clean existing test records before running tests
+    await client.execute({ sql: 'DELETE FROM payments WHERE user_id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
     await client.execute({ sql: 'DELETE FROM disciplinary_records WHERE user_id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
     await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
     await client.execute({ sql: 'DELETE FROM users WHERE id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
 
-    // 1. Seed Eligible Student Record (Fees Paid = 1, Disciplinary Status = CLEARED)
+    // 1. Seed Eligible Student Record (Fees Paid = 1, Disciplinary Status = CLEARED, Course Registered = 1)
     await client.execute({
       sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -30,9 +32,9 @@ describe('[ELIGIBILITY-01 & ELIGIBILITY-02] Student Eligibility Verification & D
     });
 
     await client.execute({
-      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [testUserId, 'Engineering', 'Electrical Engineering', 100, 'MAIN_CAMPUS', 'FRESHER', 1, 'NOT_STARTED']
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, clearance_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [testUserId, 'Engineering', 'Electrical Engineering', 100, 'MAIN_CAMPUS', 'FRESHER', 1, 1, 'NOT_STARTED']
     });
 
     // 2. Seed Unpaid Fee Student Record (Fees Paid = 0)
@@ -43,9 +45,9 @@ describe('[ELIGIBILITY-01 & ELIGIBILITY-02] Student Eligibility Verification & D
     });
 
     await client.execute({
-      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [unpaidUserId, 'Arts', 'English', 200, 'MAIN_CAMPUS', 'STALLITE', 0, 'NOT_STARTED']
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, clearance_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [unpaidUserId, 'Arts', 'English', 200, 'MAIN_CAMPUS', 'STALLITE', 0, 1, 'NOT_STARTED']
     });
 
     // 3. Seed Disciplinary Suspended Student Record
@@ -56,15 +58,33 @@ describe('[ELIGIBILITY-01 & ELIGIBILITY-02] Student Eligibility Verification & D
     });
 
     await client.execute({
-      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [flaggedUserId, 'Law', 'Jurisprudence', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 'NOT_STARTED']
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, clearance_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [flaggedUserId, 'Law', 'Jurisprudence', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 1, 'NOT_STARTED']
     });
 
     await client.execute({
       sql: `INSERT INTO disciplinary_records (user_id, status, reason)
             VALUES (?, ?, ?)`,
       args: [flaggedUserId, 'SUSPENDED', 'Hostel Rule Violation']
+    });
+  });
+
+  describe('Remita Reference Validation Utility', () => {
+    test('accepts valid 12-digit numeric RRR code', () => {
+      const res = validateRemitaRef('123456789012');
+      expect(res.isValid).toBe(true);
+    });
+
+    test('accepts valid alphanumeric transaction reference', () => {
+      const res = validateRemitaRef('REM-839210-UNILAG');
+      expect(res.isValid).toBe(true);
+    });
+
+    test('rejects empty or short reference code', () => {
+      const res = validateRemitaRef('123');
+      expect(res.isValid).toBe(false);
+      expect(res.error).toContain('valid');
     });
   });
 
@@ -90,13 +110,14 @@ describe('[ELIGIBILITY-01 & ELIGIBILITY-02] Student Eligibility Verification & D
     });
   });
 
-  describe('Live Turso DB Eligibility Verification (UAT-0006)', () => {
-    test('confirms eligibility for student with paid fees and cleared disciplinary standing', async () => {
+  describe('Live Turso DB Eligibility Verification (UAT-0006 & UAT-0008)', () => {
+    test('confirms eligibility for student with paid fees, registered courses, and cleared disciplinary standing', async () => {
       const result = await EligibilityService.verifyEligibility(testUserId);
 
       expect(result.userId).toBe(testUserId);
       expect(result.isEligible).toBe(true);
       expect(result.feesPaid).toBe(true);
+      expect(result.courseRegistered).toBe(true);
       expect(result.disciplinaryStatus).toBe('CLEARED');
       expect(result.priorityCategory).toBe('FRESHER');
       expect(result.statusMessage).toContain('Eligible for Balloting');
@@ -120,18 +141,34 @@ describe('[ELIGIBILITY-01 & ELIGIBILITY-02] Student Eligibility Verification & D
       expect(result.statusMessage).toContain('Hostel Rule Violation');
     });
 
-    test('syncs fee payment status in Turso DB and transitions student to eligible state', async () => {
-      // Unpaid student syncs fees via Remita RRR
+    test('syncs fee payment status in Turso DB, creates payment audit entry, and transitions student to eligible state', async () => {
+      const refCode = '123456789012';
       const updated = await EligibilityService.syncFeePayment({
         userId: unpaidUserId,
-        transactionReference: 'RRR_1234567890',
+        transactionReference: refCode,
         amount: 25000,
-        paymentStatus: 'SUCCESSFUL'
+        paymentStatus: 'SUCCESSFUL',
+        paymentType: 'TUITION_FEE'
       });
 
       expect(updated.feesPaid).toBe(true);
       expect(updated.isEligible).toBe(true);
       expect(updated.statusMessage).toContain('Eligible for Balloting');
+      expect(updated.paymentHistory).toBeDefined();
+      expect(updated.paymentHistory!.length).toBeGreaterThan(0);
+      expect(updated.paymentHistory![0].transactionReference).toBe(refCode);
+    });
+
+    test('prevents duplicate transaction reference submission (anti-replay security rule)', async () => {
+      const refCode = '123456789012';
+      await expect(
+        EligibilityService.syncFeePayment({
+          userId: unpaidUserId,
+          transactionReference: refCode,
+          amount: 25000,
+          paymentStatus: 'SUCCESSFUL'
+        })
+      ).rejects.toThrow('has already been synced');
     });
 
     test('throws error when non-existent user ID is passed', async () => {
