@@ -1,17 +1,25 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaView } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBallotingStore } from '../store/useBallotingStore';
 
+/**
+ * BallotingCountdownScreen Component.
+ * Displays live priority balloting window countdown, real-time queue access tokens,
+ * quota availability across UNILAG & CMUL hostels, and balloting room selector entry CTA.
+ */
 export const BallotingCountdownScreen: React.FC = () => {
   const { session } = useAuthStore();
-  const { countdownState, isLoading, error, fetchCountdown, tickTimer } = useBallotingStore();
+  const { countdownState, isLoading, error, fetchCountdown, issueQueueTicket, tickTimer } = useBallotingStore();
 
+  const userId = session?.user?.id;
   const userCategory = session?.studentProfile?.priorityCategory || 'FRESHER';
 
+  const [queueSuccessMsg, setQueueSuccessMsg] = useState<string | null>(null);
+
   useEffect(() => {
-    fetchCountdown(userCategory).catch(() => {});
-  }, [userCategory]);
+    fetchCountdown(userCategory, userId).catch(() => {});
+  }, [userCategory, userId]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -19,6 +27,17 @@ export const BallotingCountdownScreen: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleRequestQueueTicket = async () => {
+    if (!userId) return;
+    setQueueSuccessMsg(null);
+    try {
+      const token = await issueQueueTicket(userId, userCategory);
+      setQueueSuccessMsg(`Queue token #${token.positionInQueue} issued successfully!`);
+    } catch {
+      // Store handles error automatically
+    }
+  };
 
   const formatCountdown = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
@@ -54,6 +73,13 @@ export const BallotingCountdownScreen: React.FC = () => {
           </View>
         )}
 
+        {queueSuccessMsg && (
+          <View className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4">
+            <Text className="text-emerald-800 font-semibold text-base mb-1">Queue Ticket Issued</Text>
+            <Text className="text-emerald-700 text-sm">{queueSuccessMsg}</Text>
+          </View>
+        )}
+
         {countdownState && (
           <>
             {/* Live Countdown Banner (S-03 Specification) */}
@@ -67,6 +93,54 @@ export const BallotingCountdownScreen: React.FC = () => {
               <Text className="text-slate-900 text-xs font-semibold">
                 Priority Category: {userCategory}
               </Text>
+            </View>
+
+            {/* Fair Real-Time Queue Token Card */}
+            <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Fair Priority Queue Token
+                </Text>
+                {countdownState.queueToken && (
+                  <View className="bg-emerald-600 px-2.5 py-0.5 rounded-full">
+                    <Text className="text-white text-[10px] font-bold uppercase">Ticket Issued</Text>
+                  </View>
+                )}
+              </View>
+
+              {countdownState.queueToken ? (
+                <View className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <View className="flex-row justify-between items-center mb-2">
+                    <Text className="text-slate-500 text-xs font-medium">Your Queue Position</Text>
+                    <Text className="text-[#7A0000] font-black text-2xl">
+                      #{countdownState.queueToken.positionInQueue}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between items-center">
+                    <Text className="text-slate-500 text-xs">Estimated Wait Time</Text>
+                    <Text className="text-slate-900 font-bold text-xs">
+                      ~{countdownState.queueToken.estimatedWaitTimeSeconds} Seconds
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View>
+                  <Text className="text-slate-500 text-xs mb-3">
+                    Request a real-time priority queue token to secure your position when balloting opens.
+                  </Text>
+                  <TouchableOpacity
+                    className="bg-slate-800 h-11 rounded-xl justify-center items-center active:opacity-90"
+                    onPress={handleRequestQueueTicket}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text className="text-white text-xs font-bold">Request Queue Ticket</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* Current Window Metadata */}
