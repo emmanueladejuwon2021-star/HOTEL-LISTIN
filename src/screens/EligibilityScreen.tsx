@@ -3,26 +3,39 @@ import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaVi
 import { useAuthStore } from '../store/useAuthStore';
 import { useEligibilityStore } from '../store/useEligibilityStore';
 
+/**
+ * EligibilityScreen Component.
+ * Displays student hostel application eligibility status, school fee payment verification status,
+ * priority quota tag, and disciplinary standing.
+ * Allows students to manually sync tuition fee payment using their Remita RRR or payment reference.
+ */
 export const EligibilityScreen: React.FC = () => {
+  // Get active user session from global auth store
   const { session } = useAuthStore();
+  // Get eligibility actions and state from eligibility store
   const { eligibilityResult, isVerifying, error, checkEligibility, syncFees } = useEligibilityStore();
 
+  // Local state for typed Remita payment reference code
   const [remitaRef, setRemitaRef] = useState('');
+  // Local state for success message notification upon fee sync
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
 
   const userId = session?.user.id;
 
+  // Automatically check eligibility when screen opens or active user ID changes
   useEffect(() => {
     if (userId) {
       checkEligibility(userId).catch(() => {});
     }
   }, [userId]);
 
+  /**
+   * Triggers fee sync when user taps 'Sync & Verify Payment'.
+   */
   const handleSyncFee = async () => {
     if (!userId) return;
-    if (!remitaRef.trim()) {
-      return;
-    }
+    if (!remitaRef.trim()) return;
+
     setSyncSuccessMsg(null);
     try {
       const updated = await syncFees(userId, remitaRef.trim(), 25000);
@@ -30,15 +43,15 @@ export const EligibilityScreen: React.FC = () => {
         setSyncSuccessMsg('Tuition fee payment verified and synced successfully!');
         setRemitaRef('');
       }
-    } catch (e) {
-      // error handled in store
+    } catch {
+      // Store catches and sets error message state automatically
     }
   };
 
   return (
     <SafeAreaView className="flex-1 bg-slate-100">
       <ScrollView contentContainerClassName="p-4 pb-12">
-        {/* Top Header */}
+        {/* Top Title Bar */}
         <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
           <Text className="text-2xl font-bold text-slate-900">Student Eligibility Status</Text>
           <Text className="text-sm text-slate-500 mt-1">
@@ -46,6 +59,7 @@ export const EligibilityScreen: React.FC = () => {
           </Text>
         </View>
 
+        {/* Loading Indicator */}
         {isVerifying && !eligibilityResult && (
           <View className="p-8 items-center justify-center">
             <ActivityIndicator size="large" color="#7A0000" />
@@ -53,6 +67,7 @@ export const EligibilityScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Error Notification Box */}
         {error && (
           <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">
             <Text className="text-red-800 font-semibold text-base mb-1">Verification Error</Text>
@@ -60,6 +75,7 @@ export const EligibilityScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Fee Sync Success Notification Box */}
         {syncSuccessMsg && (
           <View className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4">
             <Text className="text-emerald-800 font-semibold text-base mb-1">Fee Sync Successful</Text>
@@ -67,9 +83,10 @@ export const EligibilityScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Main Verification Details */}
         {eligibilityResult && (
           <>
-            {/* Overall Eligibility Banner */}
+            {/* Overall Eligibility Status Banner */}
             <View
               className={`p-5 rounded-2xl mb-4 border ${
                 eligibilityResult.isEligible
@@ -104,7 +121,7 @@ export const EligibilityScreen: React.FC = () => {
               </Text>
             </View>
 
-            {/* Profile & Quota Summary */}
+            {/* Student Profile & Quota Tag Section */}
             <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
               <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
                 Student Profile & Quota Tag
@@ -144,7 +161,7 @@ export const EligibilityScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Checklists */}
+            {/* Verification Matrix Checklist */}
             <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
               <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
                 Verification Matrix
@@ -181,7 +198,7 @@ export const EligibilityScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Manual Remita Fee Sync Section */}
+            {/* Remita Fee Sync Section (Shown when fees are unpaid) */}
             {!eligibilityResult.feesPaid && (
               <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
                 <Text className="text-sm font-bold text-slate-900 mb-1">Sync Tuition Fee Payment</Text>
@@ -211,6 +228,7 @@ export const EligibilityScreen: React.FC = () => {
               </View>
             )}
 
+            {/* Refresh Eligibility Button */}
             <TouchableOpacity
               className="bg-slate-800 h-12 rounded-xl justify-center items-center active:opacity-90"
               onPress={() => userId && checkEligibility(userId)}
