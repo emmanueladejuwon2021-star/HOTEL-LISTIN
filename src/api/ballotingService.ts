@@ -1,7 +1,16 @@
 import { Client } from '@libsql/client';
 import { AuthService } from './authService';
-import { BallotingWindow, HostelQuotaSummary, BallotingCountdownState, QueueToken } from '../types/balloting';
-import { PriorityCategory } from '../types/auth';
+import { ReservationService } from './reservationService';
+import {
+  BallotingWindow,
+  HostelQuotaSummary,
+  BallotingCountdownState,
+  QueueToken,
+  HostelFilterParams,
+  FilteredHostelSummary,
+  BallotingRoomDetails
+} from '../types/balloting';
+import { PriorityCategory, Gender, Campus } from '../types/auth';
 
 /**
  * Service class that manages real-time priority quota balloting windows,
@@ -14,6 +23,7 @@ export class BallotingService {
    */
   public static async initializeSchema(): Promise<void> {
     await AuthService.initializeSchema();
+    await ReservationService.initializeSchema();
     const client = AuthService.getDbClient();
 
     await client.batch([
@@ -252,5 +262,139 @@ export class BallotingService {
       queueToken,
       totalQueuedUsers
     };
+  }
+
+  /**
+   * Queries hostels filtered by gender, campus, or category for student balloting selector.
+   *
+   * @param params - Filter options (gender, campus, category)
+   * @returns Array of FilteredHostelSummary objects
+   */
+  public static async getFilteredHostels(params?: HostelFilterParams): Promise<FilteredHostelSummary[]> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    let sql = `SELECT id, name, gender, campus, category, total_capacity, available_bedspaces FROM hostels WHERE 1=1`;
+    const args: any[] = [];
+
+    if (params?.gender) {
+      sql += ` AND (gender = ? OR gender = 'MIXED')`;
+      args.push(params.gender);
+    }
+
+    if (params?.campus) {
+      sql += ` AND campus = ?`;
+      args.push(params.campus);
+    }
+
+    if (params?.category) {
+      sql += ` AND category = ?`;
+      args.push(params.category);
+    }
+
+    sql += ` ORDER BY name ASC`;
+
+    const result = await client.execute({ sql, args });
+
+    return result.rows.map((row) => ({
+      hostelId: String(row.id),
+      hostelName: String(row.name),
+      campus: String(row.campus) as Campus,
+      gender: String(row.gender) as Gender,
+      category: String(row.category) as 'UNDERGRADUATE' | 'POSTGRADUATE',
+      totalCapacity: Number(row.total_capacity),
+      availableBedspaces: Number(row.available_bedspaces),
+      allocatedBedspaces: Number(row.total_capacity) - Number(row.available_bedspaces)
+    }));
+  }
+
+  /**
+   * Retrieves rooms and bedspace position statuses for a selected hostel during balloting.
+   *
+   * @param hostelId - ID of selected hostel
+   * @param blockName - Optional block filter (e.g. 'Block A')
+   * @param floorNumber - Optional floor filter (e.g. 1)
+   * @returns Array of BallotingRoomDetails objects
+   */
+  public static async getRoomsForHostel(
+    hostelId: string,
+    blockName?: string,
+    floorNumber?: number
+  ): Promise<BallotingRoomDetails[]> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    let roomSql = `SELECT r.id, r.hostel_id, h.name as hostel_name, r.block_name, r.floor_number, r.room_number, r.total_beds, r.occupied_beds
+                   FROM rooms r
+                   JOIN hostels h ON r.hostel_id = h.id
+                   WHERE r.hostel_id = ?`;
+    const roomArgs: any[] = [hostelId];
+
+    if (blockName) {
+      roomSql += ` AND r.block_name = ?`;
+      roomArgs.push(blockName);
+    }
+
+    if (floorNumber !== undefined) {
+      roomSql += ` AND r.floor_number = ?`;
+      roomArgs.push(floorNumber);
+    }
+
+    roomSql += ` ORDER BY r.block_name ASC, r.floor_number ASC, r.room_number ASC`;
+
+    const roomRes = await client.execute({ sql: roomSql, args: roomArgs });
+
+    const rooms: BallotingRoomDetails[] = [];
+
+    for (const rRow of roomRes.rows) {
+      const roomId = String(rRow.id);
+
+      const bedsRes = await client.execute({
+        sql: `SELECT id, room_id, bed_label, status, allocated_to_user_id, hold_expires_at, updated_at
+              FROM bedspaces WHERE room_id = ? ORDER BY bed_label ASC`,
+        args: [roomId]
+      });
+
+      const bedspaces = bedsRes.rows.map((bRow) => ({
+        id: String(bRow.id),
+        roomId: String(bRow.room_id),
+        bedLabel: String(bRow.bed_label),
+        status: String(bRow.status) as 'AVAILABLE' | 'LOCKED_HOLD' | 'CONFIRMED' | 'MAINTENANCE_BLOCKED',
+        allocatedToUserId: bRow.allocated_to_user_id ? String(bRow.allocated_to_user_id) : undefined,
+        holdExpiresAt: bRow.hold_expires_at ? String(bRow.hold_expires_at) : undefined,
+        updatedAt: String(bRow.updated_at)
+      }));
+
+      rooms.push({
+        id: roomId,
+        hostelId: String(rRow.hostel_id),
+        hostelName: String(rRow.hostel_name),
+        blockName: String(rRow.block_name),
+        floorNumber: Number(rRow.floor_number),
+        roomNumber: String(rRow.room_number),
+        totalBeds: Number(rRow.total_beds),
+        occupiedBeds: Number(rRow.occupied_beds),
+        bedspaces
+      });
+    }
+
+    return rooms;
+  }
+
+  /**
+   * Verifies if a balloting window is active for student's priority category before allowing bed selection.
+   *
+   * @param category - Priority category tag
+   * @returns Boolean indicating if window is currently active
+   */
+  public static async verifyBallotingWindowActive(category: PriorityCategory): Promise<boolean> {
+    const window = await BallotingService.getBallotingWindowForCategory(category);
+    if (!window) return false;
+
+    const now = new Date().getTime();
+    const start = new Date(window.startTime).getTime();
+    const end = new Date(window.endTime).getTime();
+
+    return now >= start && now <= end && window.status === 'ACTIVE';
   }
 }
