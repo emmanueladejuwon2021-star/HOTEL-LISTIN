@@ -2,55 +2,60 @@ import { AuthService } from '../api/authService';
 import { EligibilityService } from '../api/eligibilityService';
 
 describe('[ELIGIBILITY-01 / UAT-0002] Student Eligibility Verification & Fees Check Integration Tests', () => {
-  const testUserId = 'usr_190407088_eligibility';
-  const unpaidUserId = 'usr_200102030_unpaid';
-  const flaggedUserId = 'usr_200405060_flagged';
+  const testUserId = 'usr_190407089_eligibility';
+  const unpaidUserId = 'usr_200102031_unpaid';
+  const flaggedUserId = 'usr_200405061_flagged';
 
   beforeAll(async () => {
     await EligibilityService.initializeSchema();
     const client = AuthService.getDbClient();
 
+    // Clean existing records if re-running
+    await client.execute({ sql: 'DELETE FROM disciplinary_records WHERE user_id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
+    await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
+    await client.execute({ sql: 'DELETE FROM users WHERE id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
+
     // 1. Seed Eligible Student (Fees Paid = 1, Disciplinary Status = CLEARED)
     await client.execute({
-      sql: `INSERT OR REPLACE INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [testUserId, '190407088', 'Chinedu Okonkwo', 'chinedu@live.unilag.edu.ng', '+2348011111111', 'STUDENT', 'MALE', 'hash', 1]
+      args: [testUserId, '190407089', 'Chinedu Okonkwo', 'chinedu@live.unilag.edu.ng', '+2348011111111', 'STUDENT', 'MALE', 'hash', 1]
     });
 
     await client.execute({
-      sql: `INSERT OR REPLACE INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [testUserId, 'Engineering', 'Electrical Engineering', 100, 'MAIN_CAMPUS', 'FRESHER', 1, 'APPROVED']
     });
 
     // 2. Seed Unpaid Fee Student (Fees Paid = 0)
     await client.execute({
-      sql: `INSERT OR REPLACE INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [unpaidUserId, '200102030', 'Amina Bello', 'amina@live.unilag.edu.ng', '+2348022222222', 'STUDENT', 'FEMALE', 'hash', 1]
+      args: [unpaidUserId, '200102031', 'Amina Bello', 'amina@live.unilag.edu.ng', '+2348022222222', 'STUDENT', 'FEMALE', 'hash', 1]
     });
 
     await client.execute({
-      sql: `INSERT OR REPLACE INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [unpaidUserId, 'Arts', 'English', 200, 'MAIN_CAMPUS', 'STALLITE', 0, 'NOT_STARTED']
     });
 
     // 3. Seed Disciplinary Flagged Student
     await client.execute({
-      sql: `INSERT OR REPLACE INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [flaggedUserId, '200405060', 'Tunde Williams', 'tunde@live.unilag.edu.ng', '+2348033333333', 'STUDENT', 'MALE', 'hash', 1]
+      args: [flaggedUserId, '200405061', 'Tunde Williams', 'tunde@live.unilag.edu.ng', '+2348033333333', 'STUDENT', 'MALE', 'hash', 1]
     });
 
     await client.execute({
-      sql: `INSERT OR REPLACE INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [flaggedUserId, 'Law', 'Jurisprudence', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 'NOT_STARTED']
     });
 
     await client.execute({
-      sql: `INSERT OR REPLACE INTO disciplinary_records (user_id, status, reason)
+      sql: `INSERT INTO disciplinary_records (user_id, status, reason)
             VALUES (?, ?, ?)`,
       args: [flaggedUserId, 'SUSPENDED', 'Hostel Rule Violation']
     });
