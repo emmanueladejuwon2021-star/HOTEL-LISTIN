@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { EligibilityVerificationResult } from '../types/eligibility';
+import { EligibilityVerificationResult, MedicalStatus } from '../types/eligibility';
 import { ClearanceStatus } from '../types/auth';
 import { EligibilityService } from '../api/eligibilityService';
 
 /**
  * State definition for the student eligibility global store.
- * Manages checking fee payments, disciplinary standing, course registration, and syncing Remita payment receipts.
+ * Manages checking fee payments, disciplinary standing, course registration, Jaja Clinic medical screening, special needs quota, and digital clearance certificates.
  */
 interface EligibilityState {
   // Holds the latest eligibility check result (or null if not checked yet)
@@ -18,6 +18,10 @@ interface EligibilityState {
   checkEligibility: (userId: string) => Promise<EligibilityVerificationResult>;
   // Action to sync Remita tuition fee payment and update student eligibility
   syncFees: (userId: string, ref: string, amount: number, paymentType?: string) => Promise<EligibilityVerificationResult>;
+  // Action to update student medical screening status (Jaja Health Center)
+  updateMedicalStatus: (userId: string, status: MedicalStatus) => Promise<EligibilityVerificationResult>;
+  // Action to register special needs accommodation request
+  registerSpecialNeeds: (userId: string, details: string) => Promise<EligibilityVerificationResult>;
   // Action to update student course registration status
   updateCourseRegistration: (userId: string, registered: boolean) => Promise<EligibilityVerificationResult>;
   // Action to submit or update student digital clearance status
@@ -78,6 +82,46 @@ export const useEligibilityStore = create<EligibilityState>((set) => ({
       return result;
     } catch (err: any) {
       const msg = err.message || 'Failed to sync school fee payment.';
+      set({ error: msg, isVerifying: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Updates student medical screening standing (Jaja Health Center) in Turso DB.
+   *
+   * @param userId - Unique student user ID
+   * @param status - Target medical status
+   * @returns Updated EligibilityVerificationResult
+   */
+  updateMedicalStatus: async (userId: string, status: MedicalStatus) => {
+    set({ isVerifying: true, error: null });
+    try {
+      const result = await EligibilityService.updateMedicalStatus(userId, status);
+      set({ eligibilityResult: result, isVerifying: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to update medical screening status.';
+      set({ error: msg, isVerifying: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Registers special accommodation needs for a student and updates priority category to SPECIAL_NEEDS.
+   *
+   * @param userId - Unique student user ID
+   * @param details - Description of special accommodation requirement
+   * @returns Updated EligibilityVerificationResult
+   */
+  registerSpecialNeeds: async (userId: string, details: string) => {
+    set({ isVerifying: true, error: null });
+    try {
+      const result = await EligibilityService.registerSpecialNeeds({ userId, specialNeedsDetails: details });
+      set({ eligibilityResult: result, isVerifying: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to register special accommodation needs.';
       set({ error: msg, isVerifying: false });
       throw err;
     }

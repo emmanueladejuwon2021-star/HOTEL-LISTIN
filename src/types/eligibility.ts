@@ -6,6 +6,11 @@ import { Campus, PriorityCategory, ClearanceStatus } from './auth';
 export type DisciplinaryStatus = 'CLEARED' | 'FLAGGED' | 'SUSPENDED' | 'RUSTICATED';
 
 /**
+ * Medical clearance status from UNILAG Medical Center (Jaja Clinic).
+ */
+export type MedicalStatus = 'CLEARED' | 'PENDING' | 'FAILED' | 'NOT_STARTED';
+
+/**
  * Payment record interface for tracking verified school tuition fee payments in Turso DB.
  */
 export interface FeePaymentRecord {
@@ -28,6 +33,9 @@ export interface EligibilityVerificationResult {
   isEligible: boolean;
   feesPaid: boolean;
   courseRegistered: boolean;
+  medicalStatus: MedicalStatus;
+  specialNeedsRegistered: boolean;
+  specialNeedsDetails?: string;
   disciplinaryStatus: DisciplinaryStatus;
   priorityCategory: PriorityCategory;
   campus: Campus;
@@ -35,6 +43,7 @@ export interface EligibilityVerificationResult {
   faculty: string;
   department: string;
   clearanceStatus: ClearanceStatus;
+  clearanceCertificateHash?: string;
   statusMessage: string;
   verifiedAt: string;
   paymentHistory?: FeePaymentRecord[];
@@ -49,4 +58,21 @@ export interface FeeSyncParams {
   amount: number;
   paymentStatus: 'SUCCESSFUL' | 'FAILED' | 'PENDING';
   paymentType?: string;
+}
+
+/**
+ * Parameters submitted when updating student medical screening status from UNILAG Medical Center.
+ */
+export interface MedicalStatusUpdateParams {
+  userId: string;
+  medicalStatus: MedicalStatus;
+  notes?: string;
+}
+
+/**
+ * Parameters submitted when registering special accommodation needs (e.g. physical disability, chronic condition).
+ */
+export interface SpecialNeedsParams {
+  userId: string;
+  specialNeedsDetails: string;
 }
