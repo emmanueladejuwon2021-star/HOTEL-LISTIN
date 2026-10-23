@@ -1,11 +1,13 @@
 import { Client } from '@libsql/client';
+import CryptoJS from 'crypto-js';
 import { AuthService } from './authService';
-import { EligibilityVerificationResult, FeeSyncParams, DisciplinaryStatus, FeePaymentRecord } from '../types/eligibility';
+import { EligibilityVerificationResult, FeeSyncParams, DisciplinaryStatus, MedicalStatus, FeePaymentRecord, SpecialNeedsParams } from '../types/eligibility';
 import { PriorityCategory, Campus, ClearanceStatus } from '../types/auth';
 
 /**
  * Service class that handles student eligibility verification, school fee payment synchronization,
- * payment history audit trail, course registration status, and digital document clearance updates.
+ * Jaja Clinic medical screening status, special needs quota registration, digital clearance certificates,
+ * and payment history audit trails.
  * Checks student standing directly against the Turso libSQL database following a strict zero-mock policy.
  */
 export class EligibilityService {
@@ -41,58 +43,21 @@ export class EligibilityService {
       );`
     ], 'write');
 
-    // Migration logic: Ensure bedspace_id is nullable if table was created with NOT NULL previously
-    try {
-      const tableInfo = await client.execute({ sql: `PRAGMA table_info(payments)`, args: [] });
-      const bedspaceCol = tableInfo.rows.find((r) => r.name === 'bedspace_id');
-      if (bedspaceCol && Number(bedspaceCol.notnull) === 1) {
-        await client.execute({ sql: `PRAGMA foreign_keys = OFF`, args: [] });
-        await client.execute({
-          sql: `CREATE TABLE payments_new (
-            id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            bedspace_id TEXT,
-            transaction_reference TEXT UNIQUE NOT NULL,
-            amount REAL NOT NULL,
-            payment_type TEXT DEFAULT 'TUITION_FEE',
-            payment_status TEXT CHECK(payment_status IN ('SUCCESSFUL', 'FAILED', 'PENDING')) DEFAULT 'SUCCESSFUL',
-            paid_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (bedspace_id) REFERENCES bedspaces(id) ON DELETE SET NULL
-          )`,
-          args: []
-        });
-        await client.execute({
-          sql: `INSERT INTO payments_new (id, user_id, bedspace_id, transaction_reference, amount, payment_status, paid_at)
-                SELECT id, user_id, bedspace_id, transaction_reference, amount, payment_status, paid_at FROM payments`,
-          args: []
-        });
-        await client.execute({ sql: `DROP TABLE payments`, args: [] });
-        await client.execute({ sql: `ALTER TABLE payments_new RENAME TO payments`, args: [] });
-        await client.execute({ sql: `PRAGMA foreign_keys = ON`, args: [] });
+    // Safe schema migrations: add course_registered, medical_status, special_needs_registered, special_needs_details, clearance_certificate_hash
+    const migrationColumns = [
+      `ALTER TABLE student_profiles ADD COLUMN course_registered INTEGER DEFAULT 1`,
+      `ALTER TABLE student_profiles ADD COLUMN medical_status TEXT DEFAULT 'CLEARED'`,
+      `ALTER TABLE student_profiles ADD COLUMN special_needs_registered INTEGER DEFAULT 0`,
+      `ALTER TABLE student_profiles ADD COLUMN special_needs_details TEXT`,
+      `ALTER TABLE student_profiles ADD COLUMN clearance_certificate_hash TEXT`
+    ];
+
+    for (const stmt of migrationColumns) {
+      try {
+        await client.execute({ sql: stmt, args: [] });
+      } catch {
+        // Column already exists, ignore error
       }
-    } catch {
-      // Table info check or migration passed
-    }
-
-    // Safe schema migrations: add payment_type column to payments if missing
-    try {
-      await client.execute({
-        sql: `ALTER TABLE payments ADD COLUMN payment_type TEXT DEFAULT 'TUITION_FEE'`,
-        args: []
-      });
-    } catch {
-      // Column already exists, ignore error
-    }
-
-    // Safe schema migrations: add course_registered column to student_profiles if missing
-    try {
-      await client.execute({
-        sql: `ALTER TABLE student_profiles ADD COLUMN course_registered INTEGER DEFAULT 1`,
-        args: []
-      });
-    } catch {
-      // Column already exists, ignore error
     }
   }
 
@@ -120,7 +85,8 @@ export class EligibilityService {
    * 1. Student must exist in the database and have an active account.
    * 2. School/Tuition fees must be verified as paid (`fees_paid = 1`).
    * 3. Course registration must be verified (`course_registered = 1`).
-   * 4. Disciplinary record must be in `CLEARED` status (no active suspensions or rustication).
+   * 4. Medical screening standing must be verified as CLEARED (`medical_status = 'CLEARED'`).
+   * 5. Disciplinary record must be in `CLEARED` status (no active suspensions or rustication).
    *
    * @param userId - The unique identifier of the student
    * @returns Detailed EligibilityVerificationResult object containing status, checklist items, and message
@@ -134,7 +100,9 @@ export class EligibilityService {
     const result = await client.execute({
       sql: `SELECT u.id, u.matric_or_staff_no, u.full_name, u.role, u.is_active,
                    sp.faculty, sp.department, sp.level, sp.campus, sp.priority_category,
-                   sp.fees_paid, sp.course_registered, sp.clearance_status
+                   sp.fees_paid, sp.course_registered, sp.medical_status,
+                   sp.special_needs_registered, sp.special_needs_details,
+                   sp.clearance_status, sp.clearance_certificate_hash
             FROM users u
             JOIN student_profiles sp ON u.id = sp.user_id
             WHERE u.id = ? AND u.is_active = 1`,
@@ -181,13 +149,30 @@ export class EligibilityService {
 
     const feesPaid = Boolean(row.fees_paid);
     const courseRegistered = row.course_registered !== null && row.course_registered !== undefined ? Boolean(row.course_registered) : true;
+    const medicalStatus = (row.medical_status ? String(row.medical_status) : 'CLEARED') as MedicalStatus;
+    const specialNeedsRegistered = Boolean(row.special_needs_registered);
+    const specialNeedsDetails = row.special_needs_details ? String(row.special_needs_details) : undefined;
     const clearanceStatus = String(row.clearance_status) as ClearanceStatus;
     const isDisciplinaryCleared = disciplinaryStatus === 'CLEARED';
 
-    // A student is eligible for hostel balloting ONLY IF tuition fees are paid, courses are registered AND disciplinary status is cleared
-    const isEligible = feesPaid && courseRegistered && isDisciplinaryCleared;
+    // A student is eligible for hostel balloting ONLY IF tuition fees are paid, courses are registered, medical status is cleared AND disciplinary status is cleared
+    const isEligible = feesPaid && courseRegistered && medicalStatus === 'CLEARED' && isDisciplinaryCleared;
 
-    // Step 4: Construct human-readable status explanation message
+    // Step 4: Generate or retrieve SHA-256 cryptographic clearance certificate hash if student is 100% cleared
+    let clearanceCertificateHash = row.clearance_certificate_hash ? String(row.clearance_certificate_hash) : undefined;
+
+    if (isEligible && clearanceStatus === 'APPROVED' && !clearanceCertificateHash) {
+      const rawPayload = `UNILAG_CLEARANCE:${userId}:${row.matric_or_staff_no}:${Date.now()}`;
+      clearanceCertificateHash = `CERT-${CryptoJS.SHA256(rawPayload).toString().substring(0, 16).toUpperCase()}`;
+
+      // Persist certificate hash in DB
+      await client.execute({
+        sql: `UPDATE student_profiles SET clearance_certificate_hash = ? WHERE user_id = ?`,
+        args: [clearanceCertificateHash, userId]
+      });
+    }
+
+    // Step 5: Construct human-readable status explanation message
     let statusMessage = 'Eligible for Balloting';
     if (!feesPaid && !isDisciplinaryCleared) {
       statusMessage = `School Fees Unverified & Student is ${disciplinaryStatus} (${discReason})`;
@@ -195,11 +180,13 @@ export class EligibilityService {
       statusMessage = 'School Fees Payment Unverified. Please complete fee payment to unlock balloting.';
     } else if (!courseRegistered) {
       statusMessage = 'Course Registration Unverified. Please complete semester course registration.';
+    } else if (medicalStatus !== 'CLEARED') {
+      statusMessage = `Medical Screening Incomplete (${medicalStatus}). Please complete screening at UNILAG Medical Center (Jaja Clinic).`;
     } else if (!isDisciplinaryCleared) {
       statusMessage = `Ineligible due to disciplinary record: ${disciplinaryStatus} (${discReason})`;
     }
 
-    // Step 5: Return formatted verification summary
+    // Step 6: Return formatted verification summary
     return {
       userId: String(row.id),
       matricOrStaffNo: String(row.matric_or_staff_no),
@@ -207,6 +194,9 @@ export class EligibilityService {
       isEligible,
       feesPaid,
       courseRegistered,
+      medicalStatus,
+      specialNeedsRegistered,
+      specialNeedsDetails,
       disciplinaryStatus,
       priorityCategory: String(row.priority_category) as PriorityCategory,
       campus: String(row.campus) as Campus,
@@ -214,6 +204,7 @@ export class EligibilityService {
       faculty: String(row.faculty),
       department: String(row.department),
       clearanceStatus,
+      clearanceCertificateHash,
       statusMessage,
       verifiedAt: new Date().toISOString(),
       paymentHistory
@@ -268,6 +259,52 @@ export class EligibilityService {
     }
 
     // Re-verify and return fresh eligibility state
+    return await EligibilityService.verifyEligibility(params.userId);
+  }
+
+  /**
+   * Updates a student's medical screening standing from UNILAG Medical Center (Jaja Clinic).
+   *
+   * @param userId - Unique student user ID
+   * @param medicalStatus - Target medical status ('CLEARED', 'PENDING', 'FAILED', 'NOT_STARTED')
+   * @returns Updated EligibilityVerificationResult
+   */
+  public static async updateMedicalStatus(userId: string, medicalStatus: MedicalStatus): Promise<EligibilityVerificationResult> {
+    await EligibilityService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    await client.execute({
+      sql: `UPDATE student_profiles SET medical_status = ? WHERE user_id = ?`,
+      args: [medicalStatus, userId]
+    });
+
+    return await EligibilityService.verifyEligibility(userId);
+  }
+
+  /**
+   * Registers special accommodation needs for a student (e.g., physical accessibility, chronic health condition).
+   * Automatically updates student priority quota category to `SPECIAL_NEEDS`.
+   *
+   * @param params - Object containing userId and specialNeedsDetails
+   * @returns Updated EligibilityVerificationResult
+   */
+  public static async registerSpecialNeeds(params: SpecialNeedsParams): Promise<EligibilityVerificationResult> {
+    await EligibilityService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    if (!params.specialNeedsDetails.trim()) {
+      throw new Error('Please provide specific details regarding your special accommodation needs.');
+    }
+
+    await client.execute({
+      sql: `UPDATE student_profiles
+            SET special_needs_registered = 1,
+                special_needs_details = ?,
+                priority_category = 'SPECIAL_NEEDS'
+            WHERE user_id = ?`,
+      args: [params.specialNeedsDetails.trim(), params.userId]
+    });
+
     return await EligibilityService.verifyEligibility(params.userId);
   }
 

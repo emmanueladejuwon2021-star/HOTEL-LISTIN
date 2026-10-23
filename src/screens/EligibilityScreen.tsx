@@ -7,17 +7,21 @@ import { validateRemitaRef } from '../utils/validation';
 /**
  * EligibilityScreen Component.
  * Displays student hostel application eligibility status, school fee payment verification status,
- * course registration verification, priority quota tag, disciplinary standing, fee payment audit trail, and digital clearance progress.
- * Allows students to manually sync tuition fee payment using Remita RRR references and submit documents for digital clearance.
+ * course registration verification, Jaja Clinic medical screening status, special needs accommodation registration,
+ * priority quota tag, disciplinary standing, digital clearance certificate card, fee payment audit trail, and digital clearance progress.
+ * Allows students to manually sync tuition fee payment using Remita RRR references, register special needs, and submit documents for digital clearance.
  */
 export const EligibilityScreen: React.FC = () => {
   // Get active user session from global auth store
   const { session } = useAuthStore();
   // Get eligibility actions and state from eligibility store
-  const { eligibilityResult, isVerifying, error, checkEligibility, syncFees, updateClearance } = useEligibilityStore();
+  const { eligibilityResult, isVerifying, error, checkEligibility, syncFees, registerSpecialNeeds, updateClearance } = useEligibilityStore();
 
   // Local state for typed Remita payment reference code
   const [remitaRef, setRemitaRef] = useState('');
+  // Local state for special needs details input form
+  const [showSpecialNeedsForm, setShowSpecialNeedsForm] = useState(false);
+  const [specialNeedsInput, setSpecialNeedsInput] = useState('');
   // Local state for input validation error
   const [validationError, setValidationError] = useState<string | null>(null);
   // Local state for success message notification upon fee sync or clearance submission
@@ -57,6 +61,31 @@ export const EligibilityScreen: React.FC = () => {
       }
     } catch {
       // Store catches and sets error message state automatically
+    }
+  };
+
+  /**
+   * Triggers special needs accommodation registration.
+   */
+  const handleRegisterSpecialNeeds = async () => {
+    if (!userId) return;
+    if (!specialNeedsInput.trim()) {
+      setValidationError('Please describe your special accommodation needs.');
+      return;
+    }
+
+    setValidationError(null);
+    setSuccessMsg(null);
+
+    try {
+      const updated = await registerSpecialNeeds(userId, specialNeedsInput.trim());
+      if (updated.specialNeedsRegistered) {
+        setSuccessMsg('Special accommodation needs registered! Quota tag updated to SPECIAL_NEEDS.');
+        setShowSpecialNeedsForm(false);
+        setSpecialNeedsInput('');
+      }
+    } catch {
+      // Store catches error automatically
     }
   };
 
@@ -159,6 +188,32 @@ export const EligibilityScreen: React.FC = () => {
               </Text>
             </View>
 
+            {/* Cryptographic Digital Clearance Certificate Card (Shown when student is 100% cleared) */}
+            {eligibilityResult.clearanceCertificateHash && (
+              <View className="bg-emerald-950 p-5 rounded-2xl shadow-sm mb-4 border border-emerald-800">
+                <View className="flex-row justify-between items-center mb-2">
+                  <Text className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+                    Verified Digital Clearance Pass
+                  </Text>
+                  <View className="bg-emerald-600 px-2 py-0.5 rounded-full">
+                    <Text className="text-white text-[10px] font-bold">AUTHENTICATED</Text>
+                  </View>
+                </View>
+                <Text className="text-white text-lg font-bold mb-1">{eligibilityResult.fullName}</Text>
+                <Text className="text-emerald-300 text-xs mb-3">
+                  Matric: {eligibilityResult.matricOrStaffNo} • {eligibilityResult.faculty}
+                </Text>
+                <View className="bg-emerald-900 p-3 rounded-xl border border-emerald-700">
+                  <Text className="text-emerald-400 text-[10px] uppercase font-bold mb-1">
+                    Security Verification Hash
+                  </Text>
+                  <Text className="text-white font-mono text-xs font-bold">
+                    {eligibilityResult.clearanceCertificateHash}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {/* Student Profile & Quota Tag Section */}
             <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
               <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
@@ -199,6 +254,78 @@ export const EligibilityScreen: React.FC = () => {
               </View>
             </View>
 
+            {/* Special Needs Accommodation Request Section */}
+            <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="text-sm font-bold text-slate-900">Special Needs Accommodation</Text>
+                <View
+                  className={`px-2.5 py-0.5 rounded-lg ${
+                    eligibilityResult.specialNeedsRegistered ? 'bg-purple-600' : 'bg-slate-200'
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold uppercase ${
+                      eligibilityResult.specialNeedsRegistered ? 'text-white' : 'text-slate-700'
+                    }`}
+                  >
+                    {eligibilityResult.specialNeedsRegistered ? 'REGISTERED' : 'NOT REQUESTED'}
+                  </Text>
+                </View>
+              </View>
+
+              <Text className="text-xs text-slate-500 mb-3">
+                Students requiring ground-floor rooms or special accessibility accommodations can register their needs for priority quota allocation.
+              </Text>
+
+              {eligibilityResult.specialNeedsRegistered && eligibilityResult.specialNeedsDetails && (
+                <View className="p-3 bg-purple-50 border border-purple-200 rounded-xl mb-3">
+                  <Text className="text-purple-900 font-semibold text-xs mb-1">Registered Accommodation Details:</Text>
+                  <Text className="text-purple-800 text-xs">{eligibilityResult.specialNeedsDetails}</Text>
+                </View>
+              )}
+
+              {!eligibilityResult.specialNeedsRegistered && !showSpecialNeedsForm && (
+                <TouchableOpacity
+                  className="bg-purple-800 h-10 rounded-xl justify-center items-center active:opacity-90 mt-1"
+                  onPress={() => setShowSpecialNeedsForm(true)}
+                >
+                  <Text className="text-white text-xs font-bold">Request Special Accommodation Needs</Text>
+                </TouchableOpacity>
+              )}
+
+              {showSpecialNeedsForm && (
+                <View className="mt-2">
+                  <TextInput
+                    className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-xs mb-3"
+                    placeholder="Describe specific mobility, medical, or accommodation requirements..."
+                    value={specialNeedsInput}
+                    onChangeText={setSpecialNeedsInput}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <View className="flex-row space-x-2">
+                    <TouchableOpacity
+                      className="flex-1 bg-purple-800 h-10 rounded-xl justify-center items-center"
+                      onPress={handleRegisterSpecialNeeds}
+                      disabled={isVerifying}
+                    >
+                      {isVerifying ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <Text className="text-white text-xs font-bold">Submit Special Request</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      className="bg-slate-200 h-10 px-4 rounded-xl justify-center items-center"
+                      onPress={() => setShowSpecialNeedsForm(false)}
+                    >
+                      <Text className="text-slate-700 text-xs font-semibold">Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+
             {/* Verification Matrix Checklist */}
             <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
               <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
@@ -233,6 +360,21 @@ export const EligibilityScreen: React.FC = () => {
                     }`}
                   >
                     {eligibilityResult.courseRegistered ? 'VERIFIED' : 'UNREGISTERED'}
+                  </Text>
+                </View>
+
+                {/* Jaja Medical Center Screening Check */}
+                <View className="flex-row justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <View>
+                    <Text className="text-slate-800 font-semibold text-sm">Medical Screening</Text>
+                    <Text className="text-xs text-slate-500">UNILAG Jaja Clinic Sync</Text>
+                  </View>
+                  <Text
+                    className={`text-sm font-bold ${
+                      eligibilityResult.medicalStatus === 'CLEARED' ? 'text-emerald-600' : 'text-amber-600'
+                    }`}
+                  >
+                    {eligibilityResult.medicalStatus}
                   </Text>
                 </View>
 

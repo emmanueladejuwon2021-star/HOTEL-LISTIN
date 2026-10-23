@@ -4,11 +4,11 @@ import { useEligibilityStore } from '../store/useEligibilityStore';
 import { validateRemitaRef } from '../utils/validation';
 
 /**
- * Integration test suite for [ELIGIBILITY-01, ELIGIBILITY-02, ELIGIBILITY-03] / [UAT-0006, UAT-0007, UAT-0008]
- * Student Eligibility Verification, Remita Fees Sync, Payment Audit Trail & Digital Clearance.
+ * Integration test suite for [ELIGIBILITY-01, ELIGIBILITY-02, ELIGIBILITY-03, ELIGIBILITY-04] / [UAT-0006, UAT-0007, UAT-0008, UAT-0009]
+ * Student Eligibility Verification, Remita Fees Sync, Medical Screening, Special Needs Registration, and Digital Clearance Pass Hash.
  * Verifies live Turso DB interaction with zero mocks.
  */
-describe('[ELIGIBILITY-01, ELIGIBILITY-02 & ELIGIBILITY-03] Student Eligibility & Fee Sync Integration Tests', () => {
+describe('[ELIGIBILITY-01 to ELIGIBILITY-04] Student Eligibility & Fee Sync Integration Tests', () => {
   const testUserId = 'usr_190407089_eligibility';
   const unpaidUserId = 'usr_200102031_unpaid';
   const flaggedUserId = 'usr_200405061_flagged';
@@ -24,7 +24,7 @@ describe('[ELIGIBILITY-01, ELIGIBILITY-02 & ELIGIBILITY-03] Student Eligibility 
     await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
     await client.execute({ sql: 'DELETE FROM users WHERE id IN (?, ?, ?)', args: [testUserId, unpaidUserId, flaggedUserId] });
 
-    // 1. Seed Eligible Student Record (Fees Paid = 1, Disciplinary Status = CLEARED, Course Registered = 1)
+    // 1. Seed Eligible Student Record (Fees Paid = 1, Disciplinary Status = CLEARED, Course Registered = 1, Medical Status = CLEARED)
     await client.execute({
       sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -32,9 +32,9 @@ describe('[ELIGIBILITY-01, ELIGIBILITY-02 & ELIGIBILITY-03] Student Eligibility 
     });
 
     await client.execute({
-      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, clearance_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [testUserId, 'Engineering', 'Electrical Engineering', 100, 'MAIN_CAMPUS', 'FRESHER', 1, 1, 'NOT_STARTED']
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, medical_status, clearance_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [testUserId, 'Engineering', 'Electrical Engineering', 100, 'MAIN_CAMPUS', 'FRESHER', 1, 1, 'CLEARED', 'NOT_STARTED']
     });
 
     // 2. Seed Unpaid Fee Student Record (Fees Paid = 0)
@@ -45,9 +45,9 @@ describe('[ELIGIBILITY-01, ELIGIBILITY-02 & ELIGIBILITY-03] Student Eligibility 
     });
 
     await client.execute({
-      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, clearance_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [unpaidUserId, 'Arts', 'English', 200, 'MAIN_CAMPUS', 'STALLITE', 0, 1, 'NOT_STARTED']
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, medical_status, clearance_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [unpaidUserId, 'Arts', 'English', 200, 'MAIN_CAMPUS', 'STALLITE', 0, 1, 'CLEARED', 'NOT_STARTED']
     });
 
     // 3. Seed Disciplinary Suspended Student Record
@@ -58,9 +58,9 @@ describe('[ELIGIBILITY-01, ELIGIBILITY-02 & ELIGIBILITY-03] Student Eligibility 
     });
 
     await client.execute({
-      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, clearance_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [flaggedUserId, 'Law', 'Jurisprudence', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 1, 'NOT_STARTED']
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, course_registered, medical_status, clearance_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [flaggedUserId, 'Law', 'Jurisprudence', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 1, 'CLEARED', 'NOT_STARTED']
     });
 
     await client.execute({
@@ -110,14 +110,15 @@ describe('[ELIGIBILITY-01, ELIGIBILITY-02 & ELIGIBILITY-03] Student Eligibility 
     });
   });
 
-  describe('Live Turso DB Eligibility Verification (UAT-0006 & UAT-0008)', () => {
-    test('confirms eligibility for student with paid fees, registered courses, and cleared disciplinary standing', async () => {
+  describe('Live Turso DB Eligibility Verification (UAT-0006, UAT-0008, UAT-0009)', () => {
+    test('confirms eligibility for student with paid fees, registered courses, medical clearance, and cleared disciplinary standing', async () => {
       const result = await EligibilityService.verifyEligibility(testUserId);
 
       expect(result.userId).toBe(testUserId);
       expect(result.isEligible).toBe(true);
       expect(result.feesPaid).toBe(true);
       expect(result.courseRegistered).toBe(true);
+      expect(result.medicalStatus).toBe('CLEARED');
       expect(result.disciplinaryStatus).toBe('CLEARED');
       expect(result.priorityCategory).toBe('FRESHER');
       expect(result.statusMessage).toContain('Eligible for Balloting');
@@ -169,6 +170,27 @@ describe('[ELIGIBILITY-01, ELIGIBILITY-02 & ELIGIBILITY-03] Student Eligibility 
           paymentStatus: 'SUCCESSFUL'
         })
       ).rejects.toThrow('has already been synced');
+    });
+
+    test('registers special needs accommodation and updates priority category to SPECIAL_NEEDS (UAT-0009)', async () => {
+      const updated = await EligibilityService.registerSpecialNeeds({
+        userId: testUserId,
+        specialNeedsDetails: 'Ground floor room required for wheelchair accessibility.'
+      });
+
+      expect(updated.specialNeedsRegistered).toBe(true);
+      expect(updated.specialNeedsDetails).toContain('wheelchair accessibility');
+      expect(updated.priorityCategory).toBe('SPECIAL_NEEDS');
+    });
+
+    test('generates cryptographic digital clearance pass hash when fully cleared and approved', async () => {
+      // First update clearance status to APPROVED
+      await EligibilityService.updateClearanceStatus(testUserId, 'APPROVED');
+      const result = await EligibilityService.verifyEligibility(testUserId);
+
+      expect(result.clearanceStatus).toBe('APPROVED');
+      expect(result.clearanceCertificateHash).toBeDefined();
+      expect(result.clearanceCertificateHash!).toMatch(/^CERT-[A-Z0-9]{16}$/);
     });
 
     test('throws error when non-existent user ID is passed', async () => {
