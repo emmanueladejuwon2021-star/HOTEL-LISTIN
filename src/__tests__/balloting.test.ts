@@ -253,4 +253,95 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       expect(useBallotingStore.getState().selectedBedId).toBe('bed_jaja_201_a_down');
     });
   });
+
+  describe('[BALLOTING-03 / UAT-0013] Queue Token & Active Window Validation, Expired Hold Auto-Recycling & Cancellation', () => {
+    test('validates queue token and window state for student during active window', async () => {
+      // Ensure student has a queue token for FINALIST (active window)
+      await BallotingService.issueQueueToken(testUserId1, 'FINALIST');
+
+      const validation = await BallotingService.validateQueueTokenAndWindow(testUserId1, 'FINALIST');
+      expect(validation.isValid).toBe(true);
+      expect(validation.isWindowActive).toBe(true);
+      expect(validation.token).toBeDefined();
+      expect(validation.message).toContain('validated successfully');
+    });
+
+    test('rejects queue validation when student has no queue token', async () => {
+      const unqueuedUserId = 'usr_9999_unqueued';
+      const validation = await BallotingService.validateQueueTokenAndWindow(unqueuedUserId, 'FINALIST');
+
+      expect(validation.isValid).toBe(false);
+      expect(validation.isWindowActive).toBe(true);
+      expect(validation.message).toContain('No queue access ticket found');
+    });
+
+    test('rejects queue validation when balloting window is inactive', async () => {
+      const validation = await BallotingService.validateQueueTokenAndWindow(testUserId1, 'FRESHER');
+
+      expect(validation.isValid).toBe(false);
+      expect(validation.isWindowActive).toBe(false);
+      expect(validation.message).toContain('currently inactive or closed');
+    });
+
+    test('scans and releases expired 72-hour bedspace holds, restoring available bedspace capacity', async () => {
+      const client = AuthService.getDbClient();
+
+      // Seed an expired LOCKED_HOLD bedspace
+      const expiredBedId = 'bed_jaja_expired_test';
+      await client.execute({ sql: 'DELETE FROM bedspaces WHERE id = ?', args: [expiredBedId] });
+
+      const pastExpiry = new Date(Date.now() - 3600 * 1000).toISOString(); // Expired 1 hour ago
+      await client.execute({
+        sql: `INSERT INTO bedspaces (id, room_id, bed_label, status, allocated_to_user_id, hold_expires_at)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [expiredBedId, 'room_jaja_balloting_201', 'Bed C Expired', 'LOCKED_HOLD', testUserId1, pastExpiry]
+      });
+
+      const releaseResult = await BallotingService.releaseExpiredHolds();
+
+      expect(releaseResult.releasedCount).toBeGreaterThanOrEqual(1);
+      expect(releaseResult.message).toContain('Successfully released');
+
+      // Verify bedspace status is reset to AVAILABLE in DB
+      const checkRes = await client.execute({
+        sql: `SELECT status, allocated_to_user_id, hold_expires_at FROM bedspaces WHERE id = ?`,
+        args: [expiredBedId]
+      });
+
+      expect(checkRes.rows.length).toBe(1);
+      expect(checkRes.rows[0].status).toBe('AVAILABLE');
+      expect(checkRes.rows[0].allocated_to_user_id).toBeNull();
+
+      // Clean up test bedspace
+      await client.execute({ sql: 'DELETE FROM bedspaces WHERE id = ?', args: [expiredBedId] });
+    });
+
+    test('cancels issued queue token successfully', async () => {
+      const token = await BallotingService.issueQueueToken(testUserId2, 'FINALIST');
+      expect(token).toBeDefined();
+
+      const cancelled = await BallotingService.cancelQueueToken(testUserId2);
+      expect(cancelled).toBe(true);
+
+      const checkToken = await BallotingService.getQueueToken(testUserId2);
+      expect(checkToken).toBeNull();
+    });
+
+    test('executes Zustand store actions for queue validation, expired hold release, and queue cancellation', async () => {
+      const store = useBallotingStore.getState();
+
+      // Issue token for test user 1 for FINALIST
+      await store.issueQueueTicket(testUserId1, 'FINALIST');
+
+      const val = await store.validateQueueAndWindow(testUserId1, 'FINALIST');
+      expect(val.isValid).toBe(true);
+
+      const releaseRes = await store.releaseExpiredHolds();
+      expect(releaseRes).toBeDefined();
+      expect(releaseRes.releasedCount).toBeGreaterThanOrEqual(0);
+
+      const cancelled = await store.cancelQueueToken(testUserId1);
+      expect(cancelled).toBe(true);
+    });
+  });
 });

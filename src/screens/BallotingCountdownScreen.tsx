@@ -10,7 +10,7 @@ import { useBallotingStore } from '../store/useBallotingStore';
  */
 export const BallotingCountdownScreen: React.FC = () => {
   const { session } = useAuthStore();
-  const { countdownState, isLoading, error, fetchCountdown, issueQueueTicket, tickTimer } = useBallotingStore();
+  const { countdownState, isLoading, error, fetchCountdown, issueQueueTicket, cancelQueueToken, releaseExpiredHolds, tickTimer } = useBallotingStore();
 
   const userId = session?.user?.id;
   const userCategory = session?.studentProfile?.priorityCategory || 'FRESHER';
@@ -36,6 +36,27 @@ export const BallotingCountdownScreen: React.FC = () => {
       setQueueSuccessMsg(`Queue token #${token.positionInQueue} issued successfully!`);
     } catch {
       // Store handles error automatically
+    }
+  };
+
+  const handleCancelQueueTicket = async () => {
+    if (!userId) return;
+    try {
+      await cancelQueueToken(userId);
+      setQueueSuccessMsg('Your queue ticket has been cancelled.');
+      await fetchCountdown(userCategory, userId);
+    } catch {
+      // Store handles error
+    }
+  };
+
+  const handleReleaseHolds = async () => {
+    try {
+      const res = await releaseExpiredHolds();
+      setQueueSuccessMsg(res.message);
+      await fetchCountdown(userCategory, userId);
+    } catch {
+      // Store handles error
     }
   };
 
@@ -116,12 +137,19 @@ export const BallotingCountdownScreen: React.FC = () => {
                       #{countdownState.queueToken.positionInQueue}
                     </Text>
                   </View>
-                  <View className="flex-row justify-between items-center">
+                  <View className="flex-row justify-between items-center mb-3">
                     <Text className="text-slate-500 text-xs">Estimated Wait Time</Text>
                     <Text className="text-slate-900 font-bold text-xs">
                       ~{countdownState.queueToken.estimatedWaitTimeSeconds} Seconds
                     </Text>
                   </View>
+                  <TouchableOpacity
+                    className="bg-red-100 py-2 rounded-lg items-center border border-red-300"
+                    onPress={handleCancelQueueTicket}
+                    disabled={isLoading}
+                  >
+                    <Text className="text-red-700 font-bold text-xs">Cancel Queue Ticket</Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
                 <View>

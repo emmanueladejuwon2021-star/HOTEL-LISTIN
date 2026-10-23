@@ -27,6 +27,7 @@ export const BallotingSelectorScreen: React.FC = () => {
     fetchHostelRooms,
     setSelectedHostel,
     setSelectedRoomAndBed,
+    validateQueueAndWindow,
     tickTimer
   } = useBallotingStore();
 
@@ -100,6 +101,10 @@ export const BallotingSelectorScreen: React.FC = () => {
   const handleConfirmLock = async () => {
     if (!userId || !selectedBedspace) return;
     try {
+      const validation = await validateQueueAndWindow(userId, userCategory);
+      if (!validation.isValid) {
+        return;
+      }
       await lockSelectedBedspace(userId);
       if (selectedHostelId) {
         await fetchHostelRooms(selectedHostelId); // Refresh room grid
