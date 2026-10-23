@@ -217,6 +217,42 @@ export const PaymentHoldScreen: React.FC = () => {
           </>
         )}
 
+        {/* Confirmed Accommodation Card */}
+        {holdDetails && holdDetails.paymentStatus === 'SUCCESSFUL' && (
+          <View className="bg-emerald-50 border border-emerald-300 w-full p-6 rounded-2xl mb-6 shadow-sm">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-emerald-900 font-extrabold text-lg">RESERVATION CONFIRMED</Text>
+              <View className="bg-emerald-200 px-3 py-1 rounded-full">
+                <Text className="text-emerald-900 font-bold text-xs">OFFICIAL RESIDENT</Text>
+              </View>
+            </View>
+            <Text className="text-slate-600 text-sm mb-4">
+              Your hostel fee payment has been successfully processed. Your bedspace position is fully locked and secured.
+            </Text>
+
+            <View className="bg-white p-4 rounded-xl border border-emerald-200 space-y-2">
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-slate-500 font-medium">Hostel Name:</Text>
+                <Text className="text-xs font-bold text-slate-800">{holdDetails.hostelName}</Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-slate-500 font-medium">Block & Room:</Text>
+                <Text className="text-xs font-bold text-slate-800">
+                  Block {holdDetails.blockName} — Room {holdDetails.roomNumber}
+                </Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-slate-500 font-medium">Bedspace Position:</Text>
+                <Text className="text-xs font-bold text-slate-800">{holdDetails.bedLabel}</Text>
+              </View>
+              <View className="flex-row justify-between pt-2 border-t border-slate-100">
+                <Text className="text-xs text-slate-500 font-medium">Amount Paid:</Text>
+                <Text className="text-sm font-extrabold text-emerald-700">₦{holdDetails.amount.toLocaleString()}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Expired Hold Banner */}
         {holdDetails && holdDetails.isExpired && (
           <View className="bg-amber-50 border border-amber-300 p-6 rounded-2xl w-full items-center mb-6">
