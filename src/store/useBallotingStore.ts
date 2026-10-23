@@ -4,7 +4,9 @@ import {
   QueueToken,
   FilteredHostelSummary,
   BallotingRoomDetails,
-  HostelFilterParams
+  HostelFilterParams,
+  CategoryQuotaSummary,
+  BallotAndLockResult
 } from '../types/balloting';
 import { BallotingService } from '../api/ballotingService';
 import { PriorityCategory, Gender, Campus } from '../types/auth';
@@ -32,6 +34,8 @@ interface BallotingState {
   campusFilter?: Campus;
   // Boolean flag indicating if countdown or queue token operation is in progress
   isLoading: boolean;
+  // Real-time category quota breakdowns for selected hostel
+  categoryQuotas: CategoryQuotaSummary[];
   // Error message string if an error occurs
   error: string | null;
 
@@ -45,6 +49,10 @@ interface BallotingState {
   fetchFilteredHostels: (params?: HostelFilterParams) => Promise<FilteredHostelSummary[]>;
   // Action to fetch rooms and bedspaces for a specific hostel
   fetchHostelRooms: (hostelId: string, blockName?: string, floorNumber?: number) => Promise<BallotingRoomDetails[]>;
+  // Action to fetch category quota breakdown for selected hostel
+  fetchCategoryQuotas: (hostelId: string) => Promise<CategoryQuotaSummary[]>;
+  // Action to ballot and lock bedspace with category quota enforcement
+  ballotBedspaceWithQuota: (userId: string, bedspaceId: string, category: PriorityCategory) => Promise<BallotAndLockResult>;
   // Action to set selected hostel ID
   setSelectedHostel: (hostelId: string | null) => void;
   // Action to select room and bedspace
@@ -63,6 +71,7 @@ export const useBallotingStore = create<BallotingState>((set, get) => ({
   hostelRooms: [],
   selectedRoomId: null,
   selectedBedId: null,
+  categoryQuotas: [],
   genderFilter: undefined,
   campusFilter: undefined,
   isLoading: false,
@@ -176,10 +185,53 @@ export const useBallotingStore = create<BallotingState>((set, get) => ({
   },
 
   /**
+   * Fetches quota summaries for all student priority categories for a selected hostel.
+   *
+   * @param hostelId - Target hostel ID
+   * @returns Array of CategoryQuotaSummary objects
+   */
+  fetchCategoryQuotas: async (hostelId: string) => {
+    try {
+      const summaries = await BallotingService.getCategoryQuotaSummaries(hostelId);
+      set({ categoryQuotas: summaries });
+      return summaries;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to fetch category quota summaries.';
+      set({ error: msg });
+      throw err;
+    }
+  },
+
+  /**
+   * Ballots and locks bedspace with active window and category quota enforcement.
+   *
+   * @param userId - Student user ID
+   * @param bedspaceId - Target bedspace ID
+   * @param category - Priority category tag
+   * @returns BallotAndLockResult
+   */
+  ballotBedspaceWithQuota: async (userId: string, bedspaceId: string, category: PriorityCategory) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await BallotingService.ballotAndLockBedspace({
+        userId,
+        bedspaceId,
+        category
+      });
+      set({ isLoading: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to lock bedspace under category quota.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
+
+  /**
    * Sets currently selected hostel ID.
    */
   setSelectedHostel: (hostelId: string | null) => {
-    set({ selectedHostelId: hostelId, selectedRoomId: null, selectedBedId: null, error: null });
+    set({ selectedHostelId: hostelId, selectedRoomId: null, selectedBedId: null, categoryQuotas: [], error: null });
   },
 
   /**

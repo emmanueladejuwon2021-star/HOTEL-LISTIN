@@ -93,3 +93,40 @@ export interface BallotingRoomDetails {
     updatedAt: string;
   }>;
 }
+
+/**
+ * Real-time priority quota availability metrics for a student category within a hostel.
+ */
+export interface CategoryQuotaSummary {
+  priorityCategory: PriorityCategory;
+  quotaPercentage: number;
+  quotaLimit: number;
+  currentAllocations: number;
+  remainingQuota: number;
+  isQuotaExhausted: boolean;
+}
+
+/**
+ * Parameters for executing a priority-quota-enforced bedspace lock.
+ */
+export interface BallotAndLockParams {
+  userId: string;
+  bedspaceId: string;
+  category: PriorityCategory;
+}
+
+/**
+ * Result returned upon successful category-enforced bedspace lock.
+ */
+export interface BallotAndLockResult {
+  success: boolean;
+  paymentId?: string;
+  bedspaceId: string;
+  bedLabel: string;
+  roomNumber: string;
+  hostelName: string;
+  priorityCategory: PriorityCategory;
+  amount: number;
+  holdExpiresAt: string;
+  message: string;
+}

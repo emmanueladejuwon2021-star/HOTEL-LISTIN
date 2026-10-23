@@ -18,6 +18,7 @@ export const BallotingSelectorScreen: React.FC = () => {
     filteredHostels,
     selectedHostelId,
     hostelRooms,
+    categoryQuotas,
     selectedRoomId,
     selectedBedId,
     isLoading: isBallotingLoading,
@@ -25,6 +26,8 @@ export const BallotingSelectorScreen: React.FC = () => {
     fetchCountdown,
     fetchFilteredHostels,
     fetchHostelRooms,
+    fetchCategoryQuotas,
+    ballotBedspaceWithQuota,
     setSelectedHostel,
     setSelectedRoomAndBed,
     tickTimer
@@ -62,10 +65,11 @@ export const BallotingSelectorScreen: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // When selected hostel changes, fetch rooms for that hostel
+  // When selected hostel changes, fetch rooms and category quotas for that hostel
   useEffect(() => {
     if (selectedHostelId) {
       fetchHostelRooms(selectedHostelId).catch(() => {});
+      fetchCategoryQuotas(selectedHostelId).catch(() => {});
     }
   }, [selectedHostelId]);
 
@@ -96,16 +100,17 @@ export const BallotingSelectorScreen: React.FC = () => {
     selectBedspace(bed);
   };
 
-  // Handler for confirming atomic lock
+  // Handler for confirming atomic lock with priority quota validation
   const handleConfirmLock = async () => {
     if (!userId || !selectedBedspace) return;
     try {
-      await lockSelectedBedspace(userId);
+      await ballotBedspaceWithQuota(userId, selectedBedspace.id, userCategory);
       if (selectedHostelId) {
         await fetchHostelRooms(selectedHostelId); // Refresh room grid
+        await fetchCategoryQuotas(selectedHostelId); // Refresh category quotas
       }
     } catch {
-      // Error handled in store
+      // Error message set in useBallotingStore state and displayed in Notice banner
     }
   };
 
@@ -279,6 +284,23 @@ export const BallotingSelectorScreen: React.FC = () => {
         {/* Interactive Room & Bed Grid (PRD S-03 Specification: grid grid-cols-2 gap-3 mb-6) */}
         {selectedHostelId && (
           <View className="bg-white p-5 rounded-2xl shadow-sm mb-6 border border-slate-200">
+            {/* Category Quota Information Bar */}
+            {categoryQuotas.length > 0 && (
+              <View className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-4">
+                <Text className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
+                  Priority Quota Breakdown ({userCategory} Category)
+                </Text>
+                {categoryQuotas
+                  .filter((q) => q.priorityCategory === userCategory)
+                  .map((q) => (
+                    <Text key={q.priorityCategory} className="text-xs text-amber-800 font-semibold">
+                      Your Quota ({q.quotaPercentage}%): {q.remainingQuota} of {q.quotaLimit} Beds Remaining{' '}
+                      {q.isQuotaExhausted ? '(EXHAUSTED)' : ''}
+                    </Text>
+                  ))}
+              </View>
+            )}
+
             <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
               Select Room & Bedspace Position
             </Text>

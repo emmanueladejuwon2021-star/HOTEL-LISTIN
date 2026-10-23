@@ -253,4 +253,85 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       expect(useBallotingStore.getState().selectedBedId).toBe('bed_jaja_201_a_down');
     });
   });
+
+  describe('[BALLOTING-03 / UAT-0013] Real-Time Priority Quota Calculation & Category Bedspace Lock Tests', () => {
+    const quotaTestUserId = 'usr_1003_quota_student';
+
+    beforeAll(async () => {
+      const client = AuthService.getDbClient();
+      await client.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [quotaTestUserId] });
+      await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id = ?', args: [quotaTestUserId] });
+
+      await client.execute({
+        sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [quotaTestUserId, '190407333', 'Quota Student Three', 'q3@live.unilag.edu.ng', '+2348033330000', 'STUDENT', 'MALE', 'hash', 1]
+      });
+
+      await client.execute({
+        sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [quotaTestUserId, 'Engineering', 'Electrical Eng', 500, 'MAIN_CAMPUS', 'FINALIST', 1, 'APPROVED']
+      });
+    });
+
+    test('calculates category quota percentage and limit accurately (PRD Section 5.1)', () => {
+      expect(BallotingService.getCategoryQuotaPercentage('FRESHER')).toBe(40);
+      expect(BallotingService.getCategoryQuotaPercentage('FINALIST')).toBe(30);
+      expect(BallotingService.getCategoryQuotaPercentage('SCHOLAR')).toBe(10);
+      expect(BallotingService.getCategoryQuotaPercentage('SPECIAL_NEEDS')).toBe(10);
+      expect(BallotingService.getCategoryQuotaPercentage('STALLITE')).toBe(20);
+    });
+
+    test('fetches category quota availability metrics for selected hostel (UAT-0013)', async () => {
+      const summary = await BallotingService.checkCategoryQuotaAvailability('FINALIST', 'h_jaja');
+
+      expect(summary).toBeDefined();
+      expect(summary.priorityCategory).toBe('FINALIST');
+      expect(summary.quotaPercentage).toBe(30);
+      expect(summary.quotaLimit).toBe(360); // 30% of 1200 beds = 360
+      expect(summary.remainingQuota).toBeGreaterThanOrEqual(0);
+      expect(summary.isQuotaExhausted).toBe(false);
+    });
+
+    test('returns quota summaries for all categories in a hostel', async () => {
+      const summaries = await BallotingService.getCategoryQuotaSummaries('h_jaja');
+
+      expect(summaries.length).toBe(5);
+      const fresherQuota = summaries.find((s) => s.priorityCategory === 'FRESHER');
+      expect(fresherQuota?.quotaLimit).toBe(480); // 40% of 1200 beds = 480
+    });
+
+    test('prevents bedspace lock if category balloting window is not active', async () => {
+      await expect(
+        BallotingService.ballotAndLockBedspace({
+          userId: quotaTestUserId,
+          bedspaceId: 'bed_jaja_201_b_down',
+          category: 'FRESHER' // FRESHER window is UPCOMING, not ACTIVE
+        })
+      ).rejects.toThrow(/window for priority category FRESHER is currently not active/i);
+    });
+
+    test('executes priority category bedspace lock successfully when window is active (UAT-0013)', async () => {
+      const result = await BallotingService.ballotAndLockBedspace({
+        userId: quotaTestUserId,
+        bedspaceId: 'bed_jaja_201_b_down',
+        category: 'FINALIST' // FINALIST window is ACTIVE
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.bedspaceId).toBe('bed_jaja_201_b_down');
+      expect(result.priorityCategory).toBe('FINALIST');
+      expect(result.amount).toBe(25000.00);
+      expect(result.message).toContain('Bedspace locked successfully');
+    });
+
+    test('fetches category quotas and locks bedspace via Zustand store actions', async () => {
+      const store = useBallotingStore.getState();
+
+      const quotas = await store.fetchCategoryQuotas('h_jaja');
+      expect(quotas.length).toBe(5);
+      expect(useBallotingStore.getState().categoryQuotas.length).toBe(5);
+    });
+  });
 });
