@@ -4,7 +4,8 @@ import { EligibilityVerificationResult, FeeSyncParams, DisciplinaryStatus } from
 import { PriorityCategory, Campus, ClearanceStatus } from '../types/auth';
 
 /**
- * Service class that handles student eligibility verification and school fee payment synchronization.
+ * Service class that handles student eligibility verification, school fee payment synchronization,
+ * and digital document clearance status updates.
  * Checks student standing directly against the Turso libSQL database following a strict zero-mock policy.
  */
 export class EligibilityService {
@@ -150,5 +151,31 @@ export class EligibilityService {
 
     // Re-verify and return fresh eligibility state
     return await EligibilityService.verifyEligibility(params.userId);
+  }
+
+  /**
+   * Updates a student's digital document clearance status in the database.
+   * Enables students to submit clearance requests and wardens/porters to review and update status.
+   *
+   * @param userId - Unique student user ID
+   * @param clearanceStatus - New clearance status ('NOT_STARTED', 'PENDING', 'APPROVED', 'REJECTED')
+   * @returns Updated EligibilityVerificationResult
+   */
+  public static async updateClearanceStatus(userId: string, clearanceStatus: ClearanceStatus): Promise<EligibilityVerificationResult> {
+    await EligibilityService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Execute update query against student_profiles table in Turso DB
+    const updateResult = await client.execute({
+      sql: `UPDATE student_profiles SET clearance_status = ? WHERE user_id = ?`,
+      args: [clearanceStatus, userId]
+    });
+
+    if (updateResult.rowsAffected === 0) {
+      throw new Error('Failed to update clearance status. Student profile record not found.');
+    }
+
+    // Re-verify and return updated eligibility result
+    return await EligibilityService.verifyEligibility(userId);
   }
 }

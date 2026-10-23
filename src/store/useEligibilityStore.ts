@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { EligibilityVerificationResult } from '../types/eligibility';
+import { ClearanceStatus } from '../types/auth';
 import { EligibilityService } from '../api/eligibilityService';
 
 /**
@@ -9,14 +10,16 @@ import { EligibilityService } from '../api/eligibilityService';
 interface EligibilityState {
   // Holds the latest eligibility check result (or null if not checked yet)
   eligibilityResult: EligibilityVerificationResult | null;
-  // Boolean flag indicating if an eligibility query or fee sync is currently in progress
+  // Boolean flag indicating if an eligibility query, fee sync, or clearance update is in progress
   isVerifying: boolean;
-  // Error message string if an error occurs during checking or fee sync
+  // Error message string if an error occurs during checking, fee sync, or clearance submission
   error: string | null;
   // Action to check student eligibility against Turso DB
   checkEligibility: (userId: string) => Promise<EligibilityVerificationResult>;
   // Action to sync Remita tuition fee payment and update student eligibility
   syncFees: (userId: string, ref: string, amount: number) => Promise<EligibilityVerificationResult>;
+  // Action to submit or update student digital clearance status
+  updateClearance: (userId: string, status: ClearanceStatus) => Promise<EligibilityVerificationResult>;
   // Action to clear store state on user logout or session reset
   resetEligibility: () => void;
 }
@@ -71,6 +74,26 @@ export const useEligibilityStore = create<EligibilityState>((set) => ({
       return result;
     } catch (err: any) {
       const msg = err.message || 'Failed to sync school fee payment.';
+      set({ error: msg, isVerifying: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Updates student digital clearance status in Turso DB (e.g. submitting clearance or approving/rejecting).
+   *
+   * @param userId - Unique student user ID
+   * @param clearanceStatus - Target clearance status
+   * @returns Updated EligibilityVerificationResult after clearance update
+   */
+  updateClearance: async (userId: string, clearanceStatus: ClearanceStatus) => {
+    set({ isVerifying: true, error: null });
+    try {
+      const result = await EligibilityService.updateClearanceStatus(userId, clearanceStatus);
+      set({ eligibilityResult: result, isVerifying: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to update clearance status.';
       set({ error: msg, isVerifying: false });
       throw err;
     }
