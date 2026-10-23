@@ -16,7 +16,7 @@ describe('[BALLOTING-02 / UAT-0004] Bedspace Atomic Lock Integration Tests', () 
     // Clean existing test rows if any
     await client.execute({ sql: `DELETE FROM payments WHERE bedspace_id IN (?, ?)`, args: [bedId1, bedId2] });
     await client.execute({ sql: `DELETE FROM bedspaces WHERE room_id = ?`, args: [roomId] });
-    await client.execute({ sql: `DELETE FROM rooms WHERE hostel_id = ?`, args: [hostelId] });
+    await client.execute({ sql: `DELETE FROM rooms WHERE id = ? OR hostel_id = ?`, args: [roomId, hostelId] });
     await client.execute({ sql: `DELETE FROM hostels WHERE id = ?`, args: [hostelId] });
 
     // 1. Seed Students
@@ -34,25 +34,25 @@ describe('[BALLOTING-02 / UAT-0004] Bedspace Atomic Lock Integration Tests', () 
 
     // 2. Seed Hostel & Room & Bedspaces
     await client.execute({
-      sql: `INSERT INTO hostels (id, name, gender, campus, category, total_capacity, available_bedspaces)
+      sql: `INSERT OR REPLACE INTO hostels (id, name, gender, campus, category, total_capacity, available_bedspaces)
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
       args: [hostelId, 'King Jaja Hall Lock Block', 'MALE', 'MAIN_CAMPUS', 'UNDERGRADUATE', 1200, 100]
     });
 
     await client.execute({
-      sql: `INSERT INTO rooms (id, hostel_id, block_name, floor_number, room_number, total_beds, occupied_beds)
+      sql: `INSERT OR REPLACE INTO rooms (id, hostel_id, block_name, floor_number, room_number, total_beds, occupied_beds)
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
       args: [roomId, hostelId, 'Block A', 2, 'A201', 4, 0]
     });
 
     await client.execute({
-      sql: `INSERT INTO bedspaces (id, room_id, bed_label, status)
+      sql: `INSERT OR REPLACE INTO bedspaces (id, room_id, bed_label, status)
             VALUES (?, ?, ?, ?)`,
       args: [bedId1, roomId, 'Bed A Down', 'AVAILABLE']
     });
 
     await client.execute({
-      sql: `INSERT INTO bedspaces (id, room_id, bed_label, status)
+      sql: `INSERT OR REPLACE INTO bedspaces (id, room_id, bed_label, status)
             VALUES (?, ?, ?, ?)`,
       args: [bedId2, roomId, 'Bed A Up', 'AVAILABLE']
     });

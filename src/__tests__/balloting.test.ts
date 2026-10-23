@@ -59,6 +59,40 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
       args: ['h_moremi', 'Moremi Hall', 'FEMALE', 'MAIN_CAMPUS', 'UNDERGRADUATE', 1400, 300]
     });
+
+    // 3. Seed Rooms & Bedspaces in Turso DB for Balloting Component 2 Testing (UAT-0012)
+    await client.execute({ sql: 'DELETE FROM bedspaces WHERE room_id = ?', args: ['room_jaja_balloting_201'] });
+    await client.execute({ sql: 'DELETE FROM rooms WHERE id = ?', args: ['room_jaja_balloting_201'] });
+
+    await client.execute({
+      sql: `INSERT INTO rooms (id, hostel_id, block_name, floor_number, room_number, total_beds, occupied_beds)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: ['room_jaja_balloting_201', 'h_jaja', 'A', 2, '201', 4, 1]
+    });
+
+    await client.execute({
+      sql: `INSERT INTO bedspaces (id, room_id, bed_label, status)
+            VALUES (?, ?, ?, ?)`,
+      args: ['bed_jaja_201_a_down', 'room_jaja_balloting_201', 'Bed A Down', 'AVAILABLE']
+    });
+
+    await client.execute({
+      sql: `INSERT INTO bedspaces (id, room_id, bed_label, status)
+            VALUES (?, ?, ?, ?)`,
+      args: ['bed_jaja_201_a_up', 'room_jaja_balloting_201', 'Bed A Up', 'CONFIRMED']
+    });
+
+    await client.execute({
+      sql: `INSERT INTO bedspaces (id, room_id, bed_label, status)
+            VALUES (?, ?, ?, ?)`,
+      args: ['bed_jaja_201_b_down', 'room_jaja_balloting_201', 'Bed B Down', 'AVAILABLE']
+    });
+
+    await client.execute({
+      sql: `INSERT INTO bedspaces (id, room_id, bed_label, status)
+            VALUES (?, ?, ?, ?)`,
+      args: ['bed_jaja_201_b_up', 'room_jaja_balloting_201', 'Bed B Up', 'AVAILABLE']
+    });
   });
 
   describe('Turso DB Balloting Window & Quota Execution', () => {
@@ -143,6 +177,80 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       expect(state.isWindowActive).toBe(false);
       expect(state.timeRemainingSeconds).toBe(0);
       expect(state.quotas.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('[BALLOTING-02 / UAT-0012] Filtered Hostels, Room Layouts & Active Window Verification', () => {
+    test('queries hostels filtered by MALE gender and MAIN_CAMPUS location', async () => {
+      const hostels = await BallotingService.getFilteredHostels({
+        gender: 'MALE',
+        campus: 'MAIN_CAMPUS'
+      });
+
+      expect(hostels).toBeDefined();
+      expect(hostels.length).toBeGreaterThanOrEqual(1);
+
+      const jaja = hostels.find((h) => h.hostelId === 'h_jaja');
+      expect(jaja).toBeDefined();
+      expect(jaja?.gender).toBe('MALE');
+      expect(jaja?.campus).toBe('MAIN_CAMPUS');
+
+      const moremi = hostels.find((h) => h.hostelId === 'h_moremi');
+      expect(moremi).toBeUndefined(); // Moremi is female
+    });
+
+    test('queries hostels filtered by FEMALE gender', async () => {
+      const hostels = await BallotingService.getFilteredHostels({
+        gender: 'FEMALE'
+      });
+
+      const moremi = hostels.find((h) => h.hostelId === 'h_moremi');
+      expect(moremi).toBeDefined();
+      expect(moremi?.gender).toBe('FEMALE');
+    });
+
+    test('retrieves rooms and interactive bedspace statuses for selected hostel (UAT-0012)', async () => {
+      const rooms = await BallotingService.getRoomsForHostel('h_jaja', 'A', 2);
+
+      expect(rooms).toBeDefined();
+      expect(rooms.length).toBeGreaterThanOrEqual(1);
+
+      const room201 = rooms.find((r) => r.id === 'room_jaja_balloting_201');
+      expect(room201).toBeDefined();
+      expect(room201?.blockName).toBe('A');
+      expect(room201?.floorNumber).toBe(2);
+      expect(room201?.roomNumber).toBe('201');
+      expect(room201?.bedspaces.length).toBe(4);
+
+      const bedADown = room201?.bedspaces.find((b) => b.bedLabel === 'Bed A Down');
+      expect(bedADown?.status).toBe('AVAILABLE');
+
+      const bedAUp = room201?.bedspaces.find((b) => b.bedLabel === 'Bed A Up');
+      expect(bedAUp?.status).toBe('CONFIRMED');
+    });
+
+    test('verifies active balloting window state accurately', async () => {
+      const isFinalistActive = await BallotingService.verifyBallotingWindowActive('FINALIST');
+      expect(isFinalistActive).toBe(true);
+
+      const isFresherActive = await BallotingService.verifyBallotingWindowActive('FRESHER');
+      expect(isFresherActive).toBe(false);
+    });
+
+    test('executes Zustand store actions for filtering hostels and selecting rooms/beds', async () => {
+      const store = useBallotingStore.getState();
+
+      const hostels = await store.fetchFilteredHostels({ gender: 'MALE', campus: 'MAIN_CAMPUS' });
+      expect(hostels.length).toBeGreaterThanOrEqual(1);
+      expect(useBallotingStore.getState().filteredHostels.length).toBeGreaterThanOrEqual(1);
+
+      const rooms = await store.fetchHostelRooms('h_jaja', 'A', 2);
+      expect(rooms.length).toBeGreaterThanOrEqual(1);
+      expect(useBallotingStore.getState().selectedHostelId).toBe('h_jaja');
+
+      store.setSelectedRoomAndBed('room_jaja_balloting_201', 'bed_jaja_201_a_down');
+      expect(useBallotingStore.getState().selectedRoomId).toBe('room_jaja_balloting_201');
+      expect(useBallotingStore.getState().selectedBedId).toBe('bed_jaja_201_a_down');
     });
   });
 });
