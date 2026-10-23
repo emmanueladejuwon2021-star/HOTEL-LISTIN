@@ -11,6 +11,16 @@ export type DisciplinaryStatus = 'CLEARED' | 'FLAGGED' | 'SUSPENDED' | 'RUSTICAT
 export type MedicalStatus = 'CLEARED' | 'PENDING' | 'FAILED' | 'NOT_STARTED';
 
 /**
+ * Disciplinary record history entry logging infractions or disciplinary actions.
+ */
+export interface DisciplinaryStandingHistory {
+  userId: string;
+  status: DisciplinaryStatus;
+  reason: string;
+  flaggedAt: string;
+}
+
+/**
  * Payment record interface for tracking verified school tuition fee payments in Turso DB.
  */
 export interface FeePaymentRecord {
@@ -37,12 +47,14 @@ export interface EligibilityVerificationResult {
   specialNeedsRegistered: boolean;
   specialNeedsDetails?: string;
   disciplinaryStatus: DisciplinaryStatus;
+  disciplinaryHistory?: DisciplinaryStandingHistory[];
   priorityCategory: PriorityCategory;
   campus: Campus;
   level: number;
   faculty: string;
   department: string;
   clearanceStatus: ClearanceStatus;
+  clearanceRejectionReason?: string;
   clearanceCertificateHash?: string;
   statusMessage: string;
   verifiedAt: string;
@@ -75,4 +87,13 @@ export interface MedicalStatusUpdateParams {
 export interface SpecialNeedsParams {
   userId: string;
   specialNeedsDetails: string;
+}
+
+/**
+ * Parameters submitted when a warden reviews student clearance documents.
+ */
+export interface ClearanceReviewParams {
+  userId: string;
+  clearanceStatus: ClearanceStatus;
+  rejectionReason?: string;
 }

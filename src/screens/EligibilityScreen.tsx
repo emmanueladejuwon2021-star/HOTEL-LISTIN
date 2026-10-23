@@ -8,7 +8,7 @@ import { validateRemitaRef } from '../utils/validation';
  * EligibilityScreen Component.
  * Displays student hostel application eligibility status, school fee payment verification status,
  * course registration verification, Jaja Clinic medical screening status, special needs accommodation registration,
- * priority quota tag, disciplinary standing, digital clearance certificate card, fee payment audit trail, and digital clearance progress.
+ * priority quota tag, disciplinary standing history, clearance rejection feedback, digital clearance certificate card, fee payment audit trail, and digital clearance progress.
  * Allows students to manually sync tuition fee payment using Remita RRR references, register special needs, and submit documents for digital clearance.
  */
 export const EligibilityScreen: React.FC = () => {
@@ -187,6 +187,20 @@ export const EligibilityScreen: React.FC = () => {
                 {eligibilityResult.statusMessage}
               </Text>
             </View>
+
+            {/* Clearance Rejection Feedback Banner (Shown if warden rejected clearance) */}
+            {eligibilityResult.clearanceStatus === 'REJECTED' && eligibilityResult.clearanceRejectionReason && (
+              <View className="bg-red-50 border border-red-300 rounded-2xl p-4 mb-4">
+                <Text className="text-red-900 font-bold text-sm mb-1">Warden Clearance Rejection Feedback</Text>
+                <Text className="text-red-800 text-xs mb-3">{eligibilityResult.clearanceRejectionReason}</Text>
+                <TouchableOpacity
+                  className="bg-red-700 h-10 rounded-xl justify-center items-center active:opacity-90"
+                  onPress={handleSubmitClearance}
+                >
+                  <Text className="text-white text-xs font-bold">Re-submit Documents for Review</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Cryptographic Digital Clearance Certificate Card (Shown when student is 100% cleared) */}
             {eligibilityResult.clearanceCertificateHash && (
@@ -395,6 +409,26 @@ export const EligibilityScreen: React.FC = () => {
               </View>
             </View>
 
+            {/* Disciplinary Standing History Logs */}
+            {eligibilityResult.disciplinaryHistory && eligibilityResult.disciplinaryHistory.length > 0 && (
+              <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+                <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                  Disciplinary Standing Log
+                </Text>
+                <View className="space-y-2">
+                  {eligibilityResult.disciplinaryHistory.map((item, idx) => (
+                    <View key={idx} className="p-3 bg-red-50 rounded-xl border border-red-100">
+                      <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-red-900 font-bold text-xs">{item.status}</Text>
+                        <Text className="text-red-700 text-xs">{new Date(item.flaggedAt).toLocaleDateString()}</Text>
+                      </View>
+                      <Text className="text-red-800 text-xs">{item.reason}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Verified Fee Payment History Section */}
             {eligibilityResult.paymentHistory && eligibilityResult.paymentHistory.length > 0 && (
               <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
@@ -447,7 +481,7 @@ export const EligibilityScreen: React.FC = () => {
                   : 'Submit your student medical certificate and passport photo for warden screening.'}
               </Text>
 
-              {eligibilityResult.clearanceStatus === 'NOT_STARTED' && (
+              {(eligibilityResult.clearanceStatus === 'NOT_STARTED' || eligibilityResult.clearanceStatus === 'REJECTED') && (
                 <TouchableOpacity
                   className="bg-[#7A0000] h-12 rounded-xl justify-center items-center active:opacity-90"
                   onPress={handleSubmitClearance}
@@ -456,7 +490,9 @@ export const EligibilityScreen: React.FC = () => {
                   {isVerifying ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text className="text-white text-sm font-bold">Submit Documents for Clearance</Text>
+                    <Text className="text-white text-sm font-bold">
+                      {eligibilityResult.clearanceStatus === 'REJECTED' ? 'Re-submit Documents for Clearance' : 'Submit Documents for Clearance'}
+                    </Text>
                   )}
                 </TouchableOpacity>
               )}

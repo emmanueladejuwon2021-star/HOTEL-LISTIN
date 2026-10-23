@@ -26,6 +26,8 @@ interface EligibilityState {
   updateCourseRegistration: (userId: string, registered: boolean) => Promise<EligibilityVerificationResult>;
   // Action to submit or update student digital clearance status
   updateClearance: (userId: string, status: ClearanceStatus) => Promise<EligibilityVerificationResult>;
+  // Action for wardens/admins to review and approve/reject clearance requests with reason feedback
+  reviewClearance: (userId: string, status: ClearanceStatus, rejectionReason?: string) => Promise<EligibilityVerificationResult>;
   // Action to clear store state on user logout or session reset
   resetEligibility: () => void;
 }
@@ -162,6 +164,27 @@ export const useEligibilityStore = create<EligibilityState>((set) => ({
       return result;
     } catch (err: any) {
       const msg = err.message || 'Failed to update clearance status.';
+      set({ error: msg, isVerifying: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Allows a Hall Warden or Admin to approve or reject a student clearance submission with specific feedback.
+   *
+   * @param userId - Unique student user ID
+   * @param clearanceStatus - Target clearance status
+   * @param rejectionReason - Optional feedback explaining why clearance was rejected
+   * @returns Updated EligibilityVerificationResult
+   */
+  reviewClearance: async (userId: string, clearanceStatus: ClearanceStatus, rejectionReason?: string) => {
+    set({ isVerifying: true, error: null });
+    try {
+      const result = await EligibilityService.reviewClearanceDocument({ userId, clearanceStatus, rejectionReason });
+      set({ eligibilityResult: result, isVerifying: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to review student clearance document.';
       set({ error: msg, isVerifying: false });
       throw err;
     }

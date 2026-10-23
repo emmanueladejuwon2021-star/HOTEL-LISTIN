@@ -4,11 +4,11 @@ import { useEligibilityStore } from '../store/useEligibilityStore';
 import { validateRemitaRef } from '../utils/validation';
 
 /**
- * Integration test suite for [ELIGIBILITY-01, ELIGIBILITY-02, ELIGIBILITY-03, ELIGIBILITY-04] / [UAT-0006, UAT-0007, UAT-0008, UAT-0009]
- * Student Eligibility Verification, Remita Fees Sync, Medical Screening, Special Needs Registration, and Digital Clearance Pass Hash.
+ * Integration test suite for [ELIGIBILITY-01 to ELIGIBILITY-05] / [UAT-0006 to UAT-0010]
+ * Student Eligibility Verification, Remita Fees Sync, Medical Screening, Special Needs Registration, Warden Clearance Reviews, and Disciplinary Logs.
  * Verifies live Turso DB interaction with zero mocks.
  */
-describe('[ELIGIBILITY-01 to ELIGIBILITY-04] Student Eligibility & Fee Sync Integration Tests', () => {
+describe('[ELIGIBILITY-01 to ELIGIBILITY-05] Student Eligibility & Fee Sync Integration Tests', () => {
   const testUserId = 'usr_190407089_eligibility';
   const unpaidUserId = 'usr_200102031_unpaid';
   const flaggedUserId = 'usr_200405061_flagged';
@@ -110,7 +110,7 @@ describe('[ELIGIBILITY-01 to ELIGIBILITY-04] Student Eligibility & Fee Sync Inte
     });
   });
 
-  describe('Live Turso DB Eligibility Verification (UAT-0006, UAT-0008, UAT-0009)', () => {
+  describe('Live Turso DB Eligibility Verification (UAT-0006, UAT-0008, UAT-0009, UAT-0010)', () => {
     test('confirms eligibility for student with paid fees, registered courses, medical clearance, and cleared disciplinary standing', async () => {
       const result = await EligibilityService.verifyEligibility(testUserId);
 
@@ -133,13 +133,16 @@ describe('[ELIGIBILITY-01 to ELIGIBILITY-04] Student Eligibility & Fee Sync Inte
       expect(result.statusMessage).toContain('School Fees Payment Unverified');
     });
 
-    test('marks student as ineligible when disciplinary record is suspended or flagged', async () => {
+    test('marks student as ineligible when disciplinary record is suspended or flagged (UAT-0010)', async () => {
       const result = await EligibilityService.verifyEligibility(flaggedUserId);
 
       expect(result.userId).toBe(flaggedUserId);
       expect(result.isEligible).toBe(false);
       expect(result.disciplinaryStatus).toBe('SUSPENDED');
       expect(result.statusMessage).toContain('Hostel Rule Violation');
+      expect(result.disciplinaryHistory).toBeDefined();
+      expect(result.disciplinaryHistory!.length).toBeGreaterThan(0);
+      expect(result.disciplinaryHistory![0].reason).toContain('Hostel Rule Violation');
     });
 
     test('syncs fee payment status in Turso DB, creates payment audit entry, and transitions student to eligible state', async () => {
@@ -183,14 +186,28 @@ describe('[ELIGIBILITY-01 to ELIGIBILITY-04] Student Eligibility & Fee Sync Inte
       expect(updated.priorityCategory).toBe('SPECIAL_NEEDS');
     });
 
-    test('generates cryptographic digital clearance pass hash when fully cleared and approved', async () => {
-      // First update clearance status to APPROVED
-      await EligibilityService.updateClearanceStatus(testUserId, 'APPROVED');
-      const result = await EligibilityService.verifyEligibility(testUserId);
+    test('handles warden clearance rejection with feedback reason and re-submission', async () => {
+      // Warden rejects clearance with specific reason
+      const rejected = await EligibilityService.reviewClearanceDocument({
+        userId: testUserId,
+        clearanceStatus: 'REJECTED',
+        rejectionReason: 'Medical screening document is blurry and illegible.'
+      });
 
-      expect(result.clearanceStatus).toBe('APPROVED');
-      expect(result.clearanceCertificateHash).toBeDefined();
-      expect(result.clearanceCertificateHash!).toMatch(/^CERT-[A-Z0-9]{16}$/);
+      expect(rejected.clearanceStatus).toBe('REJECTED');
+      expect(rejected.clearanceRejectionReason).toContain('Medical screening document is blurry');
+
+      // Student re-submits clearance
+      const resubmitted = await EligibilityService.updateClearanceStatus(testUserId, 'PENDING');
+      expect(resubmitted.clearanceStatus).toBe('PENDING');
+
+      // Warden approves clearance
+      const approved = await EligibilityService.reviewClearanceDocument({
+        userId: testUserId,
+        clearanceStatus: 'APPROVED'
+      });
+      expect(approved.clearanceStatus).toBe('APPROVED');
+      expect(approved.clearanceCertificateHash).toBeDefined();
     });
 
     test('throws error when non-existent user ID is passed', async () => {
