@@ -5,7 +5,7 @@ import { EligibilityService } from '../api/eligibilityService';
 
 /**
  * State definition for the student eligibility global store.
- * Manages checking fee payments, disciplinary standing, and syncing Remita payment receipts.
+ * Manages checking fee payments, disciplinary standing, course registration, and syncing Remita payment receipts.
  */
 interface EligibilityState {
   // Holds the latest eligibility check result (or null if not checked yet)
@@ -17,7 +17,9 @@ interface EligibilityState {
   // Action to check student eligibility against Turso DB
   checkEligibility: (userId: string) => Promise<EligibilityVerificationResult>;
   // Action to sync Remita tuition fee payment and update student eligibility
-  syncFees: (userId: string, ref: string, amount: number) => Promise<EligibilityVerificationResult>;
+  syncFees: (userId: string, ref: string, amount: number, paymentType?: string) => Promise<EligibilityVerificationResult>;
+  // Action to update student course registration status
+  updateCourseRegistration: (userId: string, registered: boolean) => Promise<EligibilityVerificationResult>;
   // Action to submit or update student digital clearance status
   updateClearance: (userId: string, status: ClearanceStatus) => Promise<EligibilityVerificationResult>;
   // Action to clear store state on user logout or session reset
@@ -59,21 +61,43 @@ export const useEligibilityStore = create<EligibilityState>((set) => ({
    * @param userId - Unique ID of the student
    * @param transactionReference - Remita RRR or payment reference code
    * @param amount - Payment amount
+   * @param paymentType - Optional fee description (e.g., TUITION_FEE)
    * @returns Updated EligibilityVerificationResult after fee sync
    */
-  syncFees: async (userId: string, transactionReference: string, amount: number) => {
+  syncFees: async (userId: string, transactionReference: string, amount: number, paymentType?: string) => {
     set({ isVerifying: true, error: null });
     try {
       const result = await EligibilityService.syncFeePayment({
         userId,
         transactionReference,
         amount,
-        paymentStatus: 'SUCCESSFUL'
+        paymentStatus: 'SUCCESSFUL',
+        paymentType
       });
       set({ eligibilityResult: result, isVerifying: false });
       return result;
     } catch (err: any) {
       const msg = err.message || 'Failed to sync school fee payment.';
+      set({ error: msg, isVerifying: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Updates student course registration status in Turso DB.
+   *
+   * @param userId - Unique student user ID
+   * @param registered - Boolean indicating course registration standing
+   * @returns Updated EligibilityVerificationResult
+   */
+  updateCourseRegistration: async (userId: string, registered: boolean) => {
+    set({ isVerifying: true, error: null });
+    try {
+      const result = await EligibilityService.updateCourseRegistrationStatus(userId, registered);
+      set({ eligibilityResult: result, isVerifying: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to update course registration status.';
       set({ error: msg, isVerifying: false });
       throw err;
     }

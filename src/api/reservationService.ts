@@ -44,9 +44,10 @@ export class ReservationService {
       `CREATE TABLE IF NOT EXISTS payments (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
-        bedspace_id TEXT NOT NULL,
+        bedspace_id TEXT,
         transaction_reference TEXT UNIQUE NOT NULL,
         amount REAL NOT NULL,
+        payment_type TEXT DEFAULT 'HOSTEL_FEE',
         payment_status TEXT CHECK(payment_status IN ('PENDING', 'SUCCESSFUL', 'FAILED')) DEFAULT 'PENDING',
         paid_at DATETIME,
         FOREIGN KEY (user_id) REFERENCES users(id),
@@ -156,8 +157,8 @@ export class ReservationService {
         args: [userId, holdExpiresAt, bedspaceId]
       },
       {
-        sql: `INSERT INTO payments (id, user_id, bedspace_id, transaction_reference, amount, payment_status)
-              VALUES (?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO payments (id, user_id, bedspace_id, transaction_reference, amount, payment_type, payment_status)
+              VALUES (?, ?, ?, ?, ?, 'HOSTEL_FEE', ?)`,
         args: [paymentId, userId, bedspaceId, txRef, 25000.00, 'PENDING']
       },
       {
