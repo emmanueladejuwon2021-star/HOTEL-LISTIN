@@ -1,6 +1,7 @@
 import { Client } from '@libsql/client';
 import { AuthService } from './authService';
 import { ReservationService } from './reservationService';
+import { EligibilityService } from './eligibilityService';
 import {
   BallotingWindow,
   HostelQuotaSummary,
@@ -10,6 +11,7 @@ import {
   FilteredHostelSummary,
   BallotingRoomDetails
 } from '../types/balloting';
+import { LockBedspaceResult } from '../types/reservation';
 import { PriorityCategory, Gender, Campus } from '../types/auth';
 
 /**
@@ -396,5 +398,177 @@ export class BallotingService {
     const end = new Date(window.endTime).getTime();
 
     return now >= start && now <= end && window.status === 'ACTIVE';
+  }
+
+  /**
+   * Automatically recycles expired 72-hour bedspace holds back into the available pool.
+   * Finds bedspaces where status is 'LOCKED_HOLD' and hold_expires_at timestamp has passed,
+   * resets status to 'AVAILABLE', clears student allocation, and restores hostel quota count.
+   *
+   * @returns Number of expired bedspace holds recycled
+   */
+  public static async recycleExpiredHolds(): Promise<number> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Query all bedspaces with expired hold timers
+    const expiredRes = await client.execute({
+      sql: `SELECT b.id, b.room_id, r.hostel_id
+            FROM bedspaces b
+            JOIN rooms r ON b.room_id = r.id
+            WHERE b.status = 'LOCKED_HOLD'
+            AND datetime(b.hold_expires_at) <= datetime('now')`,
+      args: []
+    });
+
+    if (expiredRes.rows.length === 0) {
+      return 0;
+    }
+
+    let recycledCount = 0;
+
+    for (const row of expiredRes.rows) {
+      const bedspaceId = String(row.id);
+      const hostelId = String(row.hostel_id);
+
+      // Reset bedspace status and increment hostel available bedspaces in a batch transaction
+      await client.batch([
+        {
+          sql: `UPDATE bedspaces
+                SET status = 'AVAILABLE',
+                    allocated_to_user_id = NULL,
+                    hold_expires_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND status = 'LOCKED_HOLD'`,
+          args: [bedspaceId]
+        },
+        {
+          sql: `UPDATE hostels SET available_bedspaces = available_bedspaces + 1 WHERE id = ?`,
+          args: [hostelId]
+        }
+      ], 'write');
+
+      recycledCount++;
+    }
+
+    return recycledCount;
+  }
+
+  /**
+   * Executes atomic bedspace balloting reservation with strict eligibility, priority category,
+   * active balloting window, and double-allocation checks (PRD Sections 4.2 & 5.2).
+   *
+   * @param userId - Student user ID
+   * @param bedspaceId - Target bedspace ID to reserve
+   * @param priorityCategory - Student priority category tag
+   * @returns LockBedspaceResult object with payment hold details and confirmation message
+   */
+  public static async lockBedspaceWithBallotingValidation(
+    userId: string,
+    bedspaceId: string,
+    priorityCategory: PriorityCategory
+  ): Promise<LockBedspaceResult> {
+    await BallotingService.initializeSchema();
+    await EligibilityService.initializeSchema();
+    await ReservationService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Step 1: Verify student eligibility (school fees paid, active account, no suspensions)
+    const eligibility = await EligibilityService.verifyEligibility(userId);
+    if (!eligibility.isEligible) {
+      throw new Error(`Ineligible for balloting: ${eligibility.statusMessage}`);
+    }
+
+    // Step 2: Verify active balloting window or valid issued queue token
+    const isWindowActive = await BallotingService.verifyBallotingWindowActive(priorityCategory);
+    const queueToken = await BallotingService.getQueueToken(userId);
+
+    if (!isWindowActive && !queueToken) {
+      throw new Error('Balloting window for your priority group is currently closed or inactive. Please check your designated balloting schedule.');
+    }
+
+    // Step 3: Check if student already has an active hold or confirmed bedspace
+    const existingRes = await client.execute({
+      sql: `SELECT id, bed_label, status FROM bedspaces WHERE allocated_to_user_id = ? AND status IN ('LOCKED_HOLD', 'CONFIRMED')`,
+      args: [userId]
+    });
+
+    if (existingRes.rows.length > 0) {
+      throw new Error('You already have an active hostel bedspace hold or confirmed room reservation.');
+    }
+
+    // Step 4: Recycle any expired holds in the database before checking target bedspace
+    await BallotingService.recycleExpiredHolds();
+
+    // Step 5: Query target bedspace and hostel room details
+    const targetRes = await client.execute({
+      sql: `SELECT b.id, b.room_id, b.bed_label, b.status, r.room_number, r.hostel_id, h.name as hostel_name, h.available_bedspaces
+            FROM bedspaces b
+            JOIN rooms r ON b.room_id = r.id
+            JOIN hostels h ON r.hostel_id = h.id
+            WHERE b.id = ?`,
+      args: [bedspaceId]
+    });
+
+    if (targetRes.rows.length === 0) {
+      throw new Error('Selected bedspace was not found.');
+    }
+
+    const bRow = targetRes.rows[0];
+    if (String(bRow.status) !== 'AVAILABLE') {
+      throw new Error('This bedspace has already been locked or selected by another student. Please pick an available bed.');
+    }
+
+    if (Number(bRow.available_bedspaces) <= 0) {
+      throw new Error(`No available bedspace quota remaining in ${bRow.hostel_name}.`);
+    }
+
+    const paymentId = `pay_ballot_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const txRef = `UNILAG_REMITA_BALLOT_${Date.now()}`;
+    const holdExpiresAt = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+
+    // Step 6: Execute atomic SQL transaction for 72-hour bedspace hold
+    const updateRes = await client.execute({
+      sql: `UPDATE bedspaces
+            SET status = 'LOCKED_HOLD',
+                allocated_to_user_id = ?,
+                hold_expires_at = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND status = 'AVAILABLE'`,
+      args: [userId, holdExpiresAt, bedspaceId]
+    });
+
+    if (updateRes.rowsAffected === 0) {
+      throw new Error('Bedspace was reserved by another student at the exact same moment. Please choose another bedspace.');
+    }
+
+    // Step 7: Record pending payment hold and update hostel quota & queue token in batch
+    await client.batch([
+      {
+        sql: `INSERT INTO payments (id, user_id, bedspace_id, transaction_reference, amount, payment_type, payment_status)
+              VALUES (?, ?, ?, ?, 25000.00, 'HOSTEL_FEE', 'PENDING')`,
+        args: [paymentId, userId, bedspaceId, txRef]
+      },
+      {
+        sql: `UPDATE hostels SET available_bedspaces = available_bedspaces - 1 WHERE id = ?`,
+        args: [String(bRow.hostel_id)]
+      },
+      {
+        sql: `DELETE FROM balloting_queue_tokens WHERE user_id = ?`,
+        args: [userId]
+      }
+    ], 'write');
+
+    return {
+      success: true,
+      paymentId,
+      bedspaceId,
+      bedLabel: String(bRow.bed_label),
+      roomNumber: String(bRow.room_number),
+      hostelName: String(bRow.hostel_name),
+      amount: 25000.00,
+      holdExpiresAt,
+      message: 'Bedspace locked successfully! Your 72-hour payment hold is now active.'
+    };
   }
 }

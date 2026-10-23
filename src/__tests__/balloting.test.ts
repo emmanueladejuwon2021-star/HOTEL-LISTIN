@@ -27,6 +27,12 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       args: [testUserId2, '190407222', 'Queue Student Two', 'q2@live.unilag.edu.ng', '+2348022220000', 'STUDENT', 'MALE', 'hash', 1]
     });
 
+    await client.execute({
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, course_registered, medical_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [testUserId2, 'Faculty of Engineering', 'Civil Engineering', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 'APPROVED', 1, 'CLEARED']
+    });
+
     // 1. Seed Balloting Windows in Turso DB
     const now = new Date();
     const futureStart = new Date(now.getTime() + 3600 * 1000).toISOString(); // 1 hour in future
@@ -251,6 +257,149 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       store.setSelectedRoomAndBed('room_jaja_balloting_201', 'bed_jaja_201_a_down');
       expect(useBallotingStore.getState().selectedRoomId).toBe('room_jaja_balloting_201');
       expect(useBallotingStore.getState().selectedBedId).toBe('bed_jaja_201_a_down');
+    });
+  });
+
+  describe('[BALLOTING-04 / UAT-0014] Atomic Bedspace Balloting Reservation & Hold Recycling Tests', () => {
+    const studentId1 = 'usr_ballot_04_eligible';
+    const studentId2 = 'usr_ballot_04_ineligible';
+    const expiredBedId = 'bed_jaja_201_expired_hold';
+
+    beforeAll(async () => {
+      const client = AuthService.getDbClient();
+
+      // Clean up previous test entries
+      await client.execute({ sql: 'DELETE FROM payments WHERE user_id IN (?, ?)', args: [studentId1, studentId2] });
+      await client.execute({ sql: 'DELETE FROM balloting_queue_tokens WHERE user_id IN (?, ?)', args: [studentId1, studentId2] });
+      await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id IN (?, ?)', args: [studentId1, studentId2] });
+      await client.execute({ sql: 'DELETE FROM users WHERE id IN (?, ?)', args: [studentId1, studentId2] });
+
+      // Seed eligible student user & profile
+      await client.execute({
+        sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [studentId1, '190407333', 'Eligible Balloter', 'b1@live.unilag.edu.ng', '+2348033330000', 'STUDENT', 'MALE', 'hash', 1]
+      });
+
+      await client.execute({
+        sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, course_registered, medical_status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [studentId1, 'Faculty of Engineering', 'Electrical Engineering', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 'APPROVED', 1, 'CLEARED']
+      });
+
+      // Seed ineligible student user & profile (unpaid fees)
+      await client.execute({
+        sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [studentId2, '190407444', 'Ineligible Balloter', 'b2@live.unilag.edu.ng', '+2348044440000', 'STUDENT', 'MALE', 'hash', 1]
+      });
+
+      await client.execute({
+        sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, course_registered, medical_status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [studentId2, 'Faculty of Science', 'Computer Science', 400, 'MAIN_CAMPUS', 'FINALIST', 0, 'NOT_STARTED', 1, 'CLEARED']
+      });
+
+      // Seed expired bed hold for recycling test
+      await client.execute({ sql: 'DELETE FROM bedspaces WHERE id = ?', args: [expiredBedId] });
+      const twoHoursAgo = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+
+      await client.execute({
+        sql: `INSERT INTO bedspaces (id, room_id, bed_label, status, hold_expires_at)
+              VALUES (?, ?, ?, ?, ?)`,
+        args: [expiredBedId, 'room_jaja_balloting_201', 'Bed B Up Expired', 'LOCKED_HOLD', twoHoursAgo]
+      });
+    });
+
+    test('recycles expired 72-hour bedspace holds back to AVAILABLE status', async () => {
+      const recycledCount = await BallotingService.recycleExpiredHolds();
+      expect(recycledCount).toBeGreaterThanOrEqual(1);
+
+      const client = AuthService.getDbClient();
+      const res = await client.execute({ sql: 'SELECT status FROM bedspaces WHERE id = ?', args: [expiredBedId] });
+      expect(res.rows[0].status).toBe('AVAILABLE');
+    });
+
+    test('rejects balloting reservation for student with unpaid school fees', async () => {
+      await expect(
+        BallotingService.lockBedspaceWithBallotingValidation(studentId2, 'bed_jaja_201_b_down', 'FINALIST')
+      ).rejects.toThrow('Ineligible for balloting');
+    });
+
+    test('rejects balloting reservation if balloting window for category is inactive and no queue token', async () => {
+      // FRESHER window is in future / inactive
+      await expect(
+        BallotingService.lockBedspaceWithBallotingValidation(studentId1, 'bed_jaja_201_b_down', 'FRESHER')
+      ).rejects.toThrow('Balloting window for your priority group is currently closed');
+    });
+
+    test('executes atomic bedspace balloting lock for eligible student during active window (UAT-0014)', async () => {
+      // FINALIST window is active
+      const result = await BallotingService.lockBedspaceWithBallotingValidation(studentId1, 'bed_jaja_201_b_down', 'FINALIST');
+
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+      expect(result.bedspaceId).toBe('bed_jaja_201_b_down');
+      expect(result.hostelName).toBe('King Jaja Hall');
+      expect(result.amount).toBe(25000);
+      expect(result.holdExpiresAt).toBeDefined();
+      expect(result.message).toContain('Bedspace locked successfully');
+
+      // Verify DB record status in bedspaces table
+      const client = AuthService.getDbClient();
+      const bedRes = await client.execute({ sql: 'SELECT status, allocated_to_user_id FROM bedspaces WHERE id = ?', args: ['bed_jaja_201_b_down'] });
+      expect(bedRes.rows[0].status).toBe('LOCKED_HOLD');
+      expect(bedRes.rows[0].allocated_to_user_id).toBe(studentId1);
+
+      // Verify payment audit record inserted
+      const payRes = await client.execute({ sql: 'SELECT id, amount, payment_status FROM payments WHERE user_id = ? AND bedspace_id = ?', args: [studentId1, 'bed_jaja_201_b_down'] });
+      expect(payRes.rows.length).toBe(1);
+      expect(payRes.rows[0].payment_status).toBe('PENDING');
+    });
+
+    test('prevents double allocation when student already holds an active bedspace reservation', async () => {
+      await expect(
+        BallotingService.lockBedspaceWithBallotingValidation(studentId1, 'bed_jaja_201_b_up', 'FINALIST')
+      ).rejects.toThrow('already have an active hostel bedspace hold');
+    });
+
+    test('rejects reservation attempt when target bedspace is already locked', async () => {
+      // Issue a token for testUserId2 so window check passes
+      await BallotingService.issueQueueToken(testUserId2, 'FINALIST');
+
+      await expect(
+        BallotingService.lockBedspaceWithBallotingValidation(testUserId2, 'bed_jaja_201_b_down', 'FINALIST')
+      ).rejects.toThrow('already been locked or selected by another student');
+    });
+
+    test('executes balloting bedspace lock via Zustand store action', async () => {
+      const client = AuthService.getDbClient();
+      const storeStudentId = 'usr_ballot_04_store_student';
+
+      // Clean up previous test entries
+      await client.execute({ sql: 'DELETE FROM payments WHERE user_id = ?', args: [storeStudentId] });
+      await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id = ?', args: [storeStudentId] });
+      await client.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [storeStudentId] });
+
+      // Seed store test student
+      await client.execute({
+        sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [storeStudentId, '190407555', 'Store Balloter', 'sb@live.unilag.edu.ng', '+2348055550000', 'STUDENT', 'MALE', 'hash', 1]
+      });
+
+      await client.execute({
+        sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, course_registered, medical_status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [storeStudentId, 'Faculty of Engineering', 'Mechanical Engineering', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 'APPROVED', 1, 'CLEARED']
+      });
+
+      const store = useBallotingStore.getState();
+      const reservation = await store.ballotBedspace(storeStudentId, 'bed_jaja_201_b_up', 'FINALIST');
+
+      expect(reservation).toBeDefined();
+      expect(reservation.bedspaceId).toBe('bed_jaja_201_b_up');
+      expect(useBallotingStore.getState().activeReservation?.bedspaceId).toBe('bed_jaja_201_b_up');
     });
   });
 });

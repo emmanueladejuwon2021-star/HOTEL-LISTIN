@@ -6,6 +6,7 @@ import {
   BallotingRoomDetails,
   HostelFilterParams
 } from '../types/balloting';
+import { LockBedspaceResult } from '../types/reservation';
 import { BallotingService } from '../api/ballotingService';
 import { PriorityCategory, Gender, Campus } from '../types/auth';
 
@@ -27,6 +28,8 @@ interface BallotingState {
   selectedRoomId: string | null;
   // Currently selected bedspace ID
   selectedBedId: string | null;
+  // Active reservation result if bedspace is locked successfully
+  activeReservation: LockBedspaceResult | null;
   // Active filter settings
   genderFilter?: Gender;
   campusFilter?: Campus;
@@ -35,6 +38,8 @@ interface BallotingState {
   // Error message string if an error occurs
   error: string | null;
 
+  // Action to lock bedspace with balloting window and priority checks
+  ballotBedspace: (userId: string, bedspaceId: string, category: PriorityCategory) => Promise<LockBedspaceResult>;
   // Action to fetch balloting window countdown and hostel quotas
   fetchCountdown: (category: PriorityCategory, userId?: string) => Promise<BallotingCountdownState>;
   // Action to issue a fair queue ticket token for a student
@@ -63,10 +68,43 @@ export const useBallotingStore = create<BallotingState>((set, get) => ({
   hostelRooms: [],
   selectedRoomId: null,
   selectedBedId: null,
+  activeReservation: null,
   genderFilter: undefined,
   campusFilter: undefined,
   isLoading: false,
   error: null,
+
+  /**
+   * Executes atomic bedspace balloting reservation with active window, priority category,
+   * eligibility verification, and double-allocation guards.
+   *
+   * @param userId - Unique student user ID
+   * @param bedspaceId - Selected target bedspace ID
+   * @param category - Priority category tag
+   * @returns LockBedspaceResult object
+   */
+  ballotBedspace: async (userId: string, bedspaceId: string, category: PriorityCategory) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await BallotingService.lockBedspaceWithBallotingValidation(userId, bedspaceId, category);
+      const { selectedHostelId } = get();
+
+      if (selectedHostelId) {
+        await get().fetchHostelRooms(selectedHostelId);
+      }
+
+      set({
+        activeReservation: result,
+        selectedBedId: bedspaceId,
+        isLoading: false
+      });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to lock selected bedspace.';
+      set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
 
   /**
    * Fetches real-time balloting countdown window and quota summaries from Turso DB.

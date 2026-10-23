@@ -20,8 +20,10 @@ export const BallotingSelectorScreen: React.FC = () => {
     hostelRooms,
     selectedRoomId,
     selectedBedId,
+    activeReservation: ballotingReservation,
     isLoading: isBallotingLoading,
     error: ballotingError,
+    ballotBedspace,
     fetchCountdown,
     fetchFilteredHostels,
     fetchHostelRooms,
@@ -100,7 +102,7 @@ export const BallotingSelectorScreen: React.FC = () => {
   const handleConfirmLock = async () => {
     if (!userId || !selectedBedspace) return;
     try {
-      await lockSelectedBedspace(userId);
+      await ballotBedspace(userId, selectedBedspace.id, userCategory);
       if (selectedHostelId) {
         await fetchHostelRooms(selectedHostelId); // Refresh room grid
       }
@@ -153,7 +155,7 @@ export const BallotingSelectorScreen: React.FC = () => {
         )}
 
         {/* Successful Hold Summary Banner */}
-        {activeReservation && (
+        {(ballotingReservation || activeReservation) && (
           <View className="bg-emerald-50 border border-emerald-300 p-5 rounded-2xl mb-4 shadow-sm">
             <View className="flex-row justify-between items-center mb-2">
               <Text className="text-emerald-900 text-lg font-bold">BEDSPACE LOCKED (72-HR HOLD)</Text>
@@ -161,15 +163,17 @@ export const BallotingSelectorScreen: React.FC = () => {
                 <Text className="text-white text-xs font-bold uppercase">Reserved</Text>
               </View>
             </View>
-            <Text className="text-emerald-800 text-sm mb-3">{activeReservation.message}</Text>
+            <Text className="text-emerald-800 text-sm mb-3">
+              {(ballotingReservation || activeReservation)?.message}
+            </Text>
             <View className="bg-white p-4 rounded-xl border border-emerald-200">
               <Text className="text-xs text-slate-500">Allocated Space</Text>
               <Text className="text-slate-900 font-bold text-base mb-1">
-                {activeReservation.hostelName} — {activeReservation.roomNumber} ({activeReservation.bedLabel})
+                {(ballotingReservation || activeReservation)?.hostelName} — {(ballotingReservation || activeReservation)?.roomNumber} ({(ballotingReservation || activeReservation)?.bedLabel})
               </Text>
               <Text className="text-xs text-slate-500">Hold Expires At</Text>
               <Text className="text-slate-800 font-semibold text-xs">
-                {new Date(activeReservation.holdExpiresAt).toLocaleString()}
+                {(ballotingReservation || activeReservation)?.holdExpiresAt ? new Date((ballotingReservation || activeReservation)!.holdExpiresAt).toLocaleString() : '72 Hours'}
               </Text>
             </View>
           </View>

@@ -1,6 +1,7 @@
 import { Client } from '@libsql/client';
 import CryptoJS from 'crypto-js';
 import { AuthService } from './authService';
+import { ReservationService } from './reservationService';
 import { EligibilityVerificationResult, FeeSyncParams, DisciplinaryStatus, MedicalStatus, FeePaymentRecord, SpecialNeedsParams, DisciplinaryStandingHistory, ClearanceReviewParams } from '../types/eligibility';
 import { PriorityCategory, Campus, ClearanceStatus } from '../types/auth';
 
@@ -18,6 +19,7 @@ export class EligibilityService {
   public static async initializeSchema(): Promise<void> {
     // Ensure base tables (users, student_profiles) are set up first
     await AuthService.initializeSchema();
+    await ReservationService.initializeSchema();
     const client = AuthService.getDbClient();
 
     // Create table for student disciplinary flags and clearance documents
