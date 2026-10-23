@@ -1,12 +1,19 @@
 import { Client } from '@libsql/client';
 import { AuthService } from './authService';
-import { BallotingWindow, HostelQuotaSummary, BallotingCountdownState, QueueToken } from '../types/balloting';
+import {
+  BallotingWindow,
+  HostelQuotaSummary,
+  BallotingCountdownState,
+  QueueToken,
+  CategoryQuotaDetails,
+  BallotingEligibilityStatus
+} from '../types/balloting';
 import { PriorityCategory } from '../types/auth';
 
 /**
  * Service class that manages real-time priority quota balloting windows,
  * fair queue token issuance, real-time hostel bedspace quota summaries,
- * and countdown timers following a strict zero-mock policy.
+ * priority category allocation enforcement, and countdown timers following a strict zero-mock policy.
  */
 export class BallotingService {
   /**
@@ -186,6 +193,111 @@ export class BallotingService {
       availableBedspaces: Number(row.available_bedspaces),
       allocatedBedspaces: Number(row.total_capacity) - Number(row.available_bedspaces)
     }));
+  }
+
+  /**
+   * Computes priority quota limits and current usage for a specific hostel and priority category.
+   * Priority Category Quotas (PRD Section 5.1):
+   * - FRESHER: 40%
+   * - FINALIST: 30%
+   * - SCHOLAR / SPECIAL_NEEDS: 10%
+   * - STALLITE: 20%
+   *
+   * @param hostelId - Target hostel unique ID
+   * @param category - Priority category tag
+   * @returns CategoryQuotaDetails containing share %, max quota limit, allocated count, and remaining quota
+   */
+  public static async getCategoryQuotaForHostel(hostelId: string, category: PriorityCategory): Promise<CategoryQuotaDetails> {
+    await BallotingService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Fetch target hostel details
+    const hostelRes = await client.execute({
+      sql: `SELECT id, name, total_capacity FROM hostels WHERE id = ?`,
+      args: [hostelId]
+    });
+
+    if (hostelRes.rows.length === 0) {
+      throw new Error(`Hostel with ID ${hostelId} not found.`);
+    }
+
+    const hostelRow = hostelRes.rows[0];
+    const totalCapacity = Number(hostelRow.total_capacity);
+    const hostelName = String(hostelRow.name);
+
+    // Map priority category to percentage share according to PRD 5.1
+    let percentageShare = 20; // Default Stallite 20%
+    if (category === 'FRESHER') percentageShare = 40;
+    else if (category === 'FINALIST') percentageShare = 30;
+    else if (category === 'SCHOLAR' || category === 'SPECIAL_NEEDS') percentageShare = 10;
+
+    const quotaLimit = Math.floor(totalCapacity * (percentageShare / 100));
+
+    // Calculate count of currently locked or confirmed bedspaces for students in this priority category in this hostel
+    const countRes = await client.execute({
+      sql: `SELECT COUNT(b.id) as allocated_count
+            FROM bedspaces b
+            JOIN rooms r ON b.room_id = r.id
+            JOIN student_profiles sp ON b.allocated_to_user_id = sp.user_id
+            WHERE r.hostel_id = ? AND sp.priority_category = ? AND b.status IN ('LOCKED_HOLD', 'CONFIRMED')`,
+      args: [hostelId, category]
+    });
+
+    const allocatedCount = Number(countRes.rows[0].allocated_count || 0);
+    const remainingQuota = Math.max(0, quotaLimit - allocatedCount);
+
+    return {
+      hostelId,
+      hostelName,
+      category,
+      percentageShare,
+      quotaLimit,
+      allocatedCount,
+      remainingQuota
+    };
+  }
+
+  /**
+   * Validates if a student is eligible to ballot in a target hostel during the current window,
+   * checking both active balloting window status and category quota remaining availability.
+   *
+   * @param userId - Unique student user ID
+   * @param category - Priority category tag
+   * @param hostelId - Target hostel ID
+   * @returns BallotingEligibilityStatus detailing whether balloting is permitted and reason message
+   */
+  public static async validateBallotingEligibilityAndWindow(
+    userId: string,
+    category: PriorityCategory,
+    hostelId: string
+  ): Promise<BallotingEligibilityStatus> {
+    const countdownState = await BallotingService.getCountdownState(category, userId);
+    const categoryQuota = await BallotingService.getCategoryQuotaForHostel(hostelId, category);
+
+    if (!countdownState.isWindowActive) {
+      return {
+        canBallot: false,
+        reason: `Balloting window for ${category} category is currently inactive or closed.`,
+        isWindowActive: false,
+        categoryQuota
+      };
+    }
+
+    if (categoryQuota.remainingQuota <= 0) {
+      return {
+        canBallot: false,
+        reason: `Category quota (${categoryQuota.percentageShare}%) for ${category} category is fully exhausted in ${categoryQuota.hostelName}.`,
+        isWindowActive: true,
+        categoryQuota
+      };
+    }
+
+    return {
+      canBallot: true,
+      reason: `Balloting window active and ${categoryQuota.remainingQuota} beds available in ${category} quota.`,
+      isWindowActive: true,
+      categoryQuota
+    };
   }
 
   /**

@@ -6,7 +6,8 @@ import { useBallotingStore } from '../store/useBallotingStore';
 /**
  * BallotingCountdownScreen Component.
  * Displays live priority balloting window countdown, real-time queue access tokens,
- * quota availability across UNILAG & CMUL hostels, and balloting room selector entry CTA.
+ * PRD 5.1 priority category quota allocations (Freshers 40%, Finalists 30%, Stallites 20%, Scholars 10%),
+ * hostel capacity summaries, and balloting room selector entry CTA.
  */
 export const BallotingCountdownScreen: React.FC = () => {
   const { session } = useAuthStore();
@@ -46,6 +47,23 @@ export const BallotingCountdownScreen: React.FC = () => {
 
     const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  // Helper to map PriorityCategory to PRD 5.1 quota percentage share
+  const getCategoryQuotaPercent = (category: string) => {
+    switch (category) {
+      case 'FRESHER':
+        return '40%';
+      case 'FINALIST':
+        return '30%';
+      case 'STALLITE':
+        return '20%';
+      case 'SCHOLAR':
+      case 'SPECIAL_NEEDS':
+        return '10%';
+      default:
+        return '20%';
+    }
   };
 
   return (
@@ -91,8 +109,31 @@ export const BallotingCountdownScreen: React.FC = () => {
                 {formatCountdown(countdownState.timeRemainingSeconds)}
               </Text>
               <Text className="text-slate-900 text-xs font-semibold">
-                Priority Category: {userCategory}
+                Priority Category: {userCategory} ({getCategoryQuotaPercent(userCategory)} Quota Share)
               </Text>
+            </View>
+
+            {/* Priority Quota Allocation Rule Card (PRD 5.1 Matrix) */}
+            <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+              <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                PRD Priority Quota Breakdown
+              </Text>
+              <View className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex-row justify-between items-center mb-1">
+                <Text className="text-xs font-medium text-slate-700">100L Freshers Quota</Text>
+                <Text className="text-xs font-bold text-[#7A0000]">40% of Total Beds</Text>
+              </View>
+              <View className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex-row justify-between items-center mb-1">
+                <Text className="text-xs font-medium text-slate-700">Finalists (400L/500L) Quota</Text>
+                <Text className="text-xs font-bold text-[#7A0000]">30% of Total Beds</Text>
+              </View>
+              <View className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex-row justify-between items-center mb-1">
+                <Text className="text-xs font-medium text-slate-700">Stallites (200L/300L) Quota</Text>
+                <Text className="text-xs font-bold text-[#7A0000]">20% of Total Beds</Text>
+              </View>
+              <View className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex-row justify-between items-center">
+                <Text className="text-xs font-medium text-slate-700">Scholars & Special Needs Quota</Text>
+                <Text className="text-xs font-bold text-[#7A0000]">10% of Total Beds</Text>
+              </View>
             </View>
 
             {/* Fair Real-Time Queue Token Card */}
@@ -166,28 +207,36 @@ export const BallotingCountdownScreen: React.FC = () => {
               </Text>
 
               <View className="space-y-3">
-                {countdownState.quotas.map((quota) => (
-                  <View
-                    key={quota.hostelId}
-                    className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex-row justify-between items-center"
-                  >
-                    <View>
-                      <Text className="text-slate-900 font-bold text-sm">{quota.hostelName}</Text>
-                      <Text className="text-slate-500 text-xs">
-                        {quota.campus} ({quota.gender})
-                      </Text>
-                    </View>
+                {countdownState.quotas.map((quota) => {
+                  const categorySharePercent = userCategory === 'FRESHER' ? 0.4 : userCategory === 'FINALIST' ? 0.3 : userCategory === 'STALLITE' ? 0.2 : 0.1;
+                  const estimatedCategoryQuotaBeds = Math.floor(quota.totalCapacity * categorySharePercent);
 
-                    <View className="items-end">
-                      <Text className="text-emerald-700 font-extrabold text-sm">
-                        {quota.availableBedspaces} Beds Available
-                      </Text>
-                      <Text className="text-slate-400 text-xs">
-                        Total: {quota.totalCapacity}
-                      </Text>
+                  return (
+                    <View
+                      key={quota.hostelId}
+                      className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex-row justify-between items-center"
+                    >
+                      <View>
+                        <Text className="text-slate-900 font-bold text-sm">{quota.hostelName}</Text>
+                        <Text className="text-slate-500 text-xs">
+                          {quota.campus} ({quota.gender})
+                        </Text>
+                        <Text className="text-[#7A0000] text-[10px] font-semibold mt-0.5">
+                          {userCategory} Max Quota: {estimatedCategoryQuotaBeds} Beds
+                        </Text>
+                      </View>
+
+                      <View className="items-end">
+                        <Text className="text-emerald-700 font-extrabold text-sm">
+                          {quota.availableBedspaces} Beds Available
+                        </Text>
+                        <Text className="text-slate-400 text-xs">
+                          Total: {quota.totalCapacity}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             </View>
 

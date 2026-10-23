@@ -2,7 +2,7 @@ import { AuthService } from '../api/authService';
 import { BallotingService } from '../api/ballotingService';
 import { useBallotingStore } from '../store/useBallotingStore';
 
-describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & Queue Token Tests', () => {
+describe('[BALLOTING-01 to BALLOTING-03 / UAT-0011, UAT-0013] Real-Time Priority Quota Balloting Engine & Quota Tests', () => {
   const testUserId1 = 'usr_1001_queue_student1';
   const testUserId2 = 'usr_1002_queue_student2';
 
@@ -143,6 +143,60 @@ describe('[BALLOTING-01 / UAT-0011] Real-Time Priority Quota Balloting Engine & 
       expect(state.isWindowActive).toBe(false);
       expect(state.timeRemainingSeconds).toBe(0);
       expect(state.quotas.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('[BALLOTING-03 / UAT-0013] Priority Category Quota & Window Access Enforcement', () => {
+    test('calculates correct category quota allocation details according to PRD 5.1 (UAT-0013)', async () => {
+      // King Jaja Hall has 1200 capacity.
+      // FRESHER quota share is 40% = 480 beds
+      const fresherQuota = await BallotingService.getCategoryQuotaForHostel('h_jaja', 'FRESHER');
+      expect(fresherQuota.percentageShare).toBe(40);
+      expect(fresherQuota.quotaLimit).toBe(480);
+
+      // FINALIST quota share is 30% = 360 beds
+      const finalistQuota = await BallotingService.getCategoryQuotaForHostel('h_jaja', 'FINALIST');
+      expect(finalistQuota.percentageShare).toBe(30);
+      expect(finalistQuota.quotaLimit).toBe(360);
+
+      // STALLITE quota share is 20% = 240 beds
+      const stalliteQuota = await BallotingService.getCategoryQuotaForHostel('h_jaja', 'STALLITE');
+      expect(stalliteQuota.percentageShare).toBe(20);
+      expect(stalliteQuota.quotaLimit).toBe(240);
+
+      // SCHOLAR quota share is 10% = 120 beds
+      const scholarQuota = await BallotingService.getCategoryQuotaForHostel('h_jaja', 'SCHOLAR');
+      expect(scholarQuota.percentageShare).toBe(10);
+      expect(scholarQuota.quotaLimit).toBe(120);
+    });
+
+    test('validates balloting access rejection when window is not active', async () => {
+      // FRESHER window is UPCOMING (inactive)
+      const access = await BallotingService.validateBallotingEligibilityAndWindow(testUserId1, 'FRESHER', 'h_jaja');
+      expect(access.canBallot).toBe(false);
+      expect(access.isWindowActive).toBe(false);
+      expect(access.reason).toContain('currently inactive or closed');
+    });
+
+    test('validates balloting access approval when window is active and category quota remains', async () => {
+      // FINALIST window is ACTIVE
+      const access = await BallotingService.validateBallotingEligibilityAndWindow(testUserId1, 'FINALIST', 'h_jaja');
+      expect(access.canBallot).toBe(true);
+      expect(access.isWindowActive).toBe(true);
+      expect(access.categoryQuota?.remainingQuota).toBeGreaterThan(0);
+      expect(access.reason).toContain('Balloting window active');
+    });
+
+    test('fetches category quota and validates access via Zustand store actions', async () => {
+      const store = useBallotingStore.getState();
+
+      const quota = await store.fetchCategoryQuota('h_jaja', 'FINALIST');
+      expect(quota.percentageShare).toBe(30);
+      expect(useBallotingStore.getState().categoryQuota?.quotaLimit).toBe(360);
+
+      const status = await store.validateBallotingAccess(testUserId1, 'FINALIST', 'h_jaja');
+      expect(status.canBallot).toBe(true);
+      expect(useBallotingStore.getState().eligibilityStatus?.canBallot).toBe(true);
     });
   });
 });

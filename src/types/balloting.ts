@@ -53,3 +53,27 @@ export interface BallotingCountdownState {
   queueToken?: QueueToken;
   totalQueuedUsers?: number;
 }
+
+/**
+ * Detailed category quota breakdown for a hostel based on PRD 5.1 priority quotas:
+ * Freshers 40%, Finalists 30%, Scholars & Special Needs 10%, Stallites 20%.
+ */
+export interface CategoryQuotaDetails {
+  hostelId: string;
+  hostelName: string;
+  category: PriorityCategory;
+  percentageShare: number;
+  quotaLimit: number;
+  allocatedCount: number;
+  remainingQuota: number;
+}
+
+/**
+ * Overall balloting eligibility status evaluating active window state and category quota availability.
+ */
+export interface BallotingEligibilityStatus {
+  canBallot: boolean;
+  reason: string;
+  isWindowActive: boolean;
+  categoryQuota?: CategoryQuotaDetails;
+}
