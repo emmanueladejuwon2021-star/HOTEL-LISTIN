@@ -20,8 +20,38 @@ export class EligibilityService {
     await AuthService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    // Create table for student disciplinary flags and clearance documents
+    // Ensure hostels, rooms, and bedspaces exist prior to referencing bedspaces in payments table
     await client.batch([
+      `CREATE TABLE IF NOT EXISTS hostels (
+        id TEXT PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        gender TEXT CHECK(gender IN ('MALE', 'FEMALE', 'MIXED')) NOT NULL,
+        campus TEXT CHECK(campus IN ('MAIN_CAMPUS', 'CMUL_IDI_ARABA')) NOT NULL,
+        category TEXT CHECK(category IN ('UNDERGRADUATE', 'POSTGRADUATE')) NOT NULL,
+        total_capacity INTEGER NOT NULL,
+        available_bedspaces INTEGER NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS rooms (
+        id TEXT PRIMARY KEY,
+        hostel_id TEXT NOT NULL,
+        block_name TEXT NOT NULL,
+        floor_number INTEGER NOT NULL,
+        room_number TEXT NOT NULL,
+        total_beds INTEGER DEFAULT 4,
+        occupied_beds INTEGER DEFAULT 0,
+        FOREIGN KEY (hostel_id) REFERENCES hostels(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS bedspaces (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        bed_label TEXT NOT NULL,
+        status TEXT CHECK(status IN ('AVAILABLE', 'LOCKED_HOLD', 'CONFIRMED', 'MAINTENANCE_BLOCKED')) DEFAULT 'AVAILABLE',
+        allocated_to_user_id TEXT,
+        hold_expires_at DATETIME,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY (allocated_to_user_id) REFERENCES users(id) ON DELETE SET NULL
+      );`,
       `CREATE TABLE IF NOT EXISTS disciplinary_records (
         user_id TEXT PRIMARY KEY,
         status TEXT CHECK(status IN ('CLEARED', 'FLAGGED', 'SUSPENDED', 'RUSTICATED')) DEFAULT 'CLEARED',
