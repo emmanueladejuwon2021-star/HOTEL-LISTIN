@@ -6,19 +6,19 @@ import { useEligibilityStore } from '../store/useEligibilityStore';
 /**
  * EligibilityScreen Component.
  * Displays student hostel application eligibility status, school fee payment verification status,
- * priority quota tag, and disciplinary standing.
- * Allows students to manually sync tuition fee payment using their Remita RRR or payment reference.
+ * priority quota tag, disciplinary standing, and digital clearance progress.
+ * Allows students to manually sync tuition fee payment using Remita references and submit documents for digital clearance.
  */
 export const EligibilityScreen: React.FC = () => {
   // Get active user session from global auth store
   const { session } = useAuthStore();
   // Get eligibility actions and state from eligibility store
-  const { eligibilityResult, isVerifying, error, checkEligibility, syncFees } = useEligibilityStore();
+  const { eligibilityResult, isVerifying, error, checkEligibility, syncFees, updateClearance } = useEligibilityStore();
 
   // Local state for typed Remita payment reference code
   const [remitaRef, setRemitaRef] = useState('');
-  // Local state for success message notification upon fee sync
-  const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
+  // Local state for success message notification upon fee sync or clearance submission
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const userId = session?.user.id;
 
@@ -36,15 +36,32 @@ export const EligibilityScreen: React.FC = () => {
     if (!userId) return;
     if (!remitaRef.trim()) return;
 
-    setSyncSuccessMsg(null);
+    setSuccessMsg(null);
     try {
       const updated = await syncFees(userId, remitaRef.trim(), 25000);
       if (updated.feesPaid) {
-        setSyncSuccessMsg('Tuition fee payment verified and synced successfully!');
+        setSuccessMsg('Tuition fee payment verified and synced successfully!');
         setRemitaRef('');
       }
     } catch {
       // Store catches and sets error message state automatically
+    }
+  };
+
+  /**
+   * Triggers digital document clearance submission when student taps 'Submit for Digital Clearance'.
+   */
+  const handleSubmitClearance = async () => {
+    if (!userId) return;
+
+    setSuccessMsg(null);
+    try {
+      const updated = await updateClearance(userId, 'PENDING');
+      if (updated.clearanceStatus === 'PENDING') {
+        setSuccessMsg('Digital clearance request submitted successfully! Pending warden review.');
+      }
+    } catch {
+      // Store catches error automatically
     }
   };
 
@@ -53,9 +70,9 @@ export const EligibilityScreen: React.FC = () => {
       <ScrollView contentContainerClassName="p-4 pb-12">
         {/* Top Title Bar */}
         <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
-          <Text className="text-2xl font-bold text-slate-900">Student Eligibility Status</Text>
+          <Text className="text-2xl font-bold text-slate-900">Student Eligibility & Clearance</Text>
           <Text className="text-sm text-slate-500 mt-1">
-            Hostel Application Eligibility & Tuition Fees Sync
+            Hostel Application Eligibility, Fee Sync & Digital Clearance
           </Text>
         </View>
 
@@ -75,11 +92,11 @@ export const EligibilityScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Fee Sync Success Notification Box */}
-        {syncSuccessMsg && (
+        {/* Success Notification Box */}
+        {successMsg && (
           <View className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4">
-            <Text className="text-emerald-800 font-semibold text-base mb-1">Fee Sync Successful</Text>
-            <Text className="text-emerald-700 text-sm">{syncSuccessMsg}</Text>
+            <Text className="text-emerald-800 font-semibold text-base mb-1">Action Successful</Text>
+            <Text className="text-emerald-700 text-sm">{successMsg}</Text>
           </View>
         )}
 
@@ -196,6 +213,50 @@ export const EligibilityScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
+            </View>
+
+            {/* Digital Document Clearance Section */}
+            <View className="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-slate-200">
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="text-sm font-bold text-slate-900">Digital Document Clearance</Text>
+                <View
+                  className={`px-2.5 py-0.5 rounded-lg ${
+                    eligibilityResult.clearanceStatus === 'APPROVED'
+                      ? 'bg-emerald-600'
+                      : eligibilityResult.clearanceStatus === 'PENDING'
+                      ? 'bg-amber-500'
+                      : eligibilityResult.clearanceStatus === 'REJECTED'
+                      ? 'bg-red-600'
+                      : 'bg-slate-500'
+                  }`}
+                >
+                  <Text className="text-white text-xs font-bold uppercase">{eligibilityResult.clearanceStatus}</Text>
+                </View>
+              </View>
+
+              <Text className="text-xs text-slate-500 mb-4">
+                {eligibilityResult.clearanceStatus === 'APPROVED'
+                  ? 'Your clearance documents have been approved by the Hall Warden.'
+                  : eligibilityResult.clearanceStatus === 'PENDING'
+                  ? 'Your clearance package is under review by the Hall Warden & Porter team.'
+                  : eligibilityResult.clearanceStatus === 'REJECTED'
+                  ? 'Clearance rejected. Please re-submit valid document records.'
+                  : 'Submit your student medical certificate and passport photo for warden screening.'}
+              </Text>
+
+              {eligibilityResult.clearanceStatus === 'NOT_STARTED' && (
+                <TouchableOpacity
+                  className="bg-[#7A0000] h-12 rounded-xl justify-center items-center active:opacity-90"
+                  onPress={handleSubmitClearance}
+                  disabled={isVerifying}
+                >
+                  {isVerifying ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text className="text-white text-sm font-bold">Submit Documents for Clearance</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Remita Fee Sync Section (Shown when fees are unpaid) */}

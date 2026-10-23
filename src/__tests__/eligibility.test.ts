@@ -1,11 +1,13 @@
 import { AuthService } from '../api/authService';
 import { EligibilityService } from '../api/eligibilityService';
+import { useEligibilityStore } from '../store/useEligibilityStore';
 
 /**
- * Integration test suite for [ELIGIBILITY-01] / [UAT-0006] Student Eligibility Verification & Fees Check.
+ * Integration test suite for [ELIGIBILITY-01 & ELIGIBILITY-02] / [UAT-0006 & UAT-0007]
+ * Student Eligibility Verification, Fees Check & Digital Document Clearance.
  * Verifies live Turso DB interaction with zero mocks.
  */
-describe('[ELIGIBILITY-01 / UAT-0006] Student Eligibility Verification & Fees Check Integration Tests', () => {
+describe('[ELIGIBILITY-01 & ELIGIBILITY-02] Student Eligibility Verification & Digital Clearance Integration Tests', () => {
   const testUserId = 'usr_190407089_eligibility';
   const unpaidUserId = 'usr_200102031_unpaid';
   const flaggedUserId = 'usr_200405061_flagged';
@@ -30,7 +32,7 @@ describe('[ELIGIBILITY-01 / UAT-0006] Student Eligibility Verification & Fees Ch
     await client.execute({
       sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [testUserId, 'Engineering', 'Electrical Engineering', 100, 'MAIN_CAMPUS', 'FRESHER', 1, 'APPROVED']
+      args: [testUserId, 'Engineering', 'Electrical Engineering', 100, 'MAIN_CAMPUS', 'FRESHER', 1, 'NOT_STARTED']
     });
 
     // 2. Seed Unpaid Fee Student Record (Fees Paid = 0)
@@ -136,6 +138,38 @@ describe('[ELIGIBILITY-01 / UAT-0006] Student Eligibility Verification & Fees Ch
       await expect(
         EligibilityService.verifyEligibility('non_existent_id')
       ).rejects.toThrow('Student record or active profile not found');
+    });
+  });
+
+  describe('[ELIGIBILITY-02 / UAT-0007] Digital Document Clearance Status Lifecycle', () => {
+    test('updates clearance status to PENDING upon student document submission', async () => {
+      const result = await EligibilityService.updateClearanceStatus(testUserId, 'PENDING');
+
+      expect(result).toBeDefined();
+      expect(result.userId).toBe(testUserId);
+      expect(result.clearanceStatus).toBe('PENDING');
+    });
+
+    test('updates clearance status to APPROVED upon warden review', async () => {
+      const result = await EligibilityService.updateClearanceStatus(testUserId, 'APPROVED');
+
+      expect(result.clearanceStatus).toBe('APPROVED');
+    });
+
+    test('updates clearance status via Zustand store action', async () => {
+      const store = useEligibilityStore.getState();
+      const result = await store.updateClearance(testUserId, 'PENDING');
+
+      expect(result.clearanceStatus).toBe('PENDING');
+
+      const updatedStoreState = useEligibilityStore.getState();
+      expect(updatedStoreState.eligibilityResult?.clearanceStatus).toBe('PENDING');
+    });
+
+    test('throws error when updating clearance for non-existent student user ID', async () => {
+      await expect(
+        EligibilityService.updateClearanceStatus('invalid_user_id', 'APPROVED')
+      ).rejects.toThrow('Failed to update clearance status');
     });
   });
 });
