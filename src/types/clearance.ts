@@ -74,12 +74,25 @@ export interface DigitalClearancePackage {
 /**
  * Interface representing a physical document screening inspection record conducted by a porter or warden.
  */
+/**
+ * Checklist items verified during physical document screening at the porter desk.
+ */
+export interface PhysicalChecklistItems {
+  // Verified physical Jaja Clinic medical fitness stamp/signature
+  jajaMedicalStampVerified: boolean;
+  // Verified passport photograph has required red background and matches student face
+  redBackgroundPassportVerified: boolean;
+  // Verified Code of Conduct form is signed by student and parent/guardian
+  signedCodeOfConductVerified: boolean;
+}
+
 export interface PhysicalInspectionRecord {
   id: string;
   userId: string;
   officerId: string;
   inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
   verifiedOriginals: string;
+  checklistVerified?: PhysicalChecklistItems;
   notes?: string;
   inspectedAt: string;
 }
@@ -92,6 +105,7 @@ export interface PhysicalInspectionParams {
   officerId: string;
   inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
   verifiedOriginals?: string[];
+  checklist?: PhysicalChecklistItems;
   notes?: string;
 }
 
