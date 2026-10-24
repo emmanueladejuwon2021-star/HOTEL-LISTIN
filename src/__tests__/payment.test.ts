@@ -337,4 +337,88 @@ describe('[PAYMENT-01 / UAT-0016] 72-Hour Payment Hold & Remita Gateway Integrat
       expect(usePaymentStore.getState().verificationResult?.status).toBe('SUCCESSFUL');
     });
   });
+
+  describe('[PAYMENT-04 / UAT-0019] Payment Retry State Machine & Pending Transaction Reconciliation Tests', () => {
+    const retryUserId = 'usr_retry_test19';
+    const retryBedId = 'bed_retry_test19';
+
+    beforeAll(async () => {
+      const client = AuthService.getDbClient();
+      await client.execute({ sql: 'DELETE FROM payments WHERE user_id = ? OR bedspace_id = ?', args: [retryUserId, retryBedId] });
+      await client.execute({ sql: 'DELETE FROM bedspaces WHERE id = ?', args: [retryBedId] });
+      await client.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [retryUserId] });
+
+      await client.execute({
+        sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [retryUserId, '990407019', 'Retry Test Student', 'retry19@live.unilag.edu.ng', '+2348033333333', 'STUDENT', 'MALE', 'hash', 1]
+      });
+
+      await client.execute({
+        sql: `INSERT INTO bedspaces (id, room_id, bed_label, status, allocated_to_user_id, hold_expires_at)
+              VALUES (?, ?, ?, 'LOCKED_HOLD', ?, DATETIME('now', '+72 hours'))`,
+        args: [retryBedId, roomId, 'Bed A Down', retryUserId]
+      });
+
+      // Insert pending payment
+      await client.execute({
+        sql: `INSERT INTO payments (id, user_id, bedspace_id, transaction_reference, amount, payment_type, payment_status)
+              VALUES ('pay_retry_19', ?, ?, '239999888777', 25800.00, 'HOSTEL_FEE', 'PENDING')`,
+        args: [retryUserId, retryBedId]
+      });
+    });
+
+    test('marks a failed payment attempt as FAILED while keeping active hold valid for retry', async () => {
+      const retryRes = await PaymentService.markPaymentFailed('pay_retry_19', retryUserId, 'Gateway Timeout');
+
+      expect(retryRes.success).toBe(true);
+      expect(retryRes.canRetry).toBe(true);
+      expect(retryRes.message).toContain('Gateway Timeout');
+
+      // Verify payment status updated to FAILED in DB
+      const client = AuthService.getDbClient();
+      const payCheck = await client.execute({
+        sql: 'SELECT payment_status FROM payments WHERE id = ?',
+        args: ['pay_retry_19']
+      });
+      expect(String(payCheck.rows[0].payment_status)).toBe('FAILED');
+
+      // Verify bedspace hold remains LOCKED_HOLD
+      const bedCheck = await client.execute({
+        sql: 'SELECT status FROM bedspaces WHERE id = ?',
+        args: [retryBedId]
+      });
+      expect(String(bedCheck.rows[0].status)).toBe('LOCKED_HOLD');
+    });
+
+    test('syncs pending payments and reconciles database state', async () => {
+      const summary = await PaymentService.syncPendingPayments();
+
+      expect(summary.syncedAt).toBeDefined();
+      expect(typeof summary.totalPending).toBe('number');
+      expect(typeof summary.confirmedCount).toBe('number');
+      expect(typeof summary.failedCount).toBe('number');
+      expect(typeof summary.recycledHoldCount).toBe('number');
+    });
+
+    test('executes markPaymentFailed and syncPendingPayments via Zustand payment store', async () => {
+      const store = usePaymentStore.getState();
+
+      const summary = await store.syncPendingPayments();
+      expect(summary).toBeDefined();
+      expect(usePaymentStore.getState().syncSummary).toEqual(summary);
+
+      // Seed another pending payment for retry store test
+      const client = AuthService.getDbClient();
+      await client.execute({
+        sql: `INSERT INTO payments (id, user_id, bedspace_id, transaction_reference, amount, payment_type, payment_status)
+              VALUES ('pay_store_retry_19', ?, ?, '239999888666', 25800.00, 'HOSTEL_FEE', 'PENDING')`,
+        args: [retryUserId, retryBedId]
+      });
+
+      const retryRes = await store.markPaymentFailed('pay_store_retry_19', retryUserId, 'Declined Card');
+      expect(retryRes.success).toBe(true);
+      expect(usePaymentStore.getState().retryResult).toEqual(retryRes);
+    });
+  });
 });

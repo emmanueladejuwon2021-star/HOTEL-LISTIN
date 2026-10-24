@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PaymentHoldDetails, PaymentProcessResult, PaymentReceipt, HoldReleaseResult, RemitaRRRDetails, RemitaFeeBreakdown, PaymentVerificationResult } from '../types/payment';
+import { PaymentHoldDetails, PaymentProcessResult, PaymentReceipt, HoldReleaseResult, RemitaRRRDetails, RemitaFeeBreakdown, PaymentVerificationResult, PaymentRetryResult, PendingPaymentSyncSummary } from '../types/payment';
 import { PaymentService } from '../api/paymentService';
 
 interface PaymentState {
@@ -10,11 +10,14 @@ interface PaymentState {
   rrrDetails: RemitaRRRDetails | null;
   feeBreakdown: RemitaFeeBreakdown | null;
   verificationResult: PaymentVerificationResult | null;
+  syncSummary: PendingPaymentSyncSummary | null;
+  retryResult: PaymentRetryResult | null;
   isLoading: boolean;
   isProcessing: boolean;
   isCancellingHold: boolean;
   isGeneratingRRR: boolean;
   isVerifyingRef: boolean;
+  isSyncingPending: boolean;
   isUrgentHold: boolean;
   error: string | null;
   formattedCountdown: string;
@@ -24,6 +27,8 @@ interface PaymentState {
   releaseCurrentHold: (userId: string) => Promise<HoldReleaseResult>;
   generateRRR: (userId: string) => Promise<RemitaRRRDetails>;
   verifyPaymentReference: (transactionReference: string) => Promise<PaymentVerificationResult>;
+  markPaymentFailed: (paymentId: string, userId: string, failureReason?: string) => Promise<PaymentRetryResult>;
+  syncPendingPayments: () => Promise<PendingPaymentSyncSummary>;
   getFeeBreakdown: (baseAmount?: number) => RemitaFeeBreakdown;
   setSelectedReceipt: (receipt: PaymentReceipt | null) => void;
   setVerificationResult: (result: PaymentVerificationResult | null) => void;
@@ -52,11 +57,14 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
   rrrDetails: null,
   feeBreakdown: null,
   verificationResult: null,
+  syncSummary: null,
+  retryResult: null,
   isLoading: false,
   isProcessing: false,
   isCancellingHold: false,
   isGeneratingRRR: false,
   isVerifyingRef: false,
+  isSyncingPending: false,
   isUrgentHold: false,
   error: null,
   formattedCountdown: '72:00:00',
@@ -73,6 +81,33 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
     } catch (err: any) {
       const msg = err.message || 'Failed to retrieve payment hold status.';
       set({ error: msg, isLoading: false });
+      throw err;
+    }
+  },
+
+  markPaymentFailed: async (paymentId: string, userId: string, failureReason?: string) => {
+    set({ isProcessing: true, error: null });
+    try {
+      const res = await PaymentService.markPaymentFailed(paymentId, userId, failureReason);
+      set({ retryResult: res, isProcessing: false });
+      await get().fetchHoldStatus(userId);
+      return res;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to update payment status.';
+      set({ error: msg, isProcessing: false });
+      throw err;
+    }
+  },
+
+  syncPendingPayments: async () => {
+    set({ isSyncingPending: true, error: null });
+    try {
+      const summary = await PaymentService.syncPendingPayments();
+      set({ syncSummary: summary, isSyncingPending: false });
+      return summary;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to sync pending payments.';
+      set({ error: msg, isSyncingPending: false });
       throw err;
     }
   },
@@ -201,11 +236,14 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
       rrrDetails: null,
       feeBreakdown: null,
       verificationResult: null,
+      syncSummary: null,
+      retryResult: null,
       isLoading: false,
       isProcessing: false,
       isCancellingHold: false,
       isGeneratingRRR: false,
       isVerifyingRef: false,
+      isSyncingPending: false,
       isUrgentHold: false,
       error: null,
       formattedCountdown: '72:00:00'

@@ -118,3 +118,24 @@ export interface PaymentVerificationResult {
   roomDetails?: string;
   message: string;
 }
+
+/**
+ * Result returned when marking a payment attempt as failed or retrying payment.
+ */
+export interface PaymentRetryResult {
+  success: boolean;
+  paymentId: string;
+  message: string;
+  canRetry: boolean;
+}
+
+/**
+ * Summary outcome of syncing pending Remita payments across the database.
+ */
+export interface PendingPaymentSyncSummary {
+  totalPending: number;
+  confirmedCount: number;
+  failedCount: number;
+  recycledHoldCount: number;
+  syncedAt: string;
+}
