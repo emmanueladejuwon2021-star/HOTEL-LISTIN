@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaView, Modal } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { usePaymentStore } from '../store/usePaymentStore';
-import { PaymentReceipt } from '../types/payment';
+import { PaymentReceipt, RemitaPaymentChannel } from '../types/payment';
 
 /**
  * 72-Hour Payment Hold & Remita Gateway Screen (PRD S-04).
@@ -21,12 +21,17 @@ export const PaymentHoldScreen: React.FC = () => {
     verificationResult,
     syncSummary,
     retryResult,
+    checkoutResult,
+    digitalClearanceSlip,
+    selectedChannel,
     isLoading,
     isProcessing,
     isCancellingHold,
     isGeneratingRRR,
     isVerifyingRef,
     isSyncingPending,
+    isProcessingCheckout,
+    isFetchingClearanceSlip,
     isUrgentHold,
     error,
     formattedCountdown,
@@ -38,6 +43,9 @@ export const PaymentHoldScreen: React.FC = () => {
     verifyPaymentReference,
     syncPendingPayments,
     markPaymentFailed,
+    processGatewayCheckout,
+    fetchDigitalClearanceSlip,
+    setSelectedChannel,
     setSelectedReceipt,
     setVerificationResult,
     updateCountdownTimer
@@ -45,8 +53,12 @@ export const PaymentHoldScreen: React.FC = () => {
 
   const [remitaRefInput, setRemitaRefInput] = useState('');
   const [verifyRefInput, setVerifyRefInput] = useState('');
+  const [cardNumberInput, setCardNumberInput] = useState('');
+  const [expiryInput, setExpiryInput] = useState('');
+  const [cvvInput, setCvvInput] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
+  const [showClearanceModal, setShowClearanceModal] = useState(false);
 
   const userId = session?.user.id;
 
@@ -328,7 +340,119 @@ export const PaymentHoldScreen: React.FC = () => {
           </>
         )}
 
-        {/* Confirmed Accommodation Card */}
+        {/* Gateway Checkout & Channel Selection Card */}
+        {holdDetails && !holdDetails.isExpired && holdDetails.paymentStatus !== 'SUCCESSFUL' && (
+          <View className="bg-white w-full p-6 rounded-2xl shadow-sm mb-6 border border-slate-200">
+            <Text className="text-base font-bold text-slate-900 mb-1">Direct Remita Gateway Checkout</Text>
+            <Text className="text-xs text-slate-500 mb-4">
+              Select your preferred payment channel to complete your hostel fee payment.
+            </Text>
+
+            {/* Payment Channel Selector Pills */}
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {(['CARD', 'BANK_TRANSFER', 'USSD', 'REMITA_WALLET'] as RemitaPaymentChannel[]).map((ch) => (
+                <TouchableOpacity
+                  key={ch}
+                  className={`px-3 py-2 rounded-xl border ${
+                    selectedChannel === ch ? 'bg-[#7A0000] border-[#7A0000]' : 'bg-slate-50 border-slate-300'
+                  }`}
+                  onPress={() => setSelectedChannel(ch)}
+                >
+                  <Text className={`text-xs font-bold ${selectedChannel === ch ? 'text-white' : 'text-slate-700'}`}>
+                    {ch === 'CARD' ? '💳 Debit Card' : ch === 'BANK_TRANSFER' ? '🏦 Bank Transfer' : ch === 'USSD' ? '📱 USSD Code' : '👛 Remita Wallet'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Card Inputs */}
+            {selectedChannel === 'CARD' && (
+              <View className="mb-4 space-y-2">
+                <TextInput
+                  className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-sm"
+                  placeholder="Card Number (16 Digits)"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numeric"
+                  value={cardNumberInput}
+                  onChangeText={setCardNumberInput}
+                />
+                <View className="flex-row space-x-2">
+                  <TextInput
+                    className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-sm"
+                    placeholder="MM/YY"
+                    placeholderTextColor="#94A3B8"
+                    value={expiryInput}
+                    onChangeText={setExpiryInput}
+                  />
+                  <TextInput
+                    className="w-28 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-sm"
+                    placeholder="CVV"
+                    placeholderTextColor="#94A3B8"
+                    secureTextEntry
+                    keyboardType="numeric"
+                    value={cvvInput}
+                    onChangeText={setCvvInput}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Direct Gateway Submit Button */}
+            <TouchableOpacity
+              className="bg-slate-900 w-full py-4 rounded-xl items-center justify-center shadow-md active:opacity-90"
+              disabled={isProcessingCheckout}
+              onPress={async () => {
+                setLocalError(null);
+                setNoticeMessage(null);
+                if (!userId) return;
+
+                try {
+                  const res = await processGatewayCheckout({
+                    userId,
+                    paymentId: holdDetails.paymentId,
+                    channel: selectedChannel,
+                    cardDetails: selectedChannel === 'CARD' ? {
+                      cardNumber: cardNumberInput || '5399123456789012',
+                      expiryMonth: expiryInput.split('/')[0] || '12',
+                      expiryYear: expiryInput.split('/')[1] || '28',
+                      cvv: cvvInput || '123'
+                    } : undefined
+                  });
+                  setNoticeMessage(res.message);
+                  if (userId) {
+                    fetchPaymentHistory(userId).catch(() => {});
+                  }
+                } catch (e: any) {}
+              }}
+            >
+              {isProcessingCheckout ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text className="text-white font-bold text-base">
+                  Pay ₦{(feeBreakdown?.totalAmount || 25800).toLocaleString()} via {selectedChannel}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Display Virtual Account or USSD Details if initiated */}
+            {checkoutResult && (
+              <View className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <Text className="text-xs font-bold text-amber-900 mb-1">Gateway Payment Instructions:</Text>
+                <Text className="text-xs text-amber-800 mb-2">{checkoutResult.message}</Text>
+                {checkoutResult.ussdCode && (
+                  <Text className="text-sm font-black text-slate-900">USSD Code: {checkoutResult.ussdCode}</Text>
+                )}
+                {checkoutResult.virtualAccountNumber && (
+                  <Text className="text-sm font-black text-slate-900">
+                    Account: {checkoutResult.virtualAccountNumber} ({checkoutResult.bankName})
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Confirmed Accommodation Card & Digital Clearance Slip Trigger */}
         {holdDetails && holdDetails.paymentStatus === 'SUCCESSFUL' && (
           <View className="bg-emerald-50 border border-emerald-300 w-full p-6 rounded-2xl mb-6 shadow-sm">
             <View className="flex-row items-center justify-between mb-3">
@@ -341,7 +465,7 @@ export const PaymentHoldScreen: React.FC = () => {
               Your hostel fee payment has been successfully processed. Your bedspace position is fully locked and secured.
             </Text>
 
-            <View className="bg-white p-4 rounded-xl border border-emerald-200 space-y-2">
+            <View className="bg-white p-4 rounded-xl border border-emerald-200 space-y-2 mb-4">
               <View className="flex-row justify-between">
                 <Text className="text-xs text-slate-500 font-medium">Hostel Name:</Text>
                 <Text className="text-xs font-bold text-slate-800">{holdDetails.hostelName}</Text>
@@ -361,6 +485,25 @@ export const PaymentHoldScreen: React.FC = () => {
                 <Text className="text-sm font-extrabold text-emerald-700">₦{holdDetails.amount.toLocaleString()}</Text>
               </View>
             </View>
+
+            {/* View Digital Accommodation Clearance Slip Button */}
+            <TouchableOpacity
+              className="bg-emerald-700 w-full py-3 rounded-xl items-center justify-center active:opacity-90"
+              disabled={isFetchingClearanceSlip}
+              onPress={async () => {
+                if (!userId) return;
+                try {
+                  await fetchDigitalClearanceSlip(userId);
+                  setShowClearanceModal(true);
+                } catch (e: any) {}
+              }}
+            >
+              {isFetchingClearanceSlip ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text className="text-white font-bold text-sm">🎓 View Digital Accommodation Clearance Slip</Text>
+              )}
+            </TouchableOpacity>
           </View>
         )}
 
@@ -565,6 +708,72 @@ export const PaymentHoldScreen: React.FC = () => {
                 onPress={() => setSelectedReceipt(null)}
               >
                 <Text className="text-white font-bold text-base">Close Receipt</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Digital Accommodation Clearance Slip Modal */}
+        <Modal
+          visible={showClearanceModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowClearanceModal(false)}
+        >
+          <View className="flex-1 bg-black/70 justify-center items-center p-6">
+            <View className="bg-white w-full p-6 rounded-3xl border border-amber-300 shadow-2xl">
+              <View className="items-center mb-4 pb-4 border-b border-slate-200">
+                <Text className="text-2xl font-black text-[#7A0000]">UNIVERSITY OF LAGOS</Text>
+                <Text className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+                  OFFICIAL ACCOMMODATION CLEARANCE SLIP
+                </Text>
+              </View>
+
+              {digitalClearanceSlip && (
+                <View className="space-y-3 mb-6">
+                  <View className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl items-center mb-2">
+                    <Text className="text-xs font-bold text-emerald-900">RESIDENCY STATUS: ACTIVE RESIDENT</Text>
+                    <Text className="text-[10px] text-emerald-700">Slip ID: {digitalClearanceSlip.clearanceSlipId}</Text>
+                  </View>
+
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Resident Name:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{digitalClearanceSlip.studentName}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Matric Number:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{digitalClearanceSlip.studentMatricNo}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Hostel Name:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{digitalClearanceSlip.hostelName}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Room Allocation:</Text>
+                    <Text className="text-xs font-bold text-slate-800">
+                      Block {digitalClearanceSlip.blockName} Room {digitalClearanceSlip.roomNumber} ({digitalClearanceSlip.bedLabel})
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs text-slate-500 font-medium">Payment Reference:</Text>
+                    <Text className="text-xs font-bold text-slate-800">{digitalClearanceSlip.transactionReference}</Text>
+                  </View>
+
+                  {/* Cryptographic QR Security Payload Preview */}
+                  <View className="bg-slate-100 p-3 rounded-xl border border-slate-300 items-center mt-2">
+                    <Text className="text-[10px] font-bold text-slate-600 mb-1">Encrypted Gate Verification QR Payload:</Text>
+                    <Text className="text-[9px] text-slate-500 text-center" numberOfLines={2}>
+                      {digitalClearanceSlip.clearanceQrPayload}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                className="bg-slate-900 w-full py-3 rounded-xl items-center"
+                onPress={() => setShowClearanceModal(false)}
+              >
+                <Text className="text-white font-bold text-base">Close Clearance Slip</Text>
               </TouchableOpacity>
             </View>
           </View>

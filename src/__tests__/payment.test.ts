@@ -421,4 +421,117 @@ describe('[PAYMENT-01 / UAT-0016] 72-Hour Payment Hold & Remita Gateway Integrat
       expect(usePaymentStore.getState().retryResult).toEqual(retryRes);
     });
   });
+
+  describe('[PAYMENT-05 / UAT-0020] Multi-Channel Gateway Checkout, Webhook Verification & Digital Clearance Slip Tests', () => {
+    const chUserId = 'usr_channel_test20';
+    const chBedId = 'bed_channel_test20';
+
+    beforeAll(async () => {
+      const client = AuthService.getDbClient();
+      await client.execute({ sql: 'DELETE FROM payments WHERE user_id = ? OR bedspace_id = ?', args: [chUserId, chBedId] });
+      await client.execute({ sql: 'DELETE FROM bedspaces WHERE id = ?', args: [chBedId] });
+      await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id = ?', args: [chUserId] });
+      await client.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [chUserId] });
+
+      await client.execute({
+        sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [chUserId, '990407020', 'Channel Test Student', 'channel20@live.unilag.edu.ng', '+2348044444444', 'STUDENT', 'MALE', 'hash', 1]
+      });
+
+      await client.execute({
+        sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status)
+              VALUES (?, 'Engineering', 'Electrical Engineering', 200, 'MAIN_CAMPUS', 'STALLITE', 1, 'APPROVED')`,
+        args: [chUserId]
+      });
+
+      await client.execute({
+        sql: `INSERT INTO bedspaces (id, room_id, bed_label, status, allocated_to_user_id, hold_expires_at)
+              VALUES (?, ?, ?, 'LOCKED_HOLD', ?, DATETIME('now', '+72 hours'))`,
+        args: [chBedId, roomId, 'Bed B Down', chUserId]
+      });
+    });
+
+    test('generates valid Remita SHA-512 security hash', () => {
+      const hash = PaymentService.generateRemitaHash('231234567890', 'TX123456', 25800.00);
+      expect(typeof hash).toBe('string');
+      expect(hash.length).toBe(128); // SHA-512 hex output string length
+    });
+
+    test('processes card channel gateway checkout and transitions reservation to CONFIRMED', async () => {
+      const checkoutRes = await PaymentService.processGatewayCheckout({
+        userId: chUserId,
+        paymentId: '',
+        channel: 'CARD',
+        cardDetails: {
+          cardNumber: '5399123456789012',
+          expiryMonth: '12',
+          expiryYear: '28',
+          cvv: '123'
+        }
+      });
+
+      expect(checkoutRes.success).toBe(true);
+      expect(checkoutRes.paymentStatus).toBe('SUCCESSFUL');
+      expect(checkoutRes.channel).toBe('CARD');
+      expect(checkoutRes.transactionReference).toBeDefined();
+
+      // Verify DB bedspace status confirmed
+      const client = AuthService.getDbClient();
+      const bedCheck = await client.execute({
+        sql: 'SELECT status FROM bedspaces WHERE id = ?',
+        args: [chBedId]
+      });
+      expect(String(bedCheck.rows[0].status)).toBe('CONFIRMED');
+    });
+
+    test('retrieves official digital accommodation clearance slip with cryptographic QR payload', async () => {
+      const clearanceSlip = await PaymentService.getDigitalClearanceSlip(chUserId);
+
+      expect(clearanceSlip.clearanceSlipId).toBeDefined();
+      expect(clearanceSlip.studentName).toBe('Channel Test Student');
+      expect(clearanceSlip.studentMatricNo).toBe('990407020');
+      expect(clearanceSlip.hostelName).toContain('King Jaja Hall');
+      expect(clearanceSlip.status).toBe('ACTIVE_RESIDENT');
+      expect(clearanceSlip.clearanceQrPayload).toContain('SIG:');
+    });
+
+    test('verifies webhook signature callback notification', async () => {
+      const txRef = '239876543210';
+      const rrr = '231111222333';
+      const amount = 25800.00;
+      const validHash = PaymentService.generateRemitaHash(rrr, txRef, amount);
+
+      const webhookRes = await PaymentService.verifyRemitaWebhookSignature({
+        transactionReference: txRef,
+        rrr,
+        amount,
+        status: 'SUCCESS',
+        hash: validHash,
+        paymentDate: new Date().toISOString()
+      });
+
+      expect(webhookRes.isValid).toBe(true);
+      expect(webhookRes.paymentStatus).toBe('SUCCESSFUL');
+    });
+
+    test('executes processGatewayCheckout, fetchDigitalClearanceSlip, and verifyWebhookNotification via Zustand store', async () => {
+      const store = usePaymentStore.getState();
+
+      const clearance = await store.fetchDigitalClearanceSlip(chUserId);
+      expect(clearance.studentMatricNo).toBe('990407020');
+      expect(usePaymentStore.getState().digitalClearanceSlip).toEqual(clearance);
+
+      const webhook = await store.verifyWebhookNotification({
+        transactionReference: '239876543210',
+        rrr: '231111222333',
+        amount: 25800.00,
+        status: 'SUCCESS',
+        hash: PaymentService.generateRemitaHash('231111222333', '239876543210', 25800.00),
+        paymentDate: new Date().toISOString()
+      });
+      expect(webhook.isValid).toBe(true);
+      expect(usePaymentStore.getState().webhookResult).toEqual(webhook);
+    });
+  });
 });
