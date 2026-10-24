@@ -1,93 +1,124 @@
 import { create } from 'zustand';
-import {
-  GatePassToken,
-  GateAccessLog,
-  GateVerificationResult,
-  GateType
-} from '../types/gatepass';
 import { GatePassService } from '../api/gatepassService';
+import {
+  GatePassRecord,
+  GatePassTokenPayload,
+  GatePassToken,
+  GatePassStoreState
+} from '../types/gatepass';
 
-export interface GatePassState {
-  currentPass: GatePassToken | null;
-  countdownSeconds: number;
-  accessLogs: GateAccessLog[];
-  verificationResult: GateVerificationResult | null;
-  isLoading: boolean;
-  errorMessage: string | null;
-
-  // Actions
-  generatePass: (userId: string) => Promise<GatePassToken | null>;
-  refreshPass: (userId: string) => Promise<GatePassToken | null>;
-  verifyPass: (tokenString: string, porterId: string, gateType?: GateType) => Promise<GateVerificationResult | null>;
-  fetchStudentLogs: (userId: string) => Promise<void>;
-  tickCountdown: () => void;
-  clearMessages: () => void;
-}
-
-export const useGatePassStore = create<GatePassState>((set, get) => ({
+/**
+ * Zustand Store managing student dynamic QR code gate pass state, 30-second countdown lifecycle,
+ * and automatic token auto-refresh operations.
+ *
+ * Implements [GATEPASS-03] and [GATEPASS-04] adhering to PRD Sections 6 (Spec S-05) and 7.
+ */
+export const useGatePassStore = create<GatePassStoreState>((set, get) => ({
   currentPass: null,
-  countdownSeconds: 60,
-  accessLogs: [],
-  verificationResult: null,
+  payload: null,
+  secondsRemaining: 30,
   isLoading: false,
   errorMessage: null,
+  activePass: null,
+  countdownSeconds: 30,
+  isOffline: false,
 
-  generatePass: async (userId: string) => {
+  loadGatePass: async (userId: string) => {
     set({ isLoading: true, errorMessage: null });
     try {
-      const pass = await GatePassService.generateDynamicGatePass(userId);
+      const { record, payload } = await GatePassService.getOrRefreshGatePass(userId);
+      const remaining = record.remainingSeconds || 30;
       set({
-        currentPass: pass,
-        countdownSeconds: pass.expiresInSeconds,
+        currentPass: record,
+        payload,
+        secondsRemaining: remaining,
+        countdownSeconds: remaining,
+        activePass: {
+          tokenString: record.tokenString,
+          payload,
+          expiresInSeconds: remaining
+        },
         isLoading: false
       });
-      return pass;
     } catch (error: any) {
       set({
-        errorMessage: error.message || 'Failed to generate dynamic gate pass.',
+        isLoading: false,
+        errorMessage: error.message || 'Failed to load dynamic gate pass.'
+      });
+    }
+  },
+
+  refreshGatePass: async (userId: string) => {
+    set({ isLoading: true, errorMessage: null });
+    try {
+      const { record, payload } = await GatePassService.generateGatePass(userId);
+      set({
+        currentPass: record,
+        payload,
+        secondsRemaining: 30,
+        countdownSeconds: 30,
+        activePass: {
+          tokenString: record.tokenString,
+          payload,
+          expiresInSeconds: 30
+        },
         isLoading: false
       });
-      return null;
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        errorMessage: error.message || 'Failed to refresh gate pass.'
+      });
     }
+  },
+
+  tickTimer: (userId: string) => {
+    const { secondsRemaining, isLoading } = get();
+    if (isLoading) return;
+
+    if (secondsRemaining <= 1) {
+      // Timer expired, trigger automatic token refresh
+      get().refreshGatePass(userId);
+    } else {
+      const nextSeconds = secondsRemaining - 1;
+      set({
+        secondsRemaining: nextSeconds,
+        countdownSeconds: nextSeconds
+      });
+    }
+  },
+
+  resetGatePassState: () => {
+    set({
+      currentPass: null,
+      payload: null,
+      secondsRemaining: 30,
+      countdownSeconds: 30,
+      isLoading: false,
+      errorMessage: null,
+      activePass: null,
+      isOffline: false
+    });
+  },
+
+  // Aliases for seamless backward-compatibility
+  initializePass: async (userId: string) => {
+    return get().loadGatePass(userId);
   },
 
   refreshPass: async (userId: string) => {
-    return get().generatePass(userId);
+    return get().refreshGatePass(userId);
   },
 
-  verifyPass: async (tokenString: string, porterId: string, gateType: GateType = 'ENTRY') => {
-    set({ isLoading: true, errorMessage: null });
-    try {
-      const result = await GatePassService.verifyGatePass(tokenString, porterId, gateType);
-      set({
-        verificationResult: result,
-        isLoading: false
-      });
-      return result;
-    } catch (error: any) {
-      set({
-        errorMessage: error.message || 'Failed to verify gate pass.',
-        isLoading: false
-      });
-      return null;
-    }
+  reset: () => {
+    get().resetGatePassState();
   },
 
-  fetchStudentLogs: async (userId: string) => {
-    try {
-      const logs = await GatePassService.getLogsByStudent(userId);
-      set({ accessLogs: logs });
-    } catch (error: any) {
-      set({ errorMessage: error.message || 'Failed to load access logs.' });
-    }
+  generatePass: async (userId: string) => {
+    return get().refreshGatePass(userId);
   },
 
-  tickCountdown: () => {
-    const { countdownSeconds } = get();
-    if (countdownSeconds > 0) {
-      set({ countdownSeconds: countdownSeconds - 1 });
-    }
-  },
-
-  clearMessages: () => set({ errorMessage: null, verificationResult: null })
+  setOffline: (offline: boolean) => {
+    set({ isOffline: offline });
+  }
 }));

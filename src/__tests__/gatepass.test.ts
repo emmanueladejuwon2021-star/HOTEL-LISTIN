@@ -1,22 +1,118 @@
 import { GatePassService } from '../api/gatepassService';
 import { AuthService } from '../api/authService';
+import { useGatePassStore } from '../store/useGatePassStore';
 
 /**
  * Automated Test Suite for Dynamic QR Code Gate Pass Generation & Gatekeeper Verification.
- * Implements [GATEPASS-01 / UAT-0031] and [GATEPASS-02 / UAT-0032].
+ * Implements:
+ * - [GATEPASS-01 / UAT-0031] Dynamic QR Gate Pass Token Generation
+ * - [GATEPASS-02 / UAT-0032] Gatekeeper Verification, Anti-Replay, and Curfew Controls
+ * - [GATEPASS-03 / UAT-0033] Dynamic QR Code Gate Pass Generation Component 3
+ * - [GATEPASS-04 / UAT-0034] Dynamic 30-Second Refreshing QR Pass & Store Countdown
  *
  * Verifies dynamic token generation, HMAC-SHA256 cryptographic signatures,
- * 60-second expiration enforcement, offline signature validation, anti-replay protection,
+ * 30-second TTL expiration enforcement, offline signature validation, anti-replay protection,
  * disciplinary status blocks, curfew restrictions, and gate access audit logging against Turso DB.
  *
  * Commented with plain English descriptions for non-technical team members and hostel porters.
  */
+describe('Dynamic QR Code Gate Pass Generation (Issue #33 & #34 / GATEPASS-03 & GATEPASS-04 / UAT-0033 & UAT-0034)', () => {
+  const testStudentId = 'usr_gatepass_test_34';
+  const testMatricNo = '200407034';
+  const hashedPassword = AuthService.hashPassword('password123');
+
+  beforeAll(async () => {
+    // Initialize Turso database schemas
+    await AuthService.initializeSchema();
+    await GatePassService.initializeSchema();
+
+    const client = AuthService.getDbClient();
+
+    // Clean up test records
+    await client.execute({ sql: `DELETE FROM student_profiles WHERE user_id = ?`, args: [testStudentId] });
+    await client.execute({ sql: `DELETE FROM users WHERE id = ?`, args: [testStudentId] });
+
+    // Seed test student user
+    await client.execute({
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [testStudentId, testMatricNo, 'Test GatePass Student 34', 'gatepass34@unilag.edu.ng', '08012345678', 'STUDENT', 'MALE', hashedPassword, 1]
+    });
+
+    await client.execute({
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, residency_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE_RESIDENT')`,
+      args: [testStudentId, 'Engineering', 'Systems Engineering', 300, 'MAIN_CAMPUS', 'STALLITE', 1, 'APPROVED']
+    });
+  });
+
+  afterEach(() => {
+    useGatePassStore.getState().resetGatePassState();
+  });
+
+  test('generates dynamic gate pass token with 30s TTL and Turso DB record', async () => {
+    const { record, payload } = await GatePassService.generateGatePass(testStudentId);
+
+    expect(record.id).toBeDefined();
+    expect(record.userId).toBe(testStudentId);
+    expect(record.status).toBe('ACTIVE');
+    expect(record.remainingSeconds).toBe(30);
+
+    expect(payload.userId).toBe(testStudentId);
+    expect(payload.fullName).toBe('Test GatePass Student 34');
+    expect(payload.matricNo).toBe(testMatricNo);
+    expect(payload.expiresAt).toBeGreaterThan(payload.generatedAt);
+    expect(payload.expiresAt - payload.generatedAt).toBe(30000);
+  });
+
+  test('verifies valid dynamic QR token at hostel gate', async () => {
+    const { record } = await GatePassService.generateGatePass(testStudentId);
+
+    const verification = await GatePassService.verifyGatePassToken(record.tokenString);
+
+    expect(verification.isValid).toBe(true);
+    expect(verification.message).toContain('ACCESS GRANTED');
+    expect(verification.payload?.userId).toBe(testStudentId);
+    expect(verification.passId).toBe(record.id);
+  });
+
+  test('rejects tampered or malformed gate pass token', async () => {
+    const verification = await GatePassService.verifyGatePassToken('INVALID_TAMPERED_TOKEN_STRING');
+
+    expect(verification.isValid).toBe(false);
+    expect(verification.message).toContain('Access Denied');
+  });
+
+  test('retrieves or auto-refreshes active pass via GatePassService', async () => {
+    const pass1 = await GatePassService.getOrRefreshGatePass(testStudentId);
+    expect(pass1.record.status).toBe('ACTIVE');
+
+    const pass2 = await GatePassService.getOrRefreshGatePass(testStudentId);
+    expect(pass2.record.id).toBe(pass1.record.id);
+  });
+
+  test('manages state and timer countdown in Zustand useGatePassStore', async () => {
+    const store = useGatePassStore.getState();
+
+    await store.loadGatePass(testStudentId);
+    const loadedState = useGatePassStore.getState();
+
+    expect(loadedState.currentPass).not.toBeNull();
+    expect(loadedState.payload?.userId).toBe(testStudentId);
+    expect(loadedState.secondsRemaining).toBeGreaterThan(0);
+
+    // Simulate timer tick
+    const currentSeconds = loadedState.secondsRemaining;
+    useGatePassStore.getState().tickTimer(testStudentId);
+    expect(useGatePassStore.getState().secondsRemaining).toBe(currentSeconds - 1);
+  });
+});
+
 describe('GatePassService - Dynamic QR Gate Pass & Gatekeeper Engine [GATEPASS-01 & GATEPASS-02]', () => {
   const residentStudentId = `usr_resident_${Date.now()}`;
   const nonResidentStudentId = `usr_non_resident_${Date.now()}`;
   const suspendedStudentId = `usr_suspended_${Date.now()}`;
   const porterId = `usr_porter_gate_${Date.now()}`;
-  const hostelId = 'hostel_jaja';
 
   beforeAll(async () => {
     await GatePassService.initializeSchema();
@@ -86,7 +182,7 @@ describe('GatePassService - Dynamic QR Gate Pass & Gatekeeper Engine [GATEPASS-0
       expect(pass.payload.fullName).toBe('Resident Test Student');
       expect(pass.payload.signature).toBeDefined();
       expect(pass.payload.signature).toMatch(/^[a-f0-9]{64}$/);
-      expect(pass.payload.expiresAt).toBeGreaterThan(pass.payload.issuedAt);
+      expect(pass.payload.expiresAt).toBeGreaterThan(pass.payload.issuedAt!);
     });
 
     test('should reject gate pass generation for student who has not completed residency check-in', async () => {
@@ -151,10 +247,10 @@ describe('GatePassService - Dynamic QR Gate Pass & Gatekeeper Engine [GATEPASS-0
         ...pass.payload,
         expiresAt: Date.now() - 120_000
       };
-      // Note: Re-signing with secret to specifically test expiration check
+      // Re-sign with secret to test expiration logic
       const rawData = `${expiredPayload.userId}:${expiredPayload.matricNo}:${expiredPayload.fullName}:${expiredPayload.hostelId}:${expiredPayload.issuedAt}:${expiredPayload.expiresAt}:${expiredPayload.nonce}`;
       const CryptoJS = require('crypto-js');
-      expiredPayload.signature = CryptoJS.HmacSHA256(rawData, 'UNILAG_GATE_PASS_SECRET_AKOKA_CAMPUS_2026').toString();
+      expiredPayload.signature = CryptoJS.HmacSHA256(rawData, 'UNILAGSTAY_GATEPASS_HMAC_SECRET_2026_KEY').toString();
       const expiredTokenString = Buffer.from(JSON.stringify(expiredPayload)).toString('base64');
 
       const result = await GatePassService.verifyGatePass(expiredTokenString, porterId, 'ENTRY', 14);
