@@ -1,5 +1,21 @@
 import { create } from 'zustand';
-import { PaymentHoldDetails, PaymentProcessResult, PaymentReceipt, HoldReleaseResult, RemitaRRRDetails, RemitaFeeBreakdown, PaymentVerificationResult, PaymentRetryResult, PendingPaymentSyncSummary } from '../types/payment';
+import {
+  PaymentHoldDetails,
+  PaymentProcessResult,
+  PaymentReceipt,
+  HoldReleaseResult,
+  RemitaRRRDetails,
+  RemitaFeeBreakdown,
+  PaymentVerificationResult,
+  PaymentRetryResult,
+  PendingPaymentSyncSummary,
+  RemitaCheckoutParams,
+  RemitaCheckoutResult,
+  RemitaPaymentChannel,
+  RemitaWebhookPayload,
+  RemitaWebhookVerificationResult,
+  DigitalClearanceSlip
+} from '../types/payment';
 import { PaymentService } from '../api/paymentService';
 
 interface PaymentState {
@@ -12,12 +28,18 @@ interface PaymentState {
   verificationResult: PaymentVerificationResult | null;
   syncSummary: PendingPaymentSyncSummary | null;
   retryResult: PaymentRetryResult | null;
+  checkoutResult: RemitaCheckoutResult | null;
+  webhookResult: RemitaWebhookVerificationResult | null;
+  digitalClearanceSlip: DigitalClearanceSlip | null;
+  selectedChannel: RemitaPaymentChannel;
   isLoading: boolean;
   isProcessing: boolean;
   isCancellingHold: boolean;
   isGeneratingRRR: boolean;
   isVerifyingRef: boolean;
   isSyncingPending: boolean;
+  isProcessingCheckout: boolean;
+  isFetchingClearanceSlip: boolean;
   isUrgentHold: boolean;
   error: string | null;
   formattedCountdown: string;
@@ -30,6 +52,10 @@ interface PaymentState {
   markPaymentFailed: (paymentId: string, userId: string, failureReason?: string) => Promise<PaymentRetryResult>;
   syncPendingPayments: () => Promise<PendingPaymentSyncSummary>;
   getFeeBreakdown: (baseAmount?: number) => RemitaFeeBreakdown;
+  processGatewayCheckout: (params: RemitaCheckoutParams) => Promise<RemitaCheckoutResult>;
+  verifyWebhookNotification: (payload: RemitaWebhookPayload) => Promise<RemitaWebhookVerificationResult>;
+  fetchDigitalClearanceSlip: (userId: string) => Promise<DigitalClearanceSlip>;
+  setSelectedChannel: (channel: RemitaPaymentChannel) => void;
   setSelectedReceipt: (receipt: PaymentReceipt | null) => void;
   setVerificationResult: (result: PaymentVerificationResult | null) => void;
   updateCountdownTimer: () => void;
@@ -59,12 +85,18 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
   verificationResult: null,
   syncSummary: null,
   retryResult: null,
+  checkoutResult: null,
+  webhookResult: null,
+  digitalClearanceSlip: null,
+  selectedChannel: 'CARD',
   isLoading: false,
   isProcessing: false,
   isCancellingHold: false,
   isGeneratingRRR: false,
   isVerifyingRef: false,
   isSyncingPending: false,
+  isProcessingCheckout: false,
+  isFetchingClearanceSlip: false,
   isUrgentHold: false,
   error: null,
   formattedCountdown: '72:00:00',
@@ -194,6 +226,50 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
     set({ verificationResult: result });
   },
 
+  setSelectedChannel: (channel: RemitaPaymentChannel) => {
+    set({ selectedChannel: channel });
+  },
+
+  processGatewayCheckout: async (params: RemitaCheckoutParams) => {
+    set({ isProcessingCheckout: true, error: null });
+    try {
+      const result = await PaymentService.processGatewayCheckout(params);
+      set({ checkoutResult: result, isProcessingCheckout: false });
+      await get().fetchHoldStatus(params.userId);
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to process gateway checkout.';
+      set({ error: msg, isProcessingCheckout: false });
+      throw err;
+    }
+  },
+
+  verifyWebhookNotification: async (payload: RemitaWebhookPayload) => {
+    set({ isProcessing: true, error: null });
+    try {
+      const result = await PaymentService.verifyRemitaWebhookSignature(payload);
+      set({ webhookResult: result, isProcessing: false });
+      return result;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to verify webhook signature.';
+      set({ error: msg, isProcessing: false });
+      throw err;
+    }
+  },
+
+  fetchDigitalClearanceSlip: async (userId: string) => {
+    set({ isFetchingClearanceSlip: true, error: null });
+    try {
+      const slip = await PaymentService.getDigitalClearanceSlip(userId);
+      set({ digitalClearanceSlip: slip, isFetchingClearanceSlip: false });
+      return slip;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to generate digital clearance slip.';
+      set({ error: msg, isFetchingClearanceSlip: false });
+      throw err;
+    }
+  },
+
   fetchPaymentHistory: async (userId: string) => {
     set({ isLoading: true, error: null });
     try {
@@ -238,12 +314,18 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
       verificationResult: null,
       syncSummary: null,
       retryResult: null,
+      checkoutResult: null,
+      webhookResult: null,
+      digitalClearanceSlip: null,
+      selectedChannel: 'CARD',
       isLoading: false,
       isProcessing: false,
       isCancellingHold: false,
       isGeneratingRRR: false,
       isVerifyingRef: false,
       isSyncingPending: false,
+      isProcessingCheckout: false,
+      isFetchingClearanceSlip: false,
       isUrgentHold: false,
       error: null,
       formattedCountdown: '72:00:00'

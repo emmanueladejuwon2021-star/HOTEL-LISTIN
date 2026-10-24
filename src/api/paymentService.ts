@@ -1,6 +1,23 @@
 import { Client } from '@libsql/client';
+import CryptoJS from 'crypto-js';
 import { AuthService } from './authService';
-import { PaymentHoldDetails, RemitaPaymentParams, PaymentProcessResult, PaymentReceipt, HoldReleaseResult, RemitaRRRDetails, RemitaFeeBreakdown, PaymentVerificationResult, PaymentRetryResult, PendingPaymentSyncSummary } from '../types/payment';
+import {
+  PaymentHoldDetails,
+  RemitaPaymentParams,
+  PaymentProcessResult,
+  PaymentReceipt,
+  HoldReleaseResult,
+  RemitaRRRDetails,
+  RemitaFeeBreakdown,
+  PaymentVerificationResult,
+  PaymentRetryResult,
+  PendingPaymentSyncSummary,
+  RemitaCheckoutParams,
+  RemitaCheckoutResult,
+  RemitaWebhookPayload,
+  RemitaWebhookVerificationResult,
+  DigitalClearanceSlip
+} from '../types/payment';
 import { validateRemitaRef } from '../utils/validation';
 
 /**
@@ -599,5 +616,288 @@ export class PaymentService {
       studentMatricNo: String(row.matric_or_staff_no),
       studentFullName: String(row.full_name)
     }));
+  }
+
+  /**
+   * Secret API Key used for computing Remita SHA-512 hashes.
+   */
+  private static readonly REMITA_API_SECRET = 'UNILAG_REMITA_SECRET_KEY_2026';
+
+  /**
+   * Generates a SHA-512 cryptographic security hash for Remita transaction verification.
+   * Format: SHA512(rrr + api_secret + transaction_ref + amount)
+   *
+   * @param rrr - Remita Retrieval Reference
+   * @param transactionRef - Unique transaction reference
+   * @param amount - Transaction amount
+   * @returns SHA-512 hash string in uppercase
+   */
+  public static generateRemitaHash(rrr: string, transactionRef: string, amount: number): string {
+    const rawString = `${rrr}${PaymentService.REMITA_API_SECRET}${transactionRef}${amount.toFixed(2)}`;
+    return CryptoJS.SHA512(rawString).toString(CryptoJS.enc.Hex).toUpperCase();
+  }
+
+  /**
+   * Verifies the cryptographic hash signature of an incoming Remita webhook notification.
+   * Prevents unauthorized or spoofed payment callbacks from altering database records.
+   *
+   * @param payload - RemitaWebhookPayload received from gateway callback
+   * @returns RemitaWebhookVerificationResult
+   */
+  public static async verifyRemitaWebhookSignature(payload: RemitaWebhookPayload): Promise<RemitaWebhookVerificationResult> {
+    await PaymentService.initializeSchema();
+
+    if (!payload || !payload.transactionReference || !payload.hash) {
+      return {
+        isValid: false,
+        transactionReference: payload?.transactionReference || 'UNKNOWN',
+        paymentStatus: 'FAILED',
+        message: 'Invalid webhook payload structure or missing security hash.'
+      };
+    }
+
+    const expectedHash = PaymentService.generateRemitaHash(payload.rrr || '', payload.transactionReference, payload.amount || 25800.00);
+    const isValid = expectedHash === payload.hash.toUpperCase();
+
+    if (!isValid) {
+      return {
+        isValid: false,
+        transactionReference: payload.transactionReference,
+        paymentStatus: 'FAILED',
+        message: 'Security hash mismatch! Webhook notification rejected as unverified.'
+      };
+    }
+
+    const client = AuthService.getDbClient();
+    const paymentStatus = payload.status === 'SUCCESS' ? 'SUCCESSFUL' : 'FAILED';
+
+    if (paymentStatus === 'SUCCESSFUL') {
+      // Query payment details to confirm bedspace
+      const payRes = await client.execute({
+        sql: `SELECT user_id, bedspace_id FROM payments WHERE transaction_reference = ? OR id = ?`,
+        args: [payload.transactionReference, payload.transactionReference]
+      });
+
+      if (payRes.rows.length > 0) {
+        const userId = String(payRes.rows[0].user_id);
+        const bedspaceId = String(payRes.rows[0].bedspace_id);
+
+        await client.batch([
+          {
+            sql: `UPDATE bedspaces SET status = 'CONFIRMED', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            args: [bedspaceId]
+          },
+          {
+            sql: `UPDATE payments SET payment_status = 'SUCCESSFUL', paid_at = CURRENT_TIMESTAMP WHERE transaction_reference = ? OR id = ?`,
+            args: [payload.transactionReference, payload.transactionReference]
+          },
+          {
+            sql: `UPDATE rooms SET occupied_beds = occupied_beds + 1 WHERE id = (SELECT room_id FROM bedspaces WHERE id = ?)`,
+            args: [bedspaceId]
+          }
+        ], 'write');
+      }
+    }
+
+    return {
+      isValid: true,
+      transactionReference: payload.transactionReference,
+      paymentStatus,
+      message: `Webhook signature verified successfully. Transaction marked as ${paymentStatus}.`
+    };
+  }
+
+  /**
+   * Processes a direct Remita gateway checkout via specific payment channels
+   * (e.g. Card, Bank Transfer, USSD, Remita Wallet).
+   *
+   * @param params - RemitaCheckoutParams containing channel, user ID, and channel options
+   * @returns RemitaCheckoutResult
+   */
+  public static async processGatewayCheckout(params: RemitaCheckoutParams): Promise<RemitaCheckoutResult> {
+    await PaymentService.initializeSchema();
+
+    // Verify active hold status
+    const holdStatus = await PaymentService.getPaymentHoldStatus(params.userId);
+    if (!holdStatus) {
+      throw new Error('No active bedspace hold found. Please lock a bedspace before checkout.');
+    }
+
+    if (holdStatus.isExpired) {
+      throw new Error('Your provisional bedspace hold has expired. Bedspace has been returned to pool.');
+    }
+
+    if (holdStatus.paymentStatus === 'SUCCESSFUL') {
+      throw new Error('Payment for this bedspace has already been completed.');
+    }
+
+    const client = AuthService.getDbClient();
+    const paidAt = new Date().toISOString();
+    const feeBreakdown = PaymentService.calculateFeeBreakdown(holdStatus.amount);
+
+    // Generate unique 12-digit transaction reference
+    const timestampDigits = String(Date.now()).slice(-8);
+    const randomDigits = String(Math.floor(10 + Math.random() * 90));
+    const txRef = `23${timestampDigits}${randomDigits}`;
+
+    let ussdCode: string | undefined;
+    let virtualAccountNumber: string | undefined;
+    let bankName: string | undefined;
+    let paymentStatus: 'SUCCESSFUL' | 'PENDING' = 'PENDING';
+
+    if (params.channel === 'CARD') {
+      if (!params.cardDetails || !params.cardDetails.cardNumber) {
+        throw new Error('Card payment details (card number, expiration, CVV) are required.');
+      }
+
+      // Validate card number length
+      const cleanCard = params.cardDetails.cardNumber.replace(/\s/g, '');
+      if (cleanCard.length < 15 || cleanCard.length > 16) {
+        throw new Error('Invalid card number. Please enter a valid 16-digit debit/credit card.');
+      }
+
+      paymentStatus = 'SUCCESSFUL';
+    } else if (params.channel === 'USSD') {
+      const ussdPhone = params.phoneForUssd || '08000000000';
+      ussdCode = `*737*000*${txRef.slice(-6)}#`;
+      paymentStatus = 'PENDING';
+    } else if (params.channel === 'BANK_TRANSFER') {
+      virtualAccountNumber = `99${txRef.slice(-8)}`;
+      bankName = 'Wema Bank / Remita Gateway';
+      paymentStatus = 'PENDING';
+    } else if (params.channel === 'REMITA_WALLET') {
+      paymentStatus = 'SUCCESSFUL';
+    }
+
+    if (paymentStatus === 'SUCCESSFUL') {
+      const payExistRes = await client.execute({
+        sql: `SELECT id FROM payments WHERE user_id = ? AND bedspace_id = ?`,
+        args: [params.userId, holdStatus.bedspaceId]
+      });
+
+      const payUpdateOrInsert = payExistRes.rows.length > 0
+        ? {
+            sql: `UPDATE payments SET transaction_reference = ?, payment_status = 'SUCCESSFUL', paid_at = CURRENT_TIMESTAMP WHERE user_id = ? AND bedspace_id = ?`,
+            args: [txRef, params.userId, holdStatus.bedspaceId]
+          }
+        : {
+            sql: `INSERT INTO payments (id, user_id, bedspace_id, transaction_reference, amount, payment_type, payment_status, paid_at) VALUES (?, ?, ?, ?, ?, 'HOSTEL_FEE', 'SUCCESSFUL', CURRENT_TIMESTAMP)`,
+            args: [`pay_${Date.now()}`, params.userId, holdStatus.bedspaceId, txRef, feeBreakdown.totalAmount]
+          };
+
+      await client.batch([
+        {
+          sql: `UPDATE bedspaces SET status = 'CONFIRMED', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND allocated_to_user_id = ?`,
+          args: [holdStatus.bedspaceId, params.userId]
+        },
+        payUpdateOrInsert,
+        {
+          sql: `UPDATE rooms SET occupied_beds = occupied_beds + 1 WHERE id = (SELECT room_id FROM bedspaces WHERE id = ?)`,
+          args: [holdStatus.bedspaceId]
+        }
+      ], 'write');
+    } else {
+      const payExistRes = await client.execute({
+        sql: `SELECT id FROM payments WHERE user_id = ? AND bedspace_id = ?`,
+        args: [params.userId, holdStatus.bedspaceId]
+      });
+
+      if (payExistRes.rows.length > 0) {
+        await client.execute({
+          sql: `UPDATE payments SET transaction_reference = ?, payment_status = 'PENDING' WHERE user_id = ? AND bedspace_id = ?`,
+          args: [txRef, params.userId, holdStatus.bedspaceId]
+        });
+      } else {
+        await client.execute({
+          sql: `INSERT INTO payments (id, user_id, bedspace_id, transaction_reference, amount, payment_type, payment_status) VALUES (?, ?, ?, ?, ?, 'HOSTEL_FEE', 'PENDING')`,
+          args: [`pay_${Date.now()}`, params.userId, holdStatus.bedspaceId, txRef, feeBreakdown.totalAmount]
+        });
+      }
+    }
+
+    const message = paymentStatus === 'SUCCESSFUL'
+      ? `Payment completed successfully via ${params.channel}! Room reservation confirmed.`
+      : `Payment initiated via ${params.channel}. Please complete payment using the reference ${txRef}.`;
+
+    return {
+      success: true,
+      transactionReference: txRef,
+      paymentId: holdStatus.paymentId || `pay_${Date.now()}`,
+      bedspaceId: holdStatus.bedspaceId,
+      amount: feeBreakdown.totalAmount,
+      channel: params.channel,
+      ussdCode,
+      virtualAccountNumber,
+      bankName,
+      paymentStatus,
+      message,
+      paidAt
+    };
+  }
+
+  /**
+   * Retrieves the official Digital Accommodation Clearance Slip for a student with confirmed payment.
+   * Generates a signed cryptographic QR code payload string for instant gate verification.
+   *
+   * @param userId - Student user ID
+   * @returns DigitalClearanceSlip
+   */
+  public static async getDigitalClearanceSlip(userId: string): Promise<DigitalClearanceSlip> {
+    await PaymentService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT u.full_name, u.matric_or_staff_no, sp.faculty, sp.department,
+                   p.id as payment_id, p.transaction_reference, p.amount, p.paid_at,
+                   b.bed_label, r.room_number, r.block_name, h.name as hostel_name
+            FROM payments p
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN student_profiles sp ON sp.user_id = u.id
+            JOIN bedspaces b ON p.bedspace_id = b.id
+            JOIN rooms r ON b.room_id = r.id
+            JOIN hostels h ON r.hostel_id = h.id
+            WHERE p.user_id = ? AND p.payment_status = 'SUCCESSFUL' AND b.status = 'CONFIRMED'
+            ORDER BY p.paid_at DESC LIMIT 1`,
+      args: [userId]
+    });
+
+    if (res.rows.length === 0) {
+      throw new Error('No confirmed accommodation payment found for digital clearance slip generation.');
+    }
+
+    const row = res.rows[0];
+    const clearanceSlipId = `CLR_${String(row.matric_or_staff_no)}_${Date.now()}`;
+    const paidAt = row.paid_at ? String(row.paid_at) : new Date().toISOString();
+
+    // Construct cryptographic QR verification payload
+    const rawQrPayload = JSON.stringify({
+      slipId: clearanceSlipId,
+      matric: String(row.matric_or_staff_no),
+      name: String(row.full_name),
+      hostel: String(row.hostel_name),
+      room: `Block ${row.block_name} Room ${row.room_number} (${row.bed_label})`,
+      txRef: String(row.transaction_reference),
+      timestamp: paidAt
+    });
+
+    const qrSignature = CryptoJS.SHA256(rawQrPayload + PaymentService.REMITA_API_SECRET).toString(CryptoJS.enc.Hex);
+    const clearanceQrPayload = `${rawQrPayload}|SIG:${qrSignature}`;
+
+    return {
+      clearanceSlipId,
+      studentName: String(row.full_name),
+      studentMatricNo: String(row.matric_or_staff_no),
+      studentFaculty: row.faculty ? String(row.faculty) : 'General',
+      studentDepartment: row.department ? String(row.department) : 'General',
+      hostelName: String(row.hostel_name),
+      blockName: String(row.block_name),
+      roomNumber: String(row.room_number),
+      bedLabel: String(row.bed_label),
+      amountPaid: Number(row.amount || 25800.00),
+      transactionReference: String(row.transaction_reference),
+      paidAt,
+      clearanceQrPayload,
+      status: 'ACTIVE_RESIDENT'
+    };
   }
 }

@@ -139,3 +139,85 @@ export interface PendingPaymentSyncSummary {
   recycledHoldCount: number;
   syncedAt: string;
 }
+
+/**
+ * Payment channel options supported by the Remita Gateway integration.
+ */
+export type RemitaPaymentChannel = 'CARD' | 'BANK_TRANSFER' | 'USSD' | 'REMITA_WALLET';
+
+/**
+ * Parameters submitted for a direct gateway checkout via specific payment channels.
+ */
+export interface RemitaCheckoutParams {
+  userId: string;
+  paymentId: string;
+  channel: RemitaPaymentChannel;
+  cardDetails?: {
+    cardNumber: string;
+    expiryMonth: string;
+    expiryYear: string;
+    cvv: string;
+  };
+  phoneForUssd?: string;
+}
+
+/**
+ * Result returned after initiating or completing a direct Remita gateway checkout.
+ */
+export interface RemitaCheckoutResult {
+  success: boolean;
+  transactionReference: string;
+  paymentId: string;
+  bedspaceId: string;
+  amount: number;
+  channel: RemitaPaymentChannel;
+  ussdCode?: string;
+  virtualAccountNumber?: string;
+  bankName?: string;
+  paymentStatus: 'SUCCESSFUL' | 'PENDING' | 'FAILED';
+  message: string;
+  paidAt: string;
+}
+
+/**
+ * Structure of incoming webhook notifications from Remita payment gateway.
+ */
+export interface RemitaWebhookPayload {
+  transactionReference: string;
+  rrr: string;
+  amount: number;
+  status: 'SUCCESS' | 'FAILED';
+  hash: string;
+  paymentDate: string;
+}
+
+/**
+ * Verification outcome of validating a Remita webhook payload signature.
+ */
+export interface RemitaWebhookVerificationResult {
+  isValid: boolean;
+  transactionReference: string;
+  paymentStatus: 'SUCCESSFUL' | 'FAILED';
+  message: string;
+}
+
+/**
+ * Official digital accommodation clearance slip generated upon confirmed payment.
+ * Contains student identity details, hostel room assignment, and dynamic QR verification payload.
+ */
+export interface DigitalClearanceSlip {
+  clearanceSlipId: string;
+  studentName: string;
+  studentMatricNo: string;
+  studentFaculty: string;
+  studentDepartment: string;
+  hostelName: string;
+  blockName: string;
+  roomNumber: string;
+  bedLabel: string;
+  amountPaid: number;
+  transactionReference: string;
+  paidAt: string;
+  clearanceQrPayload: string;
+  status: 'ACTIVE_RESIDENT';
+}
