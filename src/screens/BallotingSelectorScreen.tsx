@@ -416,7 +416,7 @@ export const BallotingSelectorScreen: React.FC = () => {
             </Text>
 
             {isBallotingLoading && hostelRooms.length === 0 ? (
-              <ActivityIndicator size="medium" color="#7A0000" className="my-6" />
+              <ActivityIndicator size="large" color="#7A0000" className="my-6" />
             ) : hostelRooms.length === 0 ? (
               <Text className="text-slate-500 text-sm py-4 text-center">
                 No rooms initialized or available in this hostel yet.
