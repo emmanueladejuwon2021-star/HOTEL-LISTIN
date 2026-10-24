@@ -64,6 +64,29 @@ export interface HostelFilterParams {
 }
 
 /**
+ * Category-level priority quota breakdown details.
+ */
+export interface CategoryQuotaBreakdown {
+  category: PriorityCategory;
+  categoryLabel: string;
+  sharePercentage: number;
+  allocatedBeds: number;
+  availableBeds: number;
+  totalQuotaBeds: number;
+}
+
+/**
+ * Summary analytics for hostel priority category quota allocations.
+ */
+export interface QuotaAnalyticsSummary {
+  hostelId?: string;
+  hostelName?: string;
+  totalCapacity: number;
+  totalAvailableBedspaces: number;
+  categoryBreakdown: CategoryQuotaBreakdown[];
+}
+
+/**
  * Filtered hostel details with quota availability for student selector.
  */
 export interface FilteredHostelSummary extends HostelQuotaSummary {
