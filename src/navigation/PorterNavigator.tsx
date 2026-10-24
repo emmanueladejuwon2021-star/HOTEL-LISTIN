@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PorterStackParamList } from './types';
 import { useAuthStore } from '../store/useAuthStore';
 import { RoomInventoryScreen } from '../screens/RoomInventoryScreen';
+import { GateScannerScreen } from '../screens/GateScannerScreen';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type Props = NativeStackScreenProps<PorterStackParamList, 'PorterDashboard'>;
@@ -34,19 +35,25 @@ const PorterDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* High Visibility Quick Action Cards */}
         <View className="space-y-4 mb-6">
-          <View className="bg-emerald-600 p-6 rounded-2xl items-center shadow-lg">
+          <TouchableOpacity
+            className="bg-emerald-600 p-6 rounded-2xl items-center shadow-lg active:opacity-90"
+            onPress={() => navigation.navigate('GateScanner')}
+          >
             <Text className="text-white text-3xl font-black mb-1">📷 OPEN QR SCANNER</Text>
             <Text className="text-emerald-100 text-xs text-center">
               Scan student dynamic QR pass for sub-500ms gate entry verification
             </Text>
-          </View>
+          </TouchableOpacity>
 
-          <View className="bg-amber-500 p-6 rounded-2xl items-center shadow-lg">
+          <TouchableOpacity
+            className="bg-amber-500 p-6 rounded-2xl items-center shadow-lg active:opacity-90"
+            onPress={() => navigation.navigate('GateScanner')}
+          >
             <Text className="text-slate-900 text-2xl font-black mb-1">🔢 MANUAL PIN LOOKUP</Text>
             <Text className="text-slate-900 text-xs text-center font-medium">
               Verify expected visitor 6-digit access code
             </Text>
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             className="bg-blue-600 p-6 rounded-2xl items-center shadow-lg active:opacity-90"
@@ -88,6 +95,11 @@ export const PorterNavigator: React.FC = () => {
         name="PorterDashboard"
         component={PorterDashboardScreen}
         options={{ title: 'Porter Gatehouse Station' }}
+      />
+      <Stack.Screen
+        name="GateScanner"
+        component={GateScannerScreen}
+        options={{ title: 'Porter Gate Scanner (P-01)' }}
       />
       <Stack.Screen
         name="RoomAudit"

@@ -4,14 +4,15 @@ import {
   GatePassRecord,
   GatePassTokenPayload,
   GatePassToken,
-  GatePassStoreState
+  GatePassStoreState,
+  VisitorPass
 } from '../types/gatepass';
 
 /**
  * Zustand Store managing student dynamic QR code gate pass state, 30-second countdown lifecycle,
- * and automatic token auto-refresh operations.
+ * automatic token auto-refresh operations, and 6-digit visitor pass generation.
  *
- * Implements [GATEPASS-03] and [GATEPASS-04] adhering to PRD Sections 6 (Spec S-05) and 7.
+ * Implements [GATEPASS-03], [GATEPASS-04], and [GATEPASS-05] adhering to PRD Sections 6 (Spec S-05), 7, and 9.
  */
 export const useGatePassStore = create<GatePassStoreState>((set, get) => ({
   currentPass: null,
@@ -22,6 +23,7 @@ export const useGatePassStore = create<GatePassStoreState>((set, get) => ({
   activePass: null,
   countdownSeconds: 30,
   isOffline: false,
+  visitorPasses: [],
 
   loadGatePass: async (userId: string) => {
     set({ isLoading: true, errorMessage: null });
@@ -88,6 +90,31 @@ export const useGatePassStore = create<GatePassStoreState>((set, get) => ({
     }
   },
 
+  createVisitorPass: async (studentId: string, visitorName: string, visitorPhone: string, visitDate?: string): Promise<VisitorPass> => {
+    set({ isLoading: true, errorMessage: null });
+    try {
+      const pass = await GatePassService.createVisitorPass(studentId, visitorName, visitorPhone, visitDate);
+      const existing = get().visitorPasses || [];
+      set({
+        visitorPasses: [pass, ...existing],
+        isLoading: false
+      });
+      return pass;
+    } catch (error: any) {
+      set({ isLoading: false, errorMessage: error.message || 'Failed to create visitor pass.' });
+      throw error;
+    }
+  },
+
+  loadVisitorPasses: async (studentId: string) => {
+    try {
+      const passes = await GatePassService.getVisitorPassesByStudent(studentId);
+      set({ visitorPasses: passes });
+    } catch (error: any) {
+      set({ errorMessage: error.message || 'Failed to load visitor passes.' });
+    }
+  },
+
   resetGatePassState: () => {
     set({
       currentPass: null,
@@ -97,7 +124,8 @@ export const useGatePassStore = create<GatePassStoreState>((set, get) => ({
       isLoading: false,
       errorMessage: null,
       activePass: null,
-      isOffline: false
+      isOffline: false,
+      visitorPasses: []
     });
   },
 

@@ -8,7 +8,9 @@ import {
   GatePassToken,
   GateAccessLog,
   GateType,
-  AccessStatus
+  AccessStatus,
+  VisitorPass,
+  ManualPinLookupResult
 } from '../types/gatepass';
 
 /**
@@ -20,13 +22,18 @@ const GATE_PASS_HMAC_SECRET = GATE_PASS_SECRET;
 
 /**
  * Service managing dynamic QR code gate pass creation, database persistence,
- * automatic token refreshing, and verification for UNILAG hostel entry gates.
+ * automatic token refreshing, porter high-visibility camera scanning,
+ * sub-500ms verification performance, and 6-digit manual PIN visitor access codes.
  *
  * Implements:
  * - [GATEPASS-01] Dynamic QR Gate Pass Token Generation (Issue #31)
  * - [GATEPASS-02] Offline-first Gatekeeping & Curfew Verification (Issue #32)
  * - [GATEPASS-03] Dynamic QR Code Gate Pass Generation - Component 3 (Issue #33)
  * - [GATEPASS-04] Dynamic 30-Second Refreshing QR Pass & Store Countdown (Issue #34)
+ * - [GATEPASS-05] Dynamic QR Code Gate Pass Generation - Component 5 (Issue #35)
+ * - [SCANNER-01] Porter High-Visibility Gate Scanner View - Component 1 (Issue #36)
+ * - [SCANNER-02] Sub-500ms QR Verification Performance - Component 2 (Issue #37)
+ * - [SCANNER-03] Manual 6-Digit PIN Lookup Backup for Gate Access - Component 3 (Issue #38)
  *
  * Interacts directly with Turso libSQL edge SQLite database following zero-mock principles.
  * Heavily documented with simple English comments for non-technical readability.
@@ -34,7 +41,7 @@ const GATE_PASS_HMAC_SECRET = GATE_PASS_SECRET;
 export class GatePassService {
   /**
    * Initializes the Turso libSQL SQLite database schemas for gate pass tracking,
-   * access logging, curfew controls, and disciplinary records.
+   * access logging, curfew controls, disciplinary records, and visitor passes.
    */
   public static async initializeSchema(): Promise<void> {
     await AuthService.initializeSchema();
@@ -56,7 +63,6 @@ export class GatePassService {
       args: []
     });
 
-    // 2. Indexes for fast gate pass lookup and verification
     await client.execute({
       sql: `CREATE INDEX IF NOT EXISTS idx_gate_passes_user ON gate_passes(user_id)`,
       args: []
@@ -67,7 +73,7 @@ export class GatePassService {
       args: []
     });
 
-    // 3. Create disciplinary_records table for gatekeeper security screening
+    // 2. Create disciplinary_records table for gatekeeper security screening
     await client.execute({
       sql: `CREATE TABLE IF NOT EXISTS disciplinary_records (
         user_id TEXT PRIMARY KEY,
@@ -79,7 +85,7 @@ export class GatePassService {
       args: []
     });
 
-    // 4. Create gate_access_logs audit table
+    // 3. Create gate_access_logs audit table
     await client.execute({
       sql: `CREATE TABLE IF NOT EXISTS gate_access_logs (
         id TEXT PRIMARY KEY,
@@ -96,7 +102,7 @@ export class GatePassService {
       args: []
     });
 
-    // 5. Create exeat_requests table for night curfew permissions
+    // 4. Create exeat_requests table for night curfew permissions
     await client.execute({
       sql: `CREATE TABLE IF NOT EXISTS exeat_requests (
         id TEXT PRIMARY KEY,
@@ -110,6 +116,39 @@ export class GatePassService {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
       )`,
+      args: []
+    });
+
+    // 5. Create visitor_passes table for 6-digit access PIN management (PRD Section 9)
+    await client.execute({
+      sql: `CREATE TABLE IF NOT EXISTS visitor_passes (
+        id TEXT PRIMARY KEY,
+        student_id TEXT NOT NULL,
+        visitor_name TEXT NOT NULL,
+        visitor_phone TEXT NOT NULL,
+        pass_code TEXT NOT NULL,
+        visit_date DATE NOT NULL,
+        check_in_time DATETIME,
+        check_out_time DATETIME,
+        status TEXT CHECK(status IN ('EXPECTED', 'CHECKED_IN', 'CHECKED_OUT', 'EXPIRED')) DEFAULT 'EXPECTED',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      args: []
+    });
+
+    await client.execute({
+      sql: `CREATE INDEX IF NOT EXISTS idx_visitor_code ON visitor_passes(pass_code)`,
+      args: []
+    });
+
+    await client.execute({
+      sql: `CREATE INDEX IF NOT EXISTS idx_visitor_student ON visitor_passes(student_id)`,
+      args: []
+    });
+
+    await client.execute({
+      sql: `CREATE INDEX IF NOT EXISTS idx_visitor_date ON visitor_passes(visit_date)`,
       args: []
     });
 
@@ -131,7 +170,7 @@ export class GatePassService {
 
   /**
    * Generates a new dynamic QR code gate pass for a student (30-second TTL).
-   * Implements [GATEPASS-03] and [GATEPASS-04].
+   * Implements [GATEPASS-03], [GATEPASS-04], and [GATEPASS-05].
    *
    * @param userId The ID of the student requesting a gate pass
    * @returns GatePassRecord and decoded payload
@@ -178,7 +217,6 @@ export class GatePassService {
         if (roomRes.rows[0].hostel_name) hostelName = String(roomRes.rows[0].hostel_name);
         if (roomRes.rows[0].room_number) roomNumber = String(roomRes.rows[0].room_number);
       } else {
-        // Fallback check bedspaces
         const bedRes = await client.execute({
           sql: `SELECT b.bed_label, r.room_number, h.id as hostel_id, h.name as hostel_name
                 FROM bedspaces b
@@ -280,7 +318,6 @@ export class GatePassService {
       const remainingSec = Math.max(0, Math.floor((expTime - Date.now()) / 1000));
 
       if (remainingSec > 0) {
-        // Active valid pass found
         try {
           const rawUtf8 = CryptoJS.enc.Base64.parse(String(row.token_string)).toString(CryptoJS.enc.Utf8);
           const parsed = JSON.parse(rawUtf8);
@@ -301,14 +338,13 @@ export class GatePassService {
       }
     }
 
-    // No valid active pass found, generate fresh pass
     return await GatePassService.generateGatePass(userId);
   }
 
   /**
    * Verifies the validity of a dynamic QR gate pass scanned at the hostel gatehouse.
    * Checks cryptographic signature, expiration timestamp, and database status in Turso DB.
-   * Implements [GATEPASS-04].
+   * Implements [GATEPASS-04] and [SCANNER-01].
    *
    * @param tokenString The raw QR code token string scanned by porter camera
    * @returns GatePassVerificationResult object indicating access approval status
@@ -325,7 +361,6 @@ export class GatePassService {
     }
 
     try {
-      // Decode Base64 token payload
       const rawUtf8 = CryptoJS.enc.Base64.parse(tokenString.trim()).toString(CryptoJS.enc.Utf8);
       const parsed = JSON.parse(rawUtf8);
 
@@ -337,12 +372,10 @@ export class GatePassService {
       }
 
       const payload: GatePassTokenPayload = parsed.p;
-      // Payload JSON used for signature re-computation
       const payloadForSig = { ...payload };
       delete payloadForSig.signature;
       const expectedSig = CryptoJS.HmacSHA256(JSON.stringify(payloadForSig), GATE_PASS_SECRET).toString(CryptoJS.enc.Hex);
 
-      // Verify cryptographic signature matches
       if (parsed.sig !== expectedSig) {
         return {
           isValid: false,
@@ -350,7 +383,6 @@ export class GatePassService {
         };
       }
 
-      // Check timestamp expiration (30s window)
       const nowMs = Date.now();
       if (nowMs > payload.expiresAt) {
         return {
@@ -359,7 +391,6 @@ export class GatePassService {
         };
       }
 
-      // Check database status record in Turso
       const dbResult = await client.execute({
         sql: `SELECT id, status FROM gate_passes WHERE signature_hash = ?`,
         args: [parsed.sig]
@@ -385,7 +416,14 @@ export class GatePassService {
         message: `ACCESS GRANTED: ${payload.fullName} (${payload.matricNo}) - ${payload.hostelName}, ${payload.roomNumber}`,
         payload,
         passId: String(dbResult.rows[0].id),
-        verifiedAt: new Date().toISOString()
+        verifiedAt: new Date().toISOString(),
+        student: {
+          userId: payload.userId,
+          matricNo: payload.matricNo,
+          fullName: payload.fullName,
+          hostelName: payload.hostelName,
+          roomNumber: payload.roomNumber
+        }
       };
     } catch {
       return {
@@ -393,6 +431,449 @@ export class GatePassService {
         message: 'Access Denied: Failed to process QR pass token.'
       };
     }
+  }
+
+  /**
+   * Fast Sub-500ms QR Verification Engine for Porter Camera Scanner ([SCANNER-02]).
+   * Performs cryptographic signature validation and Turso DB lookup with performance latency measurement.
+   *
+   * @param tokenString The dynamic QR token string
+   * @param porterId The ID of the scanning porter
+   * @param gateType 'ENTRY' or 'EXIT'
+   * @returns GatePassVerificationResult containing latencyMs metric (< 500ms target)
+   */
+  public static async fastVerifyGatePass(
+    tokenString: string,
+    porterId: string,
+    gateType: GateType = 'ENTRY'
+  ): Promise<GatePassVerificationResult> {
+    const startTime = Date.now();
+
+    // 1. First attempt modern 30s token verification
+    const modernResult = await GatePassService.verifyGatePassToken(tokenString);
+
+    if (modernResult.isValid && modernResult.payload) {
+      const latencyMs = Date.now() - startTime;
+      const client = AuthService.getDbClient();
+
+      // Log access in background without slowing down response
+      const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      client.execute({
+        sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id)
+              VALUES (?, ?, ?, ?, 'GRANTED', NULL, ?, ?)`,
+        args: [
+          logId,
+          modernResult.payload.userId,
+          modernResult.payload.hostelId || 'hostel_main',
+          gateType,
+          modernResult.payload.nonce || null,
+          porterId
+        ]
+      }).catch(() => {});
+
+      return {
+        ...modernResult,
+        accessGranted: true,
+        accessStatus: 'GRANTED',
+        gateType,
+        latencyMs
+      };
+    }
+
+    // 2. If modern format failed, attempt legacy/offline-first gate pass verification
+    const legacyResult = await GatePassService.verifyGatePass(tokenString, porterId, gateType);
+    const latencyMs = Date.now() - startTime;
+
+    return {
+      ...legacyResult,
+      latencyMs
+    };
+  }
+
+  /**
+   * Creates an expected visitor pass with a 6-digit access PIN ([SCANNER-03] / PRD Section 9).
+   *
+   * @param studentId ID of the host student
+   * @param visitorName Full name of the visiting guest
+   * @param visitorPhone Contact phone number of visitor
+   * @param visitDate Target date of visit (defaults to today)
+   * @returns Newly created VisitorPass record
+   */
+  public static async createVisitorPass(
+    studentId: string,
+    visitorName: string,
+    visitorPhone: string,
+    visitDate?: string
+  ): Promise<VisitorPass> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Validate student exists
+    const studentRes = await client.execute({
+      sql: `SELECT u.id, u.full_name, u.matric_or_staff_no FROM users u WHERE u.id = ?`,
+      args: [studentId]
+    });
+
+    if (studentRes.rows.length === 0) {
+      throw new Error(`Host student with ID '${studentId}' not found.`);
+    }
+
+    const studentRow = studentRes.rows[0];
+    const passId = `vp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    // Generate secure 6-digit PIN code (e.g. 748291)
+    const passCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const formattedDate = visitDate || new Date().toISOString().split('T')[0];
+    const createdAt = new Date().toISOString();
+
+    // Fetch room details for visitor identification
+    let hostelName = 'Main Campus Hostel';
+    let roomNumber = 'Room A-101';
+
+    try {
+      const roomRes = await client.execute({
+        sql: `SELECT r.room_number, h.name as hostel_name
+              FROM payments p
+              JOIN rooms r ON p.room_id = r.id
+              JOIN hostels h ON r.hostel_id = h.id
+              WHERE p.user_id = ? AND p.payment_status IN ('LOCKED', 'COMPLETED')
+              LIMIT 1`,
+        args: [studentId]
+      });
+      if (roomRes.rows.length > 0) {
+        if (roomRes.rows[0].hostel_name) hostelName = String(roomRes.rows[0].hostel_name);
+        if (roomRes.rows[0].room_number) roomNumber = String(roomRes.rows[0].room_number);
+      }
+    } catch {}
+
+    await client.execute({
+      sql: `INSERT INTO visitor_passes (id, student_id, visitor_name, visitor_phone, pass_code, visit_date, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'EXPECTED', ?)`,
+      args: [passId, studentId, visitorName.trim(), visitorPhone.trim(), passCode, formattedDate, createdAt]
+    });
+
+    return {
+      id: passId,
+      studentId,
+      studentName: String(studentRow.full_name),
+      studentMatric: String(studentRow.matric_or_staff_no),
+      hostelName,
+      roomNumber,
+      visitorName: visitorName.trim(),
+      visitorPhone: visitorPhone.trim(),
+      passCode,
+      visitDate: formattedDate,
+      status: 'EXPECTED',
+      createdAt
+    };
+  }
+
+  /**
+   * Retrieves visitor passes issued by a student.
+   */
+  public static async getVisitorPassesByStudent(studentId: string): Promise<VisitorPass[]> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT vp.id, vp.student_id, u.full_name as student_name, u.matric_or_staff_no as student_matric,
+                   vp.visitor_name, vp.visitor_phone, vp.pass_code, vp.visit_date,
+                   vp.check_in_time, vp.check_out_time, vp.status, vp.created_at
+            FROM visitor_passes vp
+            JOIN users u ON vp.student_id = u.id
+            WHERE vp.student_id = ?
+            ORDER BY vp.created_at DESC`,
+      args: [studentId]
+    });
+
+    return res.rows.map(row => ({
+      id: String(row.id),
+      studentId: String(row.student_id),
+      studentName: row.student_name ? String(row.student_name) : undefined,
+      studentMatric: row.student_matric ? String(row.student_matric) : undefined,
+      visitorName: String(row.visitor_name),
+      visitorPhone: String(row.visitor_phone),
+      passCode: String(row.pass_code),
+      visitDate: String(row.visit_date),
+      checkInTime: row.check_in_time ? String(row.check_in_time) : undefined,
+      checkOutTime: row.check_out_time ? String(row.check_out_time) : undefined,
+      status: String(row.status) as any,
+      createdAt: String(row.created_at)
+    }));
+  }
+
+  /**
+   * Manual 6-Digit PIN Lookup Backup for Gate Access ([SCANNER-03] / PRD Spec P-01).
+   * Verifies an expected visitor 6-digit pass code or emergency student matriculation number.
+   *
+   * @param pinOrMatric 6-digit visitor access PIN or student matric number
+   * @param porterId ID of the verifying hostel porter
+   * @param gateType 'ENTRY' or 'EXIT'
+   * @returns ManualPinLookupResult with action allowed ('CHECK_IN', 'CHECK_OUT', 'NONE')
+   */
+  public static async verifyManualPin(
+    pinOrMatric: string,
+    porterId: string,
+    gateType: GateType = 'ENTRY'
+  ): Promise<ManualPinLookupResult> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+    const startTime = Date.now();
+    const cleanInput = pinOrMatric ? pinOrMatric.trim() : '';
+
+    if (!cleanInput) {
+      return {
+        isValid: false,
+        message: 'Please enter a valid 6-digit visitor PIN or student matric number.',
+        passType: 'VISITOR',
+        actionAllowed: 'NONE',
+        latencyMs: Date.now() - startTime
+      };
+    }
+
+    // 1. Look up in visitor_passes table by 6-digit pass code
+    const visitorRes = await client.execute({
+      sql: `SELECT vp.id, vp.student_id, u.full_name as student_name, u.matric_or_staff_no as student_matric,
+                   vp.visitor_name, vp.visitor_phone, vp.pass_code, vp.visit_date,
+                   vp.check_in_time, vp.check_out_time, vp.status, vp.created_at
+            FROM visitor_passes vp
+            JOIN users u ON vp.student_id = u.id
+            WHERE vp.pass_code = ?
+            ORDER BY vp.created_at DESC LIMIT 1`,
+      args: [cleanInput]
+    });
+
+    if (visitorRes.rows.length > 0) {
+      const row = visitorRes.rows[0];
+      const status = String(row.status);
+      const latencyMs = Date.now() - startTime;
+
+      const visitor: VisitorPass = {
+        id: String(row.id),
+        studentId: String(row.student_id),
+        studentName: row.student_name ? String(row.student_name) : undefined,
+        studentMatric: row.student_matric ? String(row.student_matric) : undefined,
+        visitorName: String(row.visitor_name),
+        visitorPhone: String(row.visitor_phone),
+        passCode: String(row.pass_code),
+        visitDate: String(row.visit_date),
+        checkInTime: row.check_in_time ? String(row.check_in_time) : undefined,
+        checkOutTime: row.check_out_time ? String(row.check_out_time) : undefined,
+        status: status as any,
+        createdAt: String(row.created_at)
+      };
+
+      if (status === 'EXPECTED') {
+        return {
+          isValid: true,
+          message: `VALID VISITOR: ${visitor.visitorName} visiting ${visitor.studentName} (${visitor.studentMatric}). Ready for Entry Check-In.`,
+          passType: 'VISITOR',
+          visitor,
+          actionAllowed: 'CHECK_IN',
+          latencyMs
+        };
+      }
+
+      if (status === 'CHECKED_IN') {
+        return {
+          isValid: true,
+          message: `ACTIVE VISITOR: ${visitor.visitorName} currently in hostel. Ready for Exit Check-Out.`,
+          passType: 'VISITOR',
+          visitor,
+          actionAllowed: 'CHECK_OUT',
+          latencyMs
+        };
+      }
+
+      return {
+        isValid: false,
+        message: `Visitor pass status is '${status}'. Cannot proceed with gate entry.`,
+        passType: 'VISITOR',
+        visitor,
+        actionAllowed: 'NONE',
+        latencyMs
+      };
+    }
+
+    // 2. Emergency Backup: Student matric lookup (when student phone battery died)
+    const studentRes = await client.execute({
+      sql: `SELECT u.id, u.matric_or_staff_no, u.full_name, u.role, u.is_active,
+                   sp.residency_status, sp.clearance_status
+            FROM users u
+            JOIN student_profiles sp ON u.id = sp.user_id
+            WHERE (u.matric_or_staff_no = ? OR u.id = ?) AND u.is_active = 1`,
+      args: [cleanInput, cleanInput]
+    });
+
+    if (studentRes.rows.length > 0) {
+      const sRow = studentRes.rows[0];
+      const isResident = sRow.residency_status === 'ACTIVE_RESIDENT' || sRow.clearance_status === 'APPROVED';
+      const latencyMs = Date.now() - startTime;
+
+      if (!isResident) {
+        return {
+          isValid: false,
+          message: `Access Denied: Student ${sRow.full_name} (${sRow.matric_or_staff_no}) has not completed hostel check-in.`,
+          passType: 'STUDENT_BACKUP',
+          actionAllowed: 'NONE',
+          latencyMs
+        };
+      }
+
+      // Check disciplinary suspension
+      const discRes = await client.execute({
+        sql: `SELECT status, reason FROM disciplinary_records WHERE user_id = ? LIMIT 1`,
+        args: [String(sRow.id)]
+      });
+
+      if (discRes.rows.length > 0) {
+        const dStatus = String(discRes.rows[0].status);
+        if (dStatus === 'SUSPENDED' || dStatus === 'RUSTICATED') {
+          return {
+            isValid: false,
+            message: `Access Denied: Student has disciplinary status '${dStatus}'.`,
+            passType: 'STUDENT_BACKUP',
+            actionAllowed: 'NONE',
+            latencyMs
+          };
+        }
+      }
+
+      // Log manual emergency entry
+      const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      await client.execute({
+        sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id)
+              VALUES (?, ?, 'hostel_main', ?, 'GRANTED', 'Emergency Manual Matric Lookup', NULL, ?)`,
+        args: [logId, String(sRow.id), gateType, porterId]
+      });
+
+      return {
+        isValid: true,
+        message: `EMERGENCY STUDENT ACCESS GRANTED: ${sRow.full_name} (${sRow.matric_or_staff_no})`,
+        passType: 'STUDENT_BACKUP',
+        student: {
+          userId: String(sRow.id),
+          matricNo: String(sRow.matric_or_staff_no),
+          fullName: String(sRow.full_name),
+          hostelName: 'Hostel Facility',
+          roomNumber: 'Assigned Resident Bedspace'
+        },
+        actionAllowed: 'CHECK_IN',
+        latencyMs
+      };
+    }
+
+    return {
+      isValid: false,
+      message: `Unrecognized access code: No matching 6-digit visitor PIN or active student matric number found.`,
+      passType: 'VISITOR',
+      actionAllowed: 'NONE',
+      latencyMs: Date.now() - startTime
+    };
+  }
+
+  /**
+   * Executes visitor check-in at the hostel gatehouse ([SCANNER-03]).
+   */
+  public static async checkInVisitor(visitorPassId: string, porterId: string): Promise<VisitorPass> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+    const checkInTime = new Date().toISOString();
+
+    await client.execute({
+      sql: `UPDATE visitor_passes
+            SET status = 'CHECKED_IN', check_in_time = ?
+            WHERE id = ?`,
+      args: [checkInTime, visitorPassId]
+    });
+
+    const res = await client.execute({
+      sql: `SELECT vp.*, u.full_name as student_name, u.matric_or_staff_no as student_matric
+            FROM visitor_passes vp
+            JOIN users u ON vp.student_id = u.id
+            WHERE vp.id = ?`,
+      args: [visitorPassId]
+    });
+
+    if (res.rows.length === 0) {
+      throw new Error(`Visitor pass '${visitorPassId}' not found.`);
+    }
+
+    const row = res.rows[0];
+
+    // Log gate entry
+    const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    await client.execute({
+      sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id)
+            VALUES (?, ?, 'hostel_main', 'ENTRY', 'GRANTED', ?, NULL, ?)`,
+      args: [logId, String(row.student_id), `Visitor Checked In: ${row.visitor_name}`, porterId]
+    });
+
+    return {
+      id: String(row.id),
+      studentId: String(row.student_id),
+      studentName: row.student_name ? String(row.student_name) : undefined,
+      studentMatric: row.student_matric ? String(row.student_matric) : undefined,
+      visitorName: String(row.visitor_name),
+      visitorPhone: String(row.visitor_phone),
+      passCode: String(row.pass_code),
+      visitDate: String(row.visit_date),
+      checkInTime,
+      status: 'CHECKED_IN',
+      createdAt: String(row.created_at)
+    };
+  }
+
+  /**
+   * Executes visitor check-out upon exit from the hostel ([SCANNER-03]).
+   */
+  public static async checkOutVisitor(visitorPassId: string, porterId: string): Promise<VisitorPass> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+    const checkOutTime = new Date().toISOString();
+
+    await client.execute({
+      sql: `UPDATE visitor_passes
+            SET status = 'CHECKED_OUT', check_out_time = ?
+            WHERE id = ?`,
+      args: [checkOutTime, visitorPassId]
+    });
+
+    const res = await client.execute({
+      sql: `SELECT vp.*, u.full_name as student_name, u.matric_or_staff_no as student_matric
+            FROM visitor_passes vp
+            JOIN users u ON vp.student_id = u.id
+            WHERE vp.id = ?`,
+      args: [visitorPassId]
+    });
+
+    if (res.rows.length === 0) {
+      throw new Error(`Visitor pass '${visitorPassId}' not found.`);
+    }
+
+    const row = res.rows[0];
+
+    // Log gate exit
+    const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    await client.execute({
+      sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id)
+            VALUES (?, ?, 'hostel_main', 'EXIT', 'GRANTED', ?, NULL, ?)`,
+      args: [logId, String(row.student_id), `Visitor Checked Out: ${row.visitor_name}`, porterId]
+    });
+
+    return {
+      id: String(row.id),
+      studentId: String(row.student_id),
+      studentName: row.student_name ? String(row.student_name) : undefined,
+      studentMatric: row.student_matric ? String(row.student_matric) : undefined,
+      visitorName: String(row.visitor_name),
+      visitorPhone: String(row.visitor_phone),
+      passCode: String(row.pass_code),
+      visitDate: String(row.visit_date),
+      checkInTime: row.check_in_time ? String(row.check_in_time) : undefined,
+      checkOutTime,
+      status: 'CHECKED_OUT',
+      createdAt: String(row.created_at)
+    };
   }
 
   /**
@@ -424,7 +905,6 @@ export class GatePassService {
 
     const row = result.rows[0];
 
-    // Must have fees paid and cleared/active status
     const isResident =
       row.residency_status === 'ACTIVE_RESIDENT' ||
       (Boolean(row.fees_paid) && row.clearance_status === 'APPROVED');
@@ -433,7 +913,6 @@ export class GatePassService {
       throw new Error('Student is not an active resident. Room check-in and clearance required before gate pass issuance.');
     }
 
-    // 2. Fetch assigned room and hostel details if allocated
     let hostelId = 'hostel_jaja';
     let hostelName = 'King Jaja Hall';
     let roomNumber = 'Room 101 (Bed A)';
@@ -454,11 +933,8 @@ export class GatePassService {
         hostelName = String(allocResult.rows[0].hostel_name);
         roomNumber = `${allocResult.rows[0].room_number} (${allocResult.rows[0].bed_label})`;
       }
-    } catch {
-      // Safe fallback if allocation tables are not seeded yet
-    }
+    } catch {}
 
-    // 3. Construct time-bound rolling token payload
     const now = Date.now();
     const expiresAt = now + ttlSeconds * 1000;
     const nonce = `n_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -482,7 +958,6 @@ export class GatePassService {
 
     const tokenString = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(JSON.stringify(payload)));
 
-    // Persist into gate_passes table as well for synchronized verification
     const passId = `gp_${now}_${Math.random().toString(36).substring(2, 7)}`;
     const genIso = new Date(now).toISOString();
     const expIso = new Date(expiresAt).toISOString();
@@ -504,12 +979,6 @@ export class GatePassService {
    * Verifies a student gate pass presented to a hostel porter at the gatehouse ([GATEPASS-02]).
    * Enforces cryptographic authenticity, expiry check, single-use anti-replay protection,
    * curfew hours enforcement, and disciplinary record check.
-   *
-   * @param tokenString Base64 encoded JSON token string
-   * @param porterId User ID of the porter performing the gate scan
-   * @param gateType 'ENTRY' or 'EXIT' (defaults to 'ENTRY')
-   * @param currentHour Mockable current hour (0-23) for curfew validation (defaults to current system hour)
-   * @returns GateVerificationResult object
    */
   public static async verifyGatePass(
     tokenString: string,
@@ -521,12 +990,10 @@ export class GatePassService {
     const client = AuthService.getDbClient();
     const verifiedAt = new Date().toISOString();
 
-    // 1. Decode token string
     let payload: GatePassTokenPayload;
     try {
       const jsonStr = CryptoJS.enc.Base64.parse(tokenString).toString(CryptoJS.enc.Utf8);
       payload = JSON.parse(jsonStr);
-      // Support nested payload format if passed
       if ((payload as any).p) {
         payload = (payload as any).p;
       }
@@ -544,7 +1011,6 @@ export class GatePassService {
 
     const { userId, matricNo, fullName, hostelId, hostelName, roomNumber, nonce, issuedAt, expiresAt, signature } = payload;
 
-    // Helper function to log access decisions to gate_access_logs audit table
     const logAccess = async (status: AccessStatus, denialReason?: string) => {
       try {
         const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -553,16 +1019,12 @@ export class GatePassService {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [logId, userId, hostelId || 'unknown_hostel', gateType, status, denialReason || null, nonce || null, porterId]
         });
-      } catch {
-        // Logging failure should not crash access check
-      }
+      } catch {}
     };
 
-    // 2. Cryptographic signature check
+    // Signature check
     const rawSignatureData = `${userId}:${matricNo}:${fullName}:${hostelId}:${issuedAt || payload.generatedAt}:${expiresAt}:${nonce}`;
     const expectedSignature = CryptoJS.HmacSHA256(rawSignatureData, GATE_PASS_HMAC_SECRET).toString();
-
-    // Check payload signature or nested signature
     const sigMatches = signature === expectedSignature || payload.signature === expectedSignature;
 
     if (!sigMatches) {
@@ -578,7 +1040,7 @@ export class GatePassService {
       };
     }
 
-    // 3. Expiration check
+    // Expiration check
     const now = Date.now();
     if (now > expiresAt) {
       await logAccess('DENIED', 'Token expired');
@@ -593,7 +1055,7 @@ export class GatePassService {
       };
     }
 
-    // 4. Anti-Replay Nonce check
+    // Anti-replay check
     if (nonce) {
       const nonceCheck = await client.execute({
         sql: `SELECT id FROM gate_access_logs WHERE nonce = ? AND access_status = 'GRANTED' LIMIT 1`,
@@ -614,7 +1076,7 @@ export class GatePassService {
       }
     }
 
-    // 5. Disciplinary suspension check
+    // Disciplinary suspension check
     const discCheck = await client.execute({
       sql: `SELECT status, reason FROM disciplinary_records WHERE user_id = ? LIMIT 1`,
       args: [userId]
@@ -637,7 +1099,7 @@ export class GatePassService {
       }
     }
 
-    // 6. Curfew Hours Check (UNILAG Curfew: 22:00 / 10:00 PM to 05:00 / 5:00 AM)
+    // Curfew check
     const hour = currentHour !== undefined ? currentHour : new Date().getHours();
     const isCurfew = hour >= 22 || hour < 5;
 
@@ -667,7 +1129,6 @@ export class GatePassService {
       }
     }
 
-    // 7. Success: Log entry/exit and grant access
     await logAccess('GRANTED');
 
     return {
