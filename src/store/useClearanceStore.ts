@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import { DigitalClearancePackage, ClearanceDocument, DocumentType } from '../types/clearance';
+import {
+  DigitalClearancePackage,
+  ClearanceDocument,
+  DocumentType,
+  ClearanceCertificateVerification,
+  ClearanceReviewHistoryEntry
+} from '../types/clearance';
 import { ClearanceService } from '../api/clearanceService';
 
 /**
@@ -18,6 +24,10 @@ export interface ClearanceState {
   errorMessage: string | null;
   // Success notification message string displayed when an operation succeeds
   successMessage: string | null;
+  // Latest certificate verification lookup result
+  certificateVerification: ClearanceCertificateVerification | null;
+  // Clearance package review audit history
+  reviewHistory: ClearanceReviewHistoryEntry[];
 
   // Actions
   // Fetches latest clearance documents and status for a student from Turso DB
@@ -28,6 +38,10 @@ export interface ClearanceState {
   deleteDocument: (userId: string, documentId: string) => Promise<boolean>;
   // Submits all 3 required clearance documents to hall warden for review
   submitClearancePackage: (userId: string) => Promise<boolean>;
+  // Verifies official clearance certificate hash code
+  verifyCertificate: (certificateHash: string) => Promise<ClearanceCertificateVerification>;
+  // Fetches clearance review audit logs for a student
+  fetchReviewHistory: (userId: string) => Promise<void>;
   // Clears active error and success alert message banners
   clearMessages: () => void;
 }
@@ -123,5 +137,39 @@ export const useClearanceStore = create<ClearanceState>((set, get) => ({
     }
   },
 
-  clearMessages: () => set({ errorMessage: null, successMessage: null })
+  verifyCertificate: async (certificateHash: string) => {
+    set({ isLoading: true, errorMessage: null, certificateVerification: null });
+    try {
+      const result = await ClearanceService.verifyClearanceCertificate(certificateHash);
+      set({
+        certificateVerification: result,
+        isLoading: false,
+        successMessage: result.isValid ? result.message : null,
+        errorMessage: !result.isValid ? result.message : null
+      });
+      return result;
+    } catch (error: any) {
+      const failRes: ClearanceCertificateVerification = {
+        isValid: false,
+        message: error.message || 'Failed to verify clearance certificate hash.'
+      };
+      set({
+        certificateVerification: failRes,
+        errorMessage: failRes.message,
+        isLoading: false
+      });
+      return failRes;
+    }
+  },
+
+  fetchReviewHistory: async (userId: string) => {
+    try {
+      const history = await ClearanceService.getClearanceReviewHistory(userId);
+      set({ reviewHistory: history });
+    } catch (error: any) {
+      // Non-blocking history load
+    }
+  },
+
+  clearMessages: () => set({ errorMessage: null, successMessage: null, certificateVerification: null })
 }));

@@ -20,12 +20,18 @@ export const ClearanceScreen: React.FC = () => {
     isUploading,
     errorMessage,
     successMessage,
+    certificateVerification,
+    reviewHistory,
     fetchClearancePackage,
     uploadDocument,
     deleteDocument,
     submitClearancePackage,
+    verifyCertificate,
+    fetchReviewHistory,
     clearMessages
   } = useClearanceStore();
+
+  const [verifyHashInput, setVerifyHashInput] = useState('');
 
   const [medicalUrl, setMedicalUrl] = useState('');
   const [medicalNotes, setMedicalNotes] = useState('');
@@ -40,7 +46,16 @@ export const ClearanceScreen: React.FC = () => {
 
   useEffect(() => {
     fetchClearancePackage(userId);
+    fetchReviewHistory(userId);
   }, [userId]);
+
+  const handleVerifyCertificate = async () => {
+    if (!verifyHashInput.trim()) {
+      Alert.alert('Validation Error', 'Please enter a valid clearance certificate hash code (e.g. CERT-A1B2C3D4E5F6).');
+      return;
+    }
+    await verifyCertificate(verifyHashInput.trim());
+  };
 
   const handleUpload = async (docType: DocumentType, url: string, defaultName: string, notes?: string) => {
     if (!url.trim()) {
@@ -367,7 +382,7 @@ export const ClearanceScreen: React.FC = () => {
 
       {/* Final Submit Clearance Package Button */}
       <TouchableOpacity
-        className="bg-[#7A0000] rounded-xl py-4 items-center shadow-lg mb-12 active:opacity-90"
+        className="bg-[#7A0000] rounded-xl py-4 items-center shadow-lg mb-8 active:opacity-90"
         onPress={handleSubmit}
         disabled={isLoading || isUploading || uploadedCount < 3}
         style={{ opacity: uploadedCount < 3 ? 0.6 : 1 }}
@@ -380,6 +395,60 @@ export const ClearanceScreen: React.FC = () => {
           </Text>
         )}
       </TouchableOpacity>
+
+      {/* Certificate Verification Lookup Tool Card */}
+      <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+        <Text className="text-lg font-bold text-slate-800 mb-1">
+          Certificate Verification Lookup
+        </Text>
+        <Text className="text-slate-500 text-xs mb-3">
+          Verify the official validity of any UNILAG hostel clearance certificate hash code.
+        </Text>
+        <TextInput
+          className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 font-mono text-sm mb-3"
+          placeholder="Enter Certificate Hash (e.g. CERT-A1B2C3D4E5F6)"
+          placeholderTextColor="#94A3B8"
+          value={verifyHashInput}
+          onChangeText={setVerifyHashInput}
+          autoCapitalize="characters"
+        />
+        <TouchableOpacity
+          className="bg-slate-900 rounded-xl py-3 items-center active:opacity-80"
+          onPress={handleVerifyCertificate}
+          disabled={isLoading}
+        >
+          <Text className="text-white font-bold text-sm">Verify Clearance Certificate</Text>
+        </TouchableOpacity>
+
+        {certificateVerification && (
+          <View className={`p-4 rounded-xl mt-3 border ${certificateVerification.isValid ? 'bg-emerald-50 border-emerald-300' : 'bg-red-50 border-red-300'}`}>
+            <Text className={`font-bold text-sm ${certificateVerification.isValid ? 'text-emerald-800' : 'text-red-800'}`}>
+              {certificateVerification.isValid ? 'Official Certificate Validated' : 'Certificate Invalid'}
+            </Text>
+            <Text className={`text-xs mt-1 ${certificateVerification.isValid ? 'text-emerald-700' : 'text-red-700'}`}>
+              {certificateVerification.message}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Audit History Log Section */}
+      {reviewHistory.length > 0 && (
+        <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-12">
+          <Text className="text-lg font-bold text-slate-800 mb-2">Clearance Audit History</Text>
+          {reviewHistory.map((item) => (
+            <View key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-2">
+              <View className="flex-row justify-between items-center mb-1">
+                <Text className={`font-bold text-xs px-2 py-0.5 rounded-full ${item.actionStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                  {item.actionStatus}
+                </Text>
+                <Text className="text-slate-400 text-[10px]">{new Date(item.timestamp).toLocaleString()}</Text>
+              </View>
+              {item.notes ? <Text className="text-slate-600 text-xs mt-1">{item.notes}</Text> : null}
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 };
