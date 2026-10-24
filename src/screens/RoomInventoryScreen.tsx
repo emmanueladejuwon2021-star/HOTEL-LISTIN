@@ -142,8 +142,46 @@ export const RoomInventoryScreen: React.FC = () => {
         {renderConditionSelector('Electrical Wall Sockets Condition', socketsCondition, setSocketsCondition)}
         {renderConditionSelector('Door Locks & Window Latch Condition', locksCondition, setLocksCondition)}
 
+        {/* Property Defect Auto-Dispatch Alert Banner (Issue 28) */}
+        {(mattressCondition === 'POOR' || fanCondition === 'POOR' || socketsCondition === 'POOR' || locksCondition === 'POOR') && (
+          <View className="bg-amber-50 p-4 rounded-xl border border-amber-300 mb-4">
+            <Text className="text-amber-900 font-bold text-xs mb-1">
+              ⚠️ Property Defect Flagged
+            </Text>
+            <Text className="text-amber-800 text-[11px]">
+              One or more room items are marked POOR. Submitting this check-in audit will automatically dispatch a priority maintenance ticket for repair.
+            </Text>
+          </View>
+        )}
+
+        <Text className="text-lg font-bold text-slate-800 mb-3 pt-2 border-t border-slate-100">
+          3. Joint Touchscreen Signatures
+        </Text>
+
+        <View className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 space-y-3">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xs font-bold text-slate-700">Student Touchscreen Signature:</Text>
+            <TouchableOpacity
+              className={`px-3 py-1.5 rounded-lg ${studentSig ? 'bg-emerald-600' : 'bg-slate-700'}`}
+              onPress={() => setStudentSig(`sig_student_${Date.now()}`)}
+            >
+              <Text className="text-white font-bold text-xs">{studentSig ? 'Verified ✓' : 'Sign Touchscreen'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="flex-row justify-between items-center pt-2 border-t border-slate-200">
+            <Text className="text-xs font-bold text-slate-700">Porter Station Signature:</Text>
+            <TouchableOpacity
+              className={`px-3 py-1.5 rounded-lg ${porterSig ? 'bg-emerald-600' : 'bg-slate-700'}`}
+              onPress={() => setPorterSig(`sig_porter_${Date.now()}`)}
+            >
+              <Text className="text-white font-bold text-xs">{porterSig ? 'Verified ✓' : 'Sign Touchscreen'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <Text className="text-lg font-bold text-slate-800 mb-2 pt-2 border-t border-slate-100">
-          3. Verification Remarks
+          4. Inspection Remarks
         </Text>
         <TextInput
           className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-xs mb-4"
