@@ -56,6 +56,8 @@ export const useClearanceStore = create<ClearanceState>((set, get) => ({
   isUploading: false,
   errorMessage: null,
   successMessage: null,
+  certificateVerification: null,
+  reviewHistory: [],
 
   fetchClearancePackage: async (userId: string) => {
     set({ isLoading: true, errorMessage: null });

@@ -13,7 +13,7 @@ import { DocumentType } from '../types/clearance';
  * Styled using NativeWind v4 (Tailwind CSS) with clear, jargon-free English comments for non-technical team members.
  */
 export const ClearanceScreen: React.FC = () => {
-  const { user } = useAuthStore();
+  const { session } = useAuthStore();
   const {
     clearancePackage,
     isLoading,
@@ -42,7 +42,7 @@ export const ClearanceScreen: React.FC = () => {
   const [codeOfConductUrl, setCodeOfConductUrl] = useState('');
   const [conductNotes, setConductNotes] = useState('');
 
-  const userId = user?.id || 'usr_student_01';
+  const userId = session?.user.id || 'usr_student_01';
 
   useEffect(() => {
     fetchClearancePackage(userId);
