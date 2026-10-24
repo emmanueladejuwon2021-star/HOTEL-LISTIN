@@ -141,8 +141,8 @@ npm start
 - [x] Digital room checklist audit for mattress, fan, light fittings, and locks (`[INVENTORY-01]` - Issue #26)
 - [x] Joint touchscreen signature capture for student and porter (`[INVENTORY-02]` - Issue #27)
 - [x] Room property defect reporting upon check-in (`[INVENTORY-03]` - Issue #28)
-- [ ] Generation of immutable digital room check-in certificate (`[INVENTORY-04]` - Issue #29)
-- [ ] Check-out inventory inspection and clearance recovery (`[INVENTORY-05]` - Issue #30)
+- [x] Generation of immutable digital room check-in certificate (`[INVENTORY-04]` - Issue #29)
+- [x] Check-out inventory inspection and clearance recovery (`[INVENTORY-05]` - Issue #30)
 
 ### Dynamic QR Pass & Gatekeeping
 - [x] RSA-256 dynamic QR gate pass generation for verified residents (`[GATEPASS-01]` - Issue #31)
