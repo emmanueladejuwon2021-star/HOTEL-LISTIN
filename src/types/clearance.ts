@@ -55,6 +55,10 @@ export interface DigitalClearancePackage {
   overallStatus: ClearanceStatus;
   // Array list of all clearance documents uploaded by the student
   documents: ClearanceDocument[];
+  // Physical document inspection screening status: PENDING_INSPECTION, INSPECTED_PASSED, or INSPECTED_FAILED
+  physicalInspectionStatus?: 'PENDING_INSPECTION' | 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
+  // Physical inspection audit details record
+  physicalInspectionDetails?: PhysicalInspectionRecord;
   // Date and time when the student submitted all required documents for review
   submittedAt?: string;
   // Date and time when the hall warden completed reviewing the clearance package
@@ -65,6 +69,30 @@ export interface DigitalClearancePackage {
   rejectionReason?: string;
   // Security verification hash code generated when clearance is officially approved
   clearanceCertificateHash?: string;
+}
+
+/**
+ * Interface representing a physical document screening inspection record conducted by a porter or warden.
+ */
+export interface PhysicalInspectionRecord {
+  id: string;
+  userId: string;
+  officerId: string;
+  inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
+  verifiedOriginals: string;
+  notes?: string;
+  inspectedAt: string;
+}
+
+/**
+ * Parameters supplied by a porter or warden performing physical document screening at the hostel desk.
+ */
+export interface PhysicalInspectionParams {
+  userId: string;
+  officerId: string;
+  inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
+  verifiedOriginals?: string[];
+  notes?: string;
 }
 
 /**

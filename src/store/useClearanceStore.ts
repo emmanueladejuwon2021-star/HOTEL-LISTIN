@@ -40,6 +40,8 @@ export interface ClearanceState {
   submitClearancePackage: (userId: string) => Promise<boolean>;
   // Verifies official clearance certificate hash code
   verifyCertificate: (certificateHash: string) => Promise<ClearanceCertificateVerification>;
+  // Records physical document screening inspection conducted by porter/warden
+  recordPhysicalInspection: (userId: string, officerId: string, inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED', verifiedOriginals?: string[], notes?: string) => Promise<boolean>;
   // Fetches clearance review audit logs for a student
   fetchReviewHistory: (userId: string) => Promise<void>;
   // Clears active error and success alert message banners
@@ -56,6 +58,8 @@ export const useClearanceStore = create<ClearanceState>((set, get) => ({
   isUploading: false,
   errorMessage: null,
   successMessage: null,
+  certificateVerification: null,
+  reviewHistory: [],
 
   fetchClearancePackage: async (userId: string) => {
     set({ isLoading: true, errorMessage: null });
@@ -159,6 +163,32 @@ export const useClearanceStore = create<ClearanceState>((set, get) => ({
         isLoading: false
       });
       return failRes;
+    }
+  },
+
+  recordPhysicalInspection: async (userId: string, officerId: string, inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED', verifiedOriginals?: string[], notes?: string) => {
+    set({ isLoading: true, errorMessage: null, successMessage: null });
+    try {
+      const updatedPkg = await ClearanceService.recordPhysicalInspection({
+        userId,
+        officerId,
+        inspectionStatus,
+        verifiedOriginals,
+        notes
+      });
+
+      set({
+        clearancePackage: updatedPkg,
+        isLoading: false,
+        successMessage: `Physical document inspection ${inspectionStatus === 'INSPECTED_PASSED' ? 'passed and recorded' : 'marked failed'}.`
+      });
+      return true;
+    } catch (error: any) {
+      set({
+        errorMessage: error.message || 'Failed to record physical inspection.',
+        isLoading: false
+      });
+      return false;
     }
   },
 
