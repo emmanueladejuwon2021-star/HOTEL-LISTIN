@@ -2,14 +2,14 @@ import { InventoryService } from '../api/inventoryService';
 import { AuthService } from '../api/authService';
 
 /**
- * Automated Test Suite for Room Check-In Audit & Property Inspection [INVENTORY-01, INVENTORY-02, INVENTORY-03].
+ * Automated Test Suite for Room Check-In Audit & Property Inspection [INVENTORY-01 - INVENTORY-04].
  * Verifies joint room property check-in inspections (mattress, fan, sockets, locks condition),
  * student/porter digital touchscreen signatures, auto-generated check-in defect reports,
- * and database audit persistence using real Turso libSQL SQLite queries without mocks.
+ * immutable digital room check-in certificates (CERT-INV-...), and database audit persistence using real Turso libSQL SQLite queries without mocks.
  *
  * Includes plain-language English comments for non-technical stakeholders.
  */
-describe('InventoryService - Room Check-In Audit & Property Inspection [INVENTORY-01 - INVENTORY-03]', () => {
+describe('InventoryService - Room Check-In Audit & Property Inspection [INVENTORY-01 - INVENTORY-04]', () => {
   const testRoomId = `rm_jaja_a_101_${Date.now()}`;
   const testStudentId = `usr_student_inv_${Date.now()}`;
   const testPorterId = `usr_porter_inv_${Date.now()}`;
@@ -119,6 +119,39 @@ describe('InventoryService - Room Check-In Audit & Property Inspection [INVENTOR
     const roomAudits = await InventoryService.getAuditsByRoom(testRoomId);
     expect(roomAudits.length).toBeGreaterThanOrEqual(1);
     expect(roomAudits[0].studentId).toBe(testStudentId);
+  });
+
+  test('should generate an immutable digital room check-in certificate hash [INVENTORY-04 / UAT-0029]', async () => {
+    const audit = await InventoryService.recordAudit({
+      roomId: testRoomId,
+      studentId: testStudentId,
+      porterId: testPorterId,
+      mattressCondition: 'GOOD',
+      fanCondition: 'GOOD',
+      socketsCondition: 'GOOD',
+      locksCondition: 'GOOD',
+      studentSignatureUrl: 'https://unilagstay.edu.ng/sigs/student_sig_cert.png',
+      porterSignatureUrl: 'https://unilagstay.edu.ng/sigs/porter_sig_cert.png',
+      notes: 'All items in pristine condition during check-in inspection.'
+    });
+
+    expect(audit.certificateHash).toBeDefined();
+    expect(audit.certificateHash).toContain('CERT-INV-');
+    expect(audit.isCertificateVerified).toBe(true);
+
+    // Verify lookup by certificate hash in database
+    const lookedUpAudit = await InventoryService.getAuditByCertificateHash(audit.certificateHash!);
+    expect(lookedUpAudit).toBeDefined();
+    expect(lookedUpAudit?.id).toBe(audit.id);
+    expect(lookedUpAudit?.roomId).toBe(testRoomId);
+    expect(lookedUpAudit?.studentId).toBe(testStudentId);
+    expect(lookedUpAudit?.certificateHash).toBe(audit.certificateHash);
+    expect(lookedUpAudit?.isCertificateVerified).toBe(true);
+  });
+
+  test('should return null when searching for invalid certificate hash', async () => {
+    const invalidAudit = await InventoryService.getAuditByCertificateHash('CERT-INV-NONEXISTENT-HASH-999');
+    expect(invalidAudit).toBeNull();
   });
 
   test('should fail recording audit if required parameters are missing', async () => {

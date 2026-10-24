@@ -13,6 +13,7 @@ export interface InventoryState {
   recordAudit: (params: RecordAuditParams) => Promise<RoomInventoryAudit | null>;
   fetchAuditsByStudent: (studentId: string) => Promise<void>;
   fetchAuditsByRoom: (roomId: string) => Promise<void>;
+  verifyCertificate: (certificateHashOrId: string) => Promise<RoomInventoryAudit | null>;
   clearMessages: () => void;
 }
 
@@ -66,6 +67,35 @@ export const useInventoryStore = create<InventoryState>((set) => ({
         errorMessage: error.message || 'Failed to fetch room inventory audits.',
         isLoading: false
       });
+    }
+  },
+
+  verifyCertificate: async (certificateHashOrId: string) => {
+    set({ isLoading: true, errorMessage: null, successMessage: null });
+    try {
+      const audit = await InventoryService.getAuditByCertificateHash(certificateHashOrId);
+      if (audit) {
+        set({
+          selectedAudit: audit,
+          isLoading: false,
+          successMessage: `Certificate Verified ✓ (Ref: ${audit.certificateHash || audit.id})`
+        });
+        return audit;
+      } else {
+        set({
+          selectedAudit: null,
+          isLoading: false,
+          errorMessage: `Invalid Certificate: No audit found matching "${certificateHashOrId}".`
+        });
+        return null;
+      }
+    } catch (error: any) {
+      set({
+        selectedAudit: null,
+        errorMessage: error.message || 'Failed to verify room inventory check-in certificate.',
+        isLoading: false
+      });
+      return null;
     }
   },
 

@@ -13,10 +13,11 @@ import { ItemCondition } from '../types/inventory';
  */
 export const RoomInventoryScreen: React.FC = () => {
   const { session } = useAuthStore();
-  const { audits, isLoading, errorMessage, successMessage, recordAudit, clearMessages } = useInventoryStore();
+  const { audits, selectedAudit, isLoading, errorMessage, successMessage, recordAudit, verifyCertificate, clearMessages } = useInventoryStore();
 
   const [roomId, setRoomId] = useState('rm_jaja_a_101');
   const [studentId, setStudentId] = useState('usr_student_01');
+  const [certSearchQuery, setCertSearchQuery] = useState('');
 
   const [mattressCondition, setMattressCondition] = useState<ItemCondition>('GOOD');
   const [fanCondition, setFanCondition] = useState<ItemCondition>('GOOD');
@@ -207,6 +208,85 @@ export const RoomInventoryScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Certificate Reference Verification Card & Lookup Tool (Issue 29) */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <Text className="text-lg font-bold text-slate-800 mb-2">Verify Digital Check-In Certificate</Text>
+        <Text className="text-slate-600 text-xs mb-3">
+          Enter an audit certificate reference code (e.g. CERT-INV-...) to verify its authenticity in the database.
+        </Text>
+        <View className="flex-row space-x-2 mb-3">
+          <TextInput
+            className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-xs font-mono"
+            placeholder="e.g. CERT-INV-M1A2B3C"
+            placeholderTextColor="#94A3B8"
+            value={certSearchQuery}
+            onChangeText={setCertSearchQuery}
+            autoCapitalize="characters"
+          />
+          <TouchableOpacity
+            className="bg-slate-800 px-5 py-3 rounded-xl justify-center items-center"
+            onPress={() => certSearchQuery.trim() && verifyCertificate(certSearchQuery.trim())}
+            disabled={isLoading}
+          >
+            <Text className="text-white font-bold text-xs">Verify</Text>
+          </TouchableOpacity>
+        </View>
+
+        {selectedAudit && (
+          <View className="bg-emerald-50 p-4 rounded-xl border border-emerald-300 mt-2">
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-emerald-900 font-bold text-xs">
+                OFFICIAL DIGITAL ROOM CHECK-IN CERTIFICATE
+              </Text>
+              <Text className="bg-emerald-700 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
+                VERIFIED ✓
+              </Text>
+            </View>
+
+            <View className="bg-white p-3 rounded-lg border border-emerald-200 mb-2">
+              <Text className="text-slate-500 text-[10px] uppercase font-bold">Certificate Ref Hash</Text>
+              <Text className="text-[#7A0000] font-mono font-bold text-xs">
+                {selectedAudit.certificateHash || selectedAudit.id}
+              </Text>
+            </View>
+
+            <View className="flex-row justify-between text-xs mb-1">
+              <Text className="text-slate-600 text-xs">Room Code:</Text>
+              <Text className="font-bold text-slate-800 text-xs">{selectedAudit.roomId}</Text>
+            </View>
+            <View className="flex-row justify-between text-xs mb-1">
+              <Text className="text-slate-600 text-xs">Student User ID:</Text>
+              <Text className="font-bold text-slate-800 text-xs">{selectedAudit.studentId}</Text>
+            </View>
+            <View className="flex-row justify-between text-xs mb-1">
+              <Text className="text-slate-600 text-xs">Inspecting Porter ID:</Text>
+              <Text className="font-bold text-slate-800 text-xs">{selectedAudit.porterId}</Text>
+            </View>
+            <View className="flex-row justify-between text-xs mb-2">
+              <Text className="text-slate-600 text-xs">Audit Date & Time:</Text>
+              <Text className="font-bold text-slate-800 text-xs">{new Date(selectedAudit.auditedAt).toLocaleString()}</Text>
+            </View>
+
+            <Text className="text-slate-700 font-bold text-xs mt-2 mb-1">Inspected Property Conditions:</Text>
+            <View className="flex-row flex-wrap gap-1 mb-2">
+              <Text className="text-[11px] bg-emerald-200 text-emerald-900 font-semibold px-2 py-0.5 rounded">Mattress: {selectedAudit.mattressCondition}</Text>
+              <Text className="text-[11px] bg-emerald-200 text-emerald-900 font-semibold px-2 py-0.5 rounded">Fan: {selectedAudit.fanCondition}</Text>
+              <Text className="text-[11px] bg-emerald-200 text-emerald-900 font-semibold px-2 py-0.5 rounded">Sockets: {selectedAudit.socketsCondition}</Text>
+              <Text className="text-[11px] bg-emerald-200 text-emerald-900 font-semibold px-2 py-0.5 rounded">Locks: {selectedAudit.locksCondition}</Text>
+            </View>
+
+            <View className="flex-row justify-between items-center pt-2 border-t border-emerald-200">
+              <Text className="text-[11px] text-emerald-800 font-semibold">
+                Student Touchscreen Signature: {selectedAudit.hasStudentSignature ? 'Verified ✓' : 'Signed'}
+              </Text>
+              <Text className="text-[11px] text-emerald-800 font-semibold">
+                Porter Signature: {selectedAudit.hasPorterSignature ? 'Verified ✓' : 'Signed'}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+
       {/* Recent Audits Log List */}
       {audits.length > 0 && (
         <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-12">
@@ -217,6 +297,7 @@ export const RoomInventoryScreen: React.FC = () => {
                 <Text className="font-bold text-sm text-slate-800">Room: {item.roomId}</Text>
                 <Text className="text-slate-400 text-[10px]">{new Date(item.auditedAt).toLocaleDateString()}</Text>
               </View>
+              <Text className="text-[#7A0000] font-mono text-[11px] font-bold mb-1">Ref: {item.certificateHash || item.id}</Text>
               <Text className="text-slate-600 text-xs mb-2">Student ID: {item.studentId}</Text>
               <View className="flex-row flex-wrap gap-1">
                 <Text className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded">Mattress: {item.mattressCondition}</Text>
