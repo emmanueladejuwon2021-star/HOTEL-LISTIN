@@ -13,10 +13,11 @@ import { ItemCondition } from '../types/inventory';
  */
 export const RoomInventoryScreen: React.FC = () => {
   const { session } = useAuthStore();
-  const { audits, isLoading, errorMessage, successMessage, recordAudit, clearMessages } = useInventoryStore();
+  const { audits, isLoading, errorMessage, successMessage, recordAudit, verifyCertificate, verifiedCertificate, clearMessages } = useInventoryStore();
 
   const [roomId, setRoomId] = useState('rm_jaja_a_101');
   const [studentId, setStudentId] = useState('usr_student_01');
+  const [lookupCertCode, setLookupCertCode] = useState('');
 
   const [mattressCondition, setMattressCondition] = useState<ItemCondition>('GOOD');
   const [fanCondition, setFanCondition] = useState<ItemCondition>('GOOD');
@@ -205,6 +206,49 @@ export const RoomInventoryScreen: React.FC = () => {
             </Text>
           )}
         </TouchableOpacity>
+      </View>
+
+      {/* Certificate Verification & Lookup Card */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <Text className="text-lg font-bold text-slate-800 mb-2">Verify Audit Certificate Code</Text>
+        <Text className="text-xs text-slate-600 mb-3">
+          Enter a certificate reference hash (e.g., CERT-INV-...) to verify audit authenticity and details.
+        </Text>
+
+        <View className="flex-row space-x-2 mb-3">
+          <TextInput
+            className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs"
+            placeholder="Enter CERT-INV-... code"
+            placeholderTextColor="#94A3B8"
+            value={lookupCertCode}
+            onChangeText={setLookupCertCode}
+            autoCapitalize="characters"
+          />
+          <TouchableOpacity
+            className="bg-slate-800 px-4 py-2.5 rounded-xl justify-center items-center"
+            onPress={() => verifyCertificate(lookupCertCode.trim())}
+            disabled={isLoading || !lookupCertCode.trim()}
+          >
+            <Text className="text-white font-bold text-xs">Verify</Text>
+          </TouchableOpacity>
+        </View>
+
+        {verifiedCertificate && (
+          <View className="bg-emerald-50 p-4 rounded-xl border border-emerald-300 mt-2">
+            <View className="flex-row justify-between items-center mb-1">
+              <Text className="font-bold text-xs text-emerald-900">Certificate Verified ✓</Text>
+              <Text className="text-emerald-700 text-[10px]">{verifiedCertificate.certificateHash}</Text>
+            </View>
+            <Text className="text-slate-800 text-xs font-semibold mb-1">Room: {verifiedCertificate.roomId}</Text>
+            <Text className="text-slate-600 text-xs mb-2">Student ID: {verifiedCertificate.studentId}</Text>
+            <View className="flex-row flex-wrap gap-1">
+              <Text className="text-[10px] bg-white text-slate-800 px-2 py-0.5 rounded border border-slate-200">Mattress: {verifiedCertificate.mattressCondition}</Text>
+              <Text className="text-[10px] bg-white text-slate-800 px-2 py-0.5 rounded border border-slate-200">Fan: {verifiedCertificate.fanCondition}</Text>
+              <Text className="text-[10px] bg-white text-slate-800 px-2 py-0.5 rounded border border-slate-200">Sockets: {verifiedCertificate.socketsCondition}</Text>
+              <Text className="text-[10px] bg-white text-slate-800 px-2 py-0.5 rounded border border-slate-200">Locks: {verifiedCertificate.locksCondition}</Text>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Recent Audits Log List */}

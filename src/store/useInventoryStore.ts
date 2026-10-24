@@ -5,6 +5,7 @@ import { InventoryService } from '../api/inventoryService';
 export interface InventoryState {
   audits: RoomInventoryAudit[];
   selectedAudit: RoomInventoryAudit | null;
+  verifiedCertificate: RoomInventoryAudit | null;
   isLoading: boolean;
   errorMessage: string | null;
   successMessage: string | null;
@@ -13,12 +14,14 @@ export interface InventoryState {
   recordAudit: (params: RecordAuditParams) => Promise<RoomInventoryAudit | null>;
   fetchAuditsByStudent: (studentId: string) => Promise<void>;
   fetchAuditsByRoom: (roomId: string) => Promise<void>;
+  verifyCertificate: (certificateHash: string) => Promise<RoomInventoryAudit | null>;
   clearMessages: () => void;
 }
 
 export const useInventoryStore = create<InventoryState>((set) => ({
   audits: [],
   selectedAudit: null,
+  verifiedCertificate: null,
   isLoading: false,
   errorMessage: null,
   successMessage: null,
@@ -66,6 +69,34 @@ export const useInventoryStore = create<InventoryState>((set) => ({
         errorMessage: error.message || 'Failed to fetch room inventory audits.',
         isLoading: false
       });
+    }
+  },
+
+  verifyCertificate: async (certificateHash: string) => {
+    set({ isLoading: true, errorMessage: null, successMessage: null, verifiedCertificate: null });
+    try {
+      const audit = await InventoryService.getAuditByCertificateHash(certificateHash);
+      if (audit) {
+        set({
+          verifiedCertificate: audit,
+          isLoading: false,
+          successMessage: `Certificate code ${certificateHash.toUpperCase()} verified successfully.`
+        });
+      } else {
+        set({
+          verifiedCertificate: null,
+          isLoading: false,
+          errorMessage: `No valid check-in audit certificate found for code ${certificateHash}.`
+        });
+      }
+      return audit;
+    } catch (error: any) {
+      set({
+        errorMessage: error.message || 'Failed to verify room audit certificate code.',
+        isLoading: false,
+        verifiedCertificate: null
+      });
+      return null;
     }
   },
 

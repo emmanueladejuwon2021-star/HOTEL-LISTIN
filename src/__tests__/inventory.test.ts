@@ -60,6 +60,35 @@ describe('InventoryService - Room Check-In Audit & Property Inspection [INVENTOR
     expect(audit.mattressCondition).toBe('GOOD');
     expect(audit.socketsCondition).toBe('FAIR');
     expect(audit.notes).toContain('Fan regulator');
+    expect(audit.certificateHash).toBeDefined();
+    expect(audit.certificateHash).toContain('CERT-INV-');
+  });
+
+  test('should generate and verify immutable digital room check-in certificate reference hash [INVENTORY-04 / UAT-0029]', async () => {
+    const audit = await InventoryService.recordAudit({
+      roomId: testRoomId,
+      studentId: testStudentId,
+      porterId: testPorterId,
+      mattressCondition: 'GOOD',
+      fanCondition: 'GOOD',
+      socketsCondition: 'GOOD',
+      locksCondition: 'GOOD',
+      notes: 'Certificate hash verification test.'
+    });
+
+    expect(audit.certificateHash).toBeDefined();
+    expect(audit.certificateHash?.startsWith('CERT-INV-')).toBe(true);
+
+    const verified = await InventoryService.getAuditByCertificateHash(audit.certificateHash!);
+    expect(verified).toBeDefined();
+    expect(verified?.id).toBe(audit.id);
+    expect(verified?.roomId).toBe(testRoomId);
+    expect(verified?.studentId).toBe(testStudentId);
+    expect(verified?.certificateHash).toBe(audit.certificateHash);
+
+    // Should return null for non-existent certificate hash code
+    const invalidLookup = await InventoryService.getAuditByCertificateHash('CERT-INVALID-9999');
+    expect(invalidLookup).toBeNull();
   });
 
   test('should verify joint student and porter touchscreen digital signatures [INVENTORY-02 / UAT-0027]', async () => {

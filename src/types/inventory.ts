@@ -44,6 +44,8 @@ export interface RoomInventoryAudit {
   locksCondition: ItemCondition;
   // URL or base64 string of student digital touchscreen signature
   studentSignatureUrl?: string;
+  // Unique immutable digital certificate hash reference (e.g. "CERT-INV-1712345678-A1B2")
+  certificateHash?: string;
   // URL or base64 string of porter digital touchscreen signature
   porterSignatureUrl?: string;
   // Indicates if student digital touchscreen signature was verified
