@@ -1,7 +1,8 @@
 /**
  * Types and interface definitions for Room Check-In Audit & Property Inspection.
- * Handles digital room condition checklist (mattress, fan, sockets, door locks),
- * student/porter touchscreen signatures, and room inventory audit certificates.
+ * Handles digital room condition checklist (mattress, fan, sockets, door locks, lights, windows),
+ * student/porter touchscreen signatures, cryptographic audit certificates, key issuance tracking,
+ * and resident status activation upon check-in completion.
  *
  * Designed with simple, clear English descriptions for non-technical stakeholders and hall porters.
  */
@@ -15,7 +16,19 @@
 export type ItemCondition = 'GOOD' | 'FAIR' | 'POOR';
 
 /**
- * Interface representing a room property check-in audit record.
+ * Inspection lifecycle types:
+ * - CHECK_IN: Initial joint move-in inspection upon room allocation
+ * - CHECK_OUT: Final joint move-out inspection at end of session
+ */
+export type AuditType = 'CHECK_IN' | 'CHECK_OUT';
+
+/**
+ * Formal university hall residency statuses for students.
+ */
+export type ResidencyStatus = 'PENDING_CHECKIN' | 'ACTIVE_RESIDENT' | 'CHECKED_OUT';
+
+/**
+ * Interface representing a room property inventory audit record.
  */
 export interface RoomInventoryAudit {
   // Unique identification code for this audit record
@@ -42,6 +55,20 @@ export interface RoomInventoryAudit {
   socketsCondition: ItemCondition;
   // Physical condition of room door lock & window latches
   locksCondition: ItemCondition;
+  // Physical condition of ceiling lights & fluorescent lamps (PRD 4.5)
+  lightsCondition: ItemCondition;
+  // Physical condition of glass louvers & window mosquito nets (PRD 4.5)
+  windowsCondition: ItemCondition;
+  // Cryptographic SHA-256 certificate hash ensuring immutable audit integrity
+  certificateHash?: string;
+  // Indicates if physical room key was officially handed over to the student
+  keyIssued: boolean;
+  // Unique room key tag or label identifier (e.g. "KEY-JAJA-101-A")
+  keyTagNumber?: string;
+  // Timestamp when room key was issued to the student
+  keyIssuedAt?: string;
+  // Inspection audit type: CHECK_IN or CHECK_OUT
+  auditType: AuditType;
   // URL or base64 string of student digital touchscreen signature
   studentSignatureUrl?: string;
   // URL or base64 string of porter digital touchscreen signature
@@ -59,7 +86,7 @@ export interface RoomInventoryAudit {
 }
 
 /**
- * Parameters provided by porter when submitting a room check-in inventory audit.
+ * Parameters provided by porter when submitting a room check-in or checkout inventory audit.
  */
 export interface RecordAuditParams {
   roomId: string;
@@ -69,7 +96,36 @@ export interface RecordAuditParams {
   fanCondition: ItemCondition;
   socketsCondition: ItemCondition;
   locksCondition: ItemCondition;
+  lightsCondition?: ItemCondition;
+  windowsCondition?: ItemCondition;
+  keyIssued?: boolean;
+  keyTagNumber?: string;
+  auditType?: AuditType;
   studentSignatureUrl?: string;
   porterSignatureUrl?: string;
   notes?: string;
+}
+
+/**
+ * Parameters submitted when recording key handover after physical check-in.
+ */
+export interface KeyHandoverParams {
+  auditId: string;
+  keyTagNumber: string;
+  porterId?: string;
+}
+
+/**
+ * Result returned when an audit check-in is finalized and residency is activated.
+ */
+export interface CheckInActivationResult {
+  auditId: string;
+  studentId: string;
+  roomId: string;
+  residencyStatus: ResidencyStatus;
+  keyIssued: boolean;
+  keyTagNumber: string;
+  certificateHash: string;
+  activatedAt: string;
+  message: string;
 }
