@@ -146,7 +146,7 @@ npm start
 
 ### Dynamic QR Pass & Gatekeeping
 - [x] RSA-256 dynamic QR gate pass generation for verified residents (`[GATEPASS-01]` - Issue #31)
-- [ ] 30-second token auto-refresh countdown to prevent pass sharing (`[GATEPASS-02]` - Issue #32)
+- [x] 30-second token auto-refresh countdown to prevent pass sharing (`[GATEPASS-04]` - Issue #34)
 - [ ] Porter camera scanner interface with high-contrast pass/fail indicators (`[SCANNER-01]` - Issue #36)
 - [ ] Sub-500ms QR verification performance (`[SCANNER-02]` - Issue #37)
 - [ ] Manual 6-digit PIN lookup backup for gate access (`[SCANNER-03]` - Issue #38)

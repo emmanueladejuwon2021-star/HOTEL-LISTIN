@@ -9,7 +9,7 @@ export type AuthStackParamList = {
 
 /**
  * Parameter list interface for Student Navigation Stack and Tabs.
- * Routes between Login → Eligibility → Balloting → Clearance → Payment.
+ * Routes between Login → Eligibility → Balloting → Clearance → Payment → GatePass.
  */
 export type StudentTabParamList = {
   Eligibility: undefined;
@@ -18,6 +18,7 @@ export type StudentTabParamList = {
   BedspaceLock: { roomId?: string } | undefined;
   Clearance: undefined;
   Payment: undefined;
+  GatePass: undefined;
 };
 
 /**
