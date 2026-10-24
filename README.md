@@ -139,8 +139,8 @@ npm start
 
 ### Room Inventory & Check-In Audits
 - [x] Digital room checklist audit for mattress, fan, light fittings, and locks (`[INVENTORY-01]` - Issue #26)
-- [ ] Joint touchscreen signature capture for student and porter (`[INVENTORY-02]` - Issue #27)
-- [ ] Room property defect reporting upon check-in (`[INVENTORY-03]` - Issue #28)
+- [x] Joint touchscreen signature capture for student and porter (`[INVENTORY-02]` - Issue #27)
+- [x] Room property defect reporting upon check-in (`[INVENTORY-03]` - Issue #28)
 - [ ] Generation of immutable digital room check-in certificate (`[INVENTORY-04]` - Issue #29)
 - [ ] Check-out inventory inspection and clearance recovery (`[INVENTORY-05]` - Issue #30)
 
