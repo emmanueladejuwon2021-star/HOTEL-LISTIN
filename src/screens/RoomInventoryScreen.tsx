@@ -1,0 +1,196 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { useInventoryStore } from '../store/useInventoryStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { ItemCondition } from '../types/inventory';
+
+/**
+ * Screen P-02 / Room Check-In Audit UI Component for UNILAG Hostel Porters.
+ * Allows porters to conduct joint check-in inspections of student rooms (mattress, fan, sockets, door locks),
+ * record property conditions, attach inspection remarks, and save immutable digital room audit certificates.
+ *
+ * Styled using NativeWind v4 (Tailwind CSS) with clear comments for non-technical team members.
+ */
+export const RoomInventoryScreen: React.FC = () => {
+  const { session } = useAuthStore();
+  const { audits, isLoading, errorMessage, successMessage, recordAudit, clearMessages } = useInventoryStore();
+
+  const [roomId, setRoomId] = useState('rm_jaja_a_101');
+  const [studentId, setStudentId] = useState('usr_student_01');
+
+  const [mattressCondition, setMattressCondition] = useState<ItemCondition>('GOOD');
+  const [fanCondition, setFanCondition] = useState<ItemCondition>('GOOD');
+  const [socketsCondition, setSocketsCondition] = useState<ItemCondition>('GOOD');
+  const [locksCondition, setLocksCondition] = useState<ItemCondition>('GOOD');
+
+  const [studentSig, setStudentSig] = useState('sig_student_verified_touch');
+  const [porterSig, setPorterSig] = useState('sig_porter_verified_touch');
+  const [notes, setNotes] = useState('');
+
+  const porterId = session?.user.id || 'usr_porter_01';
+
+  const handleSubmitAudit = async () => {
+    if (!roomId.trim() || !studentId.trim()) {
+      Alert.alert('Validation Error', 'Please enter valid Room ID and Student ID.');
+      return;
+    }
+
+    const audit = await recordAudit({
+      roomId: roomId.trim(),
+      studentId: studentId.trim(),
+      porterId,
+      mattressCondition,
+      fanCondition,
+      socketsCondition,
+      locksCondition,
+      studentSignatureUrl: studentSig.trim() || undefined,
+      porterSignatureUrl: porterSig.trim() || undefined,
+      notes: notes.trim() || undefined
+    });
+
+    if (audit) {
+      Alert.alert(
+        'Audit Saved',
+        `Digital room check-in audit certificate generated for Room ${roomId}.`
+      );
+      setNotes('');
+    }
+  };
+
+  const renderConditionSelector = (label: string, current: ItemCondition, setter: (val: ItemCondition) => void) => {
+    return (
+      <View className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <Text className="text-slate-800 font-bold text-sm mb-2">{label}</Text>
+        <View className="flex-row space-x-2">
+          {(['GOOD', 'FAIR', 'POOR'] as ItemCondition[]).map((cond) => {
+            const isSelected = current === cond;
+            let bg = isSelected ? 'bg-slate-800' : 'bg-white border border-slate-300';
+            let textColor = isSelected ? 'text-white' : 'text-slate-700';
+
+            if (isSelected && cond === 'GOOD') bg = 'bg-emerald-700';
+            if (isSelected && cond === 'FAIR') bg = 'bg-amber-600';
+            if (isSelected && cond === 'POOR') bg = 'bg-red-700';
+
+            return (
+              <TouchableOpacity
+                key={cond}
+                className={`flex-1 py-2.5 rounded-lg items-center ${bg}`}
+                onPress={() => setter(cond)}
+              >
+                <Text className={`font-bold text-xs ${textColor}`}>{cond}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <ScrollView className="bg-slate-100 flex-1 px-4 py-6">
+      {/* Header Banner */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <Text className="text-2xl font-bold text-[#7A0000] mb-1">
+          Room Check-In Property Audit
+        </Text>
+        <Text className="text-slate-600 text-xs">
+          Conduct joint physical check-in inspection of assigned student room fixtures before key release.
+        </Text>
+      </View>
+
+      {/* Error & Success Messages */}
+      {errorMessage && (
+        <View className="bg-red-100 border border-red-300 p-4 rounded-xl mb-4">
+          <Text className="text-red-800 text-sm font-semibold">{errorMessage}</Text>
+        </View>
+      )}
+
+      {successMessage && (
+        <View className="bg-emerald-100 border border-emerald-300 p-4 rounded-xl mb-4">
+          <Text className="text-emerald-800 text-sm font-semibold">{successMessage}</Text>
+        </View>
+      )}
+
+      {/* Form Card */}
+      <View className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <Text className="text-lg font-bold text-slate-800 mb-3">1. Student & Room Identification</Text>
+
+        <Text className="text-xs font-semibold text-slate-600 mb-1">Room ID / Room Number</Text>
+        <TextInput
+          className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-sm mb-3"
+          placeholder="Enter Room ID (e.g. rm_jaja_a_101)"
+          placeholderTextColor="#94A3B8"
+          value={roomId}
+          onChangeText={setRoomId}
+        />
+
+        <Text className="text-xs font-semibold text-slate-600 mb-1">Student User ID / Matric No</Text>
+        <TextInput
+          className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-sm mb-4"
+          placeholder="Enter Student ID (e.g. usr_student_01)"
+          placeholderTextColor="#94A3B8"
+          value={studentId}
+          onChangeText={setStudentId}
+        />
+
+        <Text className="text-lg font-bold text-slate-800 mb-3 pt-2 border-t border-slate-100">
+          2. Physical Property Condition Checklist
+        </Text>
+
+        {renderConditionSelector('Mattress Condition', mattressCondition, setMattressCondition)}
+        {renderConditionSelector('Ceiling Fan & Regulator Condition', fanCondition, setFanCondition)}
+        {renderConditionSelector('Electrical Wall Sockets Condition', socketsCondition, setSocketsCondition)}
+        {renderConditionSelector('Door Locks & Window Latch Condition', locksCondition, setLocksCondition)}
+
+        <Text className="text-lg font-bold text-slate-800 mb-2 pt-2 border-t border-slate-100">
+          3. Verification Remarks
+        </Text>
+        <TextInput
+          className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-xs mb-4"
+          placeholder="Optional remarks (e.g. Fan regulator knob loose on check-in)"
+          placeholderTextColor="#94A3B8"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+        />
+
+        <TouchableOpacity
+          className="bg-[#7A0000] rounded-xl py-4 items-center shadow-lg active:opacity-90"
+          onPress={handleSubmitAudit}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text className="text-white font-bold text-base">
+              Save Room Audit Certificate
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Recent Audits Log List */}
+      {audits.length > 0 && (
+        <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-12">
+          <Text className="text-lg font-bold text-slate-800 mb-3">Recent Room Check-In Certificates</Text>
+          {audits.map((item) => (
+            <View key={item.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-3">
+              <View className="flex-row justify-between items-center mb-1">
+                <Text className="font-bold text-sm text-slate-800">Room: {item.roomId}</Text>
+                <Text className="text-slate-400 text-[10px]">{new Date(item.auditedAt).toLocaleDateString()}</Text>
+              </View>
+              <Text className="text-slate-600 text-xs mb-2">Student ID: {item.studentId}</Text>
+              <View className="flex-row flex-wrap gap-1">
+                <Text className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded">Mattress: {item.mattressCondition}</Text>
+                <Text className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded">Fan: {item.fanCondition}</Text>
+                <Text className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded">Sockets: {item.socketsCondition}</Text>
+                <Text className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded">Locks: {item.locksCondition}</Text>
+              </View>
+              {item.notes ? <Text className="text-slate-500 text-xs italic mt-2">Remark: "{item.notes}"</Text> : null}
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
+  );
+};

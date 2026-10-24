@@ -3,6 +3,10 @@ import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-na
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PorterStackParamList } from './types';
 import { useAuthStore } from '../store/useAuthStore';
+import { RoomInventoryScreen } from '../screens/RoomInventoryScreen';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+
+type Props = NativeStackScreenProps<PorterStackParamList, 'PorterDashboard'>;
 
 const Stack = createNativeStackNavigator<PorterStackParamList>();
 
@@ -11,7 +15,7 @@ const Stack = createNativeStackNavigator<PorterStackParamList>();
  * High-visibility gatekeeper interface for hostel porters.
  * Provides QR scanning, manual PIN entry, room audit inspection tools, and emergency panic alarms.
  */
-const PorterDashboardScreen: React.FC = () => {
+const PorterDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const { session, logoutUser } = useAuthStore();
 
   return (
@@ -44,12 +48,15 @@ const PorterDashboardScreen: React.FC = () => {
             </Text>
           </View>
 
-          <View className="bg-blue-600 p-6 rounded-2xl items-center shadow-lg">
+          <TouchableOpacity
+            className="bg-blue-600 p-6 rounded-2xl items-center shadow-lg active:opacity-90"
+            onPress={() => navigation.navigate('RoomAudit')}
+          >
             <Text className="text-white text-2xl font-black mb-1">📋 ROOM AUDIT CHECKLIST</Text>
             <Text className="text-blue-100 text-xs text-center">
               Execute physical room property check-in inspection with student
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Sign Out Button */}
@@ -81,6 +88,11 @@ export const PorterNavigator: React.FC = () => {
         name="PorterDashboard"
         component={PorterDashboardScreen}
         options={{ title: 'Porter Gatehouse Station' }}
+      />
+      <Stack.Screen
+        name="RoomAudit"
+        component={RoomInventoryScreen}
+        options={{ title: 'Room Property Check-In Audit' }}
       />
     </Stack.Navigator>
   );
