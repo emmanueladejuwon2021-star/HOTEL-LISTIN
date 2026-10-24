@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PaymentHoldDetails, PaymentProcessResult, PaymentReceipt, HoldReleaseResult } from '../types/payment';
+import { PaymentHoldDetails, PaymentProcessResult, PaymentReceipt, HoldReleaseResult, RemitaRRRDetails, RemitaFeeBreakdown, PaymentVerificationResult } from '../types/payment';
 import { PaymentService } from '../api/paymentService';
 
 interface PaymentState {
@@ -7,16 +7,26 @@ interface PaymentState {
   paymentResult: PaymentProcessResult | null;
   paymentHistory: PaymentReceipt[];
   selectedReceipt: PaymentReceipt | null;
+  rrrDetails: RemitaRRRDetails | null;
+  feeBreakdown: RemitaFeeBreakdown | null;
+  verificationResult: PaymentVerificationResult | null;
   isLoading: boolean;
   isProcessing: boolean;
   isCancellingHold: boolean;
+  isGeneratingRRR: boolean;
+  isVerifyingRef: boolean;
+  isUrgentHold: boolean;
   error: string | null;
   formattedCountdown: string;
   fetchHoldStatus: (userId: string) => Promise<PaymentHoldDetails | null>;
   payHostelFee: (userId: string, transactionReference: string) => Promise<PaymentProcessResult>;
   fetchPaymentHistory: (userId: string) => Promise<PaymentReceipt[]>;
   releaseCurrentHold: (userId: string) => Promise<HoldReleaseResult>;
+  generateRRR: (userId: string) => Promise<RemitaRRRDetails>;
+  verifyPaymentReference: (transactionReference: string) => Promise<PaymentVerificationResult>;
+  getFeeBreakdown: (baseAmount?: number) => RemitaFeeBreakdown;
   setSelectedReceipt: (receipt: PaymentReceipt | null) => void;
+  setVerificationResult: (result: PaymentVerificationResult | null) => void;
   updateCountdownTimer: () => void;
   resetPaymentState: () => void;
 }
@@ -39,9 +49,15 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
   paymentResult: null,
   paymentHistory: [],
   selectedReceipt: null,
+  rrrDetails: null,
+  feeBreakdown: null,
+  verificationResult: null,
   isLoading: false,
   isProcessing: false,
   isCancellingHold: false,
+  isGeneratingRRR: false,
+  isVerifyingRef: false,
+  isUrgentHold: false,
   error: null,
   formattedCountdown: '72:00:00',
 
@@ -50,7 +66,9 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
     try {
       const hold = await PaymentService.getPaymentHoldStatus(userId);
       const countdown = hold ? formatSecondsToHMS(hold.remainingSeconds) : '00:00:00';
-      set({ holdDetails: hold, formattedCountdown: countdown, isLoading: false });
+      const isUrgent = !!hold && !hold.isExpired && hold.remainingSeconds < 43200 && hold.remainingSeconds > 0;
+      const fees = hold ? PaymentService.calculateFeeBreakdown(hold.amount) : null;
+      set({ holdDetails: hold, formattedCountdown: countdown, isUrgentHold: isUrgent, feeBreakdown: fees, isLoading: false });
       return hold;
     } catch (err: any) {
       const msg = err.message || 'Failed to retrieve payment hold status.';
@@ -84,7 +102,7 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
   updateCountdownTimer: () => {
     const { holdDetails } = get();
     if (!holdDetails || holdDetails.isExpired) {
-      set({ formattedCountdown: '00:00:00' });
+      set({ formattedCountdown: '00:00:00', isUrgentHold: false });
       return;
     }
 
@@ -92,15 +110,53 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
     const nowMs = Date.now();
     const remainingSeconds = Math.max(0, Math.floor((holdExpiresMs - nowMs) / 1000));
     const isExpired = remainingSeconds === 0;
+    const isUrgent = !isExpired && remainingSeconds < 43200; // Less than 12 hours remaining
 
     set({
       formattedCountdown: formatSecondsToHMS(remainingSeconds),
+      isUrgentHold: isUrgent,
       holdDetails: {
         ...holdDetails,
         remainingSeconds,
         isExpired
       }
     });
+  },
+
+  generateRRR: async (userId: string) => {
+    set({ isGeneratingRRR: true, error: null });
+    try {
+      const details = await PaymentService.generateRemitaRRR(userId);
+      set({ rrrDetails: details, isGeneratingRRR: false });
+      return details;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to generate Remita Retrieval Reference.';
+      set({ error: msg, isGeneratingRRR: false });
+      throw err;
+    }
+  },
+
+  verifyPaymentReference: async (transactionReference: string) => {
+    set({ isVerifyingRef: true, error: null });
+    try {
+      const res = await PaymentService.verifyRemitaPaymentStatus(transactionReference);
+      set({ verificationResult: res, isVerifyingRef: false });
+      return res;
+    } catch (err: any) {
+      const msg = err.message || 'Failed to verify transaction reference.';
+      set({ error: msg, isVerifyingRef: false });
+      throw err;
+    }
+  },
+
+  getFeeBreakdown: (baseAmount?: number) => {
+    const fees = PaymentService.calculateFeeBreakdown(baseAmount);
+    set({ feeBreakdown: fees });
+    return fees;
+  },
+
+  setVerificationResult: (result: PaymentVerificationResult | null) => {
+    set({ verificationResult: result });
   },
 
   fetchPaymentHistory: async (userId: string) => {
@@ -142,9 +198,15 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
       paymentResult: null,
       paymentHistory: [],
       selectedReceipt: null,
+      rrrDetails: null,
+      feeBreakdown: null,
+      verificationResult: null,
       isLoading: false,
       isProcessing: false,
       isCancellingHold: false,
+      isGeneratingRRR: false,
+      isVerifyingRef: false,
+      isUrgentHold: false,
       error: null,
       formattedCountdown: '72:00:00'
     });

@@ -77,3 +77,44 @@ export interface HoldReleaseResult {
   message: string;
   recycledAt: string;
 }
+
+/**
+ * Details of a generated Remita Retrieval Reference (RRR) for hostel fee payment.
+ * Contains the unique 12-digit RRR code, creation timestamp, expiration, and total fee amount.
+ */
+export interface RemitaRRRDetails {
+  rrr: string;
+  paymentId: string;
+  userId: string;
+  bedspaceId: string;
+  generatedAt: string;
+  expiresAt: string;
+  amountPayable: number;
+}
+
+/**
+ * Itemized breakdown of hostel accommodation fees and processing charges.
+ * Provides full financial transparency for students before payment.
+ */
+export interface RemitaFeeBreakdown {
+  baseHostelFee: number;
+  remitaServiceFee: number;
+  ictProcessingFee: number;
+  totalAmount: number;
+  currency: string;
+}
+
+/**
+ * Detailed outcome of verifying a Remita payment reference status.
+ * Returns confirmation details, payment timestamps, and room allocation summary.
+ */
+export interface PaymentVerificationResult {
+  transactionReference: string;
+  status: 'PENDING' | 'SUCCESSFUL' | 'FAILED' | 'NOT_FOUND';
+  amount: number;
+  paidAt?: string;
+  payerName?: string;
+  hostelName?: string;
+  roomDetails?: string;
+  message: string;
+}
