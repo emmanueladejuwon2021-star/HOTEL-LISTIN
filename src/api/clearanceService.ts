@@ -49,6 +49,21 @@ export class ClearanceService {
       args: []
     });
 
+    // Create physical document inspection logs table for physical screening checks
+    await client.execute({
+      sql: `CREATE TABLE IF NOT EXISTS physical_clearance_inspections (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        officer_id TEXT NOT NULL,
+        inspection_status TEXT CHECK(inspection_status IN ('INSPECTED_PASSED', 'INSPECTED_FAILED')) NOT NULL,
+        verified_originals TEXT NOT NULL,
+        notes TEXT,
+        inspected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      args: []
+    });
+
     // Safely attempt adding columns if table was created in an earlier migration
     const safeAddColumn = async (colDef: string) => {
       try {
@@ -249,6 +264,31 @@ export class ClearanceService {
       args: [userId]
     });
 
+    // Fetch physical inspection details if available
+    const physicalRes = await client.execute({
+      sql: `SELECT id, user_id, officer_id, inspection_status, verified_originals, notes, inspected_at
+            FROM physical_clearance_inspections WHERE user_id = ?
+            ORDER BY inspected_at DESC LIMIT 1`,
+      args: [userId]
+    });
+
+    let physicalInspectionStatus: 'PENDING_INSPECTION' | 'INSPECTED_PASSED' | 'INSPECTED_FAILED' = 'PENDING_INSPECTION';
+    let physicalInspectionDetails = undefined;
+
+    if (physicalRes.rows.length > 0) {
+      const pRow = physicalRes.rows[0];
+      physicalInspectionStatus = String(pRow.inspection_status) as 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
+      physicalInspectionDetails = {
+        id: String(pRow.id),
+        userId: String(pRow.user_id),
+        officerId: String(pRow.officer_id),
+        inspectionStatus: physicalInspectionStatus,
+        verifiedOriginals: String(pRow.verified_originals),
+        notes: pRow.notes ? String(pRow.notes) : undefined,
+        inspectedAt: String(pRow.inspected_at || new Date().toISOString())
+      };
+    }
+
     const documents: ClearanceDocument[] = docResult.rows.map(row => ({
       id: String(row.id),
       userId: String(row.user_id),
@@ -267,6 +307,8 @@ export class ClearanceService {
       userId,
       overallStatus,
       documents,
+      physicalInspectionStatus,
+      physicalInspectionDetails,
       rejectionReason,
       clearanceCertificateHash
     };
@@ -396,6 +438,39 @@ export class ClearanceService {
       certificateHash: String(row.clearance_certificate_hash),
       message: `Verified Official Clearance: Student '${row.full_name}' (${row.matric_or_staff_no}) holds an officially approved UNILAG hostel clearance certificate.`
     };
+  }
+
+  /**
+   * Records a physical document screening inspection conducted by a porter or hall warden at the hostel porter desk.
+   * Updates physical document inspection log record and returns updated clearance package.
+   *
+   * @param params Physical inspection record parameters
+   * @returns Updated DigitalClearancePackage
+   */
+  public static async recordPhysicalInspection(params: {
+    userId: string;
+    officerId: string;
+    inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
+    verifiedOriginals?: string[];
+    notes?: string;
+  }): Promise<DigitalClearancePackage> {
+    await ClearanceService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const inspectionId = `phys_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const verifiedListStr = params.verifiedOriginals && params.verifiedOriginals.length > 0
+      ? params.verifiedOriginals.join(', ')
+      : 'Medical Certificate, Passport Photo, Code of Conduct';
+
+    const notesContent = params.notes ? params.notes.trim() : null;
+
+    await client.execute({
+      sql: `INSERT INTO physical_clearance_inspections (id, user_id, officer_id, inspection_status, verified_originals, notes, inspected_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      args: [inspectionId, params.userId, params.officerId, params.inspectionStatus, verifiedListStr, notesContent]
+    });
+
+    return await ClearanceService.getClearancePackage(params.userId);
   }
 
   /**

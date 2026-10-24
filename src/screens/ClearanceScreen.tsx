@@ -28,10 +28,12 @@ export const ClearanceScreen: React.FC = () => {
     submitClearancePackage,
     verifyCertificate,
     fetchReviewHistory,
+    recordPhysicalInspection,
     clearMessages
   } = useClearanceStore();
 
   const [verifyHashInput, setVerifyHashInput] = useState('');
+  const [officerNotes, setOfficerNotes] = useState('');
 
   const [medicalUrl, setMedicalUrl] = useState('');
   const [medicalNotes, setMedicalNotes] = useState('');
@@ -170,6 +172,39 @@ export const ClearanceScreen: React.FC = () => {
             <Text className="text-emerald-700 font-mono text-xs mt-1">{clearancePackage.clearanceCertificateHash}</Text>
           </View>
         )}
+
+        {/* Physical Inspection Screening Banner */}
+        <View className="mt-4 pt-3 border-t border-slate-100">
+          <Text className="text-xs font-bold text-slate-800 mb-1">Physical Document Screening Status:</Text>
+          {clearancePackage?.physicalInspectionStatus === 'INSPECTED_PASSED' ? (
+            <View className="bg-emerald-100 p-3 rounded-xl border border-emerald-300">
+              <Text className="text-emerald-900 font-bold text-xs">Physical Inspection Verified & Passed</Text>
+              {clearancePackage.physicalInspectionDetails && (
+                <Text className="text-emerald-800 text-[11px] mt-1">
+                  Verified Originals: {clearancePackage.physicalInspectionDetails.verifiedOriginals} • Inspected on {new Date(clearancePackage.physicalInspectionDetails.inspectedAt).toLocaleDateString()}
+                </Text>
+              )}
+            </View>
+          ) : clearancePackage?.physicalInspectionStatus === 'INSPECTED_FAILED' ? (
+            <View className="bg-red-100 p-3 rounded-xl border border-red-300">
+              <Text className="text-red-900 font-bold text-xs">Physical Inspection Flagged / Action Required</Text>
+              {clearancePackage.physicalInspectionDetails?.notes && (
+                <Text className="text-red-800 text-[11px] mt-1">
+                  Remark: {clearancePackage.physicalInspectionDetails.notes}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <View className="bg-slate-100 p-3 rounded-xl border border-slate-200">
+              <Text className="text-slate-700 font-semibold text-xs">
+                Pending Physical Desk Inspection at Porter Desk
+              </Text>
+              <Text className="text-slate-500 text-[11px] mt-1">
+                Present original physical copies of Medical Certificate, Passport Photo, and Code of Conduct at the hostel entrance porter desk.
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Error and Success Banner Messages */}
@@ -395,6 +430,45 @@ export const ClearanceScreen: React.FC = () => {
           </Text>
         )}
       </TouchableOpacity>
+
+      {/* Porter / Officer Physical Inspection Simulation Panel */}
+      <View className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md mb-6">
+        <Text className="text-lg font-bold text-white mb-1">
+          Porter / Desk Officer Physical Inspection
+        </Text>
+        <Text className="text-slate-300 text-xs mb-3">
+          Simulate physical document verification at the porter desk after inspecting original student physical copies.
+        </Text>
+        <TextInput
+          className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white text-xs mb-3"
+          placeholder="Optional inspection remark (e.g. Originals verified against Jaja Clinic stamp)"
+          placeholderTextColor="#94A3B8"
+          value={officerNotes}
+          onChangeText={setOfficerNotes}
+        />
+        <View className="flex-row space-x-3">
+          <TouchableOpacity
+            className="flex-1 bg-emerald-600 py-3 rounded-xl items-center active:opacity-80"
+            onPress={async () => {
+              const ok = await recordPhysicalInspection(userId, 'officer_porter_01', 'INSPECTED_PASSED', ['Medical Certificate', 'Passport Photo', 'Code of Conduct'], officerNotes);
+              if (ok) setOfficerNotes('');
+            }}
+            disabled={isLoading}
+          >
+            <Text className="text-white font-bold text-xs">Pass Physical Check</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-1 bg-red-600 py-3 rounded-xl items-center active:opacity-80"
+            onPress={async () => {
+              const ok = await recordPhysicalInspection(userId, 'officer_porter_01', 'INSPECTED_FAILED', ['Medical Certificate'], officerNotes || 'Incomplete physical documents presented.');
+              if (ok) setOfficerNotes('');
+            }}
+            disabled={isLoading}
+          >
+            <Text className="text-white font-bold text-xs">Flag Physical Defect</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Certificate Verification Lookup Tool Card */}
       <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
