@@ -1,6 +1,6 @@
 import { Client } from '@libsql/client';
 import { AuthService } from './authService';
-import { PaymentHoldDetails, RemitaPaymentParams, PaymentProcessResult, PaymentReceipt, HoldReleaseResult, RemitaRRRDetails, RemitaFeeBreakdown, PaymentVerificationResult } from '../types/payment';
+import { PaymentHoldDetails, RemitaPaymentParams, PaymentProcessResult, PaymentReceipt, HoldReleaseResult, RemitaRRRDetails, RemitaFeeBreakdown, PaymentVerificationResult, PaymentRetryResult, PendingPaymentSyncSummary } from '../types/payment';
 import { validateRemitaRef } from '../utils/validation';
 
 /**
@@ -471,6 +471,98 @@ export class PaymentService {
    * @param userId - Student's unique user ID
    * @returns Array of PaymentReceipt objects
    */
+  /**
+   * Marks a pending payment transaction as FAILED (e.g. declined or cancelled at gateway)
+   * while keeping the active bedspace hold intact for retries if hold has not expired.
+   *
+   * @param paymentId - Payment record ID or transaction reference
+   * @param userId - Student user ID
+   * @param failureReason - Optional reason text for failure
+   * @returns PaymentRetryResult indicating if student can retry payment
+   */
+  public static async markPaymentFailed(paymentId: string, userId: string, failureReason?: string): Promise<PaymentRetryResult> {
+    await PaymentService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Verify hold status to check if hold is still valid for retries
+    const holdStatus = await PaymentService.getPaymentHoldStatus(userId);
+    const canRetry = !!holdStatus && !holdStatus.isExpired;
+
+    await client.execute({
+      sql: `UPDATE payments
+            SET payment_status = 'FAILED'
+            WHERE (id = ? OR transaction_reference = ?) AND user_id = ? AND payment_status = 'PENDING'`,
+      args: [paymentId, paymentId, userId]
+    });
+
+    const reasonMsg = failureReason ? `: ${failureReason}` : '.';
+    const retryMsg = canRetry
+      ? `Payment attempt marked as failed${reasonMsg} Your bedspace hold remains valid. You may retry payment before the timer expires.`
+      : `Payment attempt failed${reasonMsg} Your bedspace hold has expired or is no longer active.`;
+
+    return {
+      success: true,
+      paymentId,
+      message: retryMsg,
+      canRetry
+    };
+  }
+
+  /**
+   * Automatically scans and reconciles all PENDING payment records in the database.
+   * Checks for expired holds, re-verifies valid transactions, and cleans up stale pending payments.
+   *
+   * @returns PendingPaymentSyncSummary
+   */
+  public static async syncPendingPayments(): Promise<PendingPaymentSyncSummary> {
+    await PaymentService.initializeSchema();
+    // Auto-recycle any expired holds first
+    const recycledHoldCount = await PaymentService.recycleExpiredHolds();
+
+    const client = AuthService.getDbClient();
+    const pendingRes = await client.execute({
+      sql: `SELECT p.id, p.user_id, p.transaction_reference, p.bedspace_id, b.status as bedspace_status, b.hold_expires_at
+            FROM payments p
+            LEFT JOIN bedspaces b ON p.bedspace_id = b.id
+            WHERE p.payment_status = 'PENDING'`,
+      args: []
+    });
+
+    let confirmedCount = 0;
+    let failedCount = 0;
+
+    for (const row of pendingRes.rows) {
+      const paymentId = String(row.id);
+      const bedspaceStatus = row.bedspace_status ? String(row.bedspace_status) : null;
+      const holdExpiresAt = row.hold_expires_at ? new Date(String(row.hold_expires_at)).getTime() : 0;
+      const isExpired = holdExpiresAt > 0 && holdExpiresAt <= Date.now();
+
+      if (bedspaceStatus === 'CONFIRMED') {
+        // If bedspace is already confirmed, update payment record to SUCCESSFUL
+        await client.execute({
+          sql: `UPDATE payments SET payment_status = 'SUCCESSFUL', paid_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          args: [paymentId]
+        });
+        confirmedCount++;
+      } else if (isExpired || bedspaceStatus === 'AVAILABLE' || !bedspaceStatus) {
+        // If hold expired or bedspace returned to available, mark payment as FAILED
+        await client.execute({
+          sql: `UPDATE payments SET payment_status = 'FAILED' WHERE id = ?`,
+          args: [paymentId]
+        });
+        failedCount++;
+      }
+    }
+
+    return {
+      totalPending: pendingRes.rows.length,
+      confirmedCount,
+      failedCount,
+      recycledHoldCount,
+      syncedAt: new Date().toISOString()
+    };
+  }
+
   public static async getPaymentHistory(userId: string): Promise<PaymentReceipt[]> {
     await PaymentService.initializeSchema();
     const client = AuthService.getDbClient();

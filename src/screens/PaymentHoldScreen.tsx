@@ -19,11 +19,14 @@ export const PaymentHoldScreen: React.FC = () => {
     rrrDetails,
     feeBreakdown,
     verificationResult,
+    syncSummary,
+    retryResult,
     isLoading,
     isProcessing,
     isCancellingHold,
     isGeneratingRRR,
     isVerifyingRef,
+    isSyncingPending,
     isUrgentHold,
     error,
     formattedCountdown,
@@ -33,6 +36,8 @@ export const PaymentHoldScreen: React.FC = () => {
     releaseCurrentHold,
     generateRRR,
     verifyPaymentReference,
+    syncPendingPayments,
+    markPaymentFailed,
     setSelectedReceipt,
     setVerificationResult,
     updateCountdownTimer
@@ -431,6 +436,36 @@ export const PaymentHoldScreen: React.FC = () => {
               >
                 <Text className="text-xs text-slate-500 underline text-right">Clear</Text>
               </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Sync Pending Payments Action */}
+          <TouchableOpacity
+            className="mt-4 bg-slate-100 border border-slate-300 py-3 rounded-xl items-center justify-center active:opacity-80"
+            disabled={isSyncingPending}
+            onPress={async () => {
+              try {
+                await syncPendingPayments();
+                if (userId) {
+                  fetchHoldStatus(userId).catch(() => {});
+                  fetchPaymentHistory(userId).catch(() => {});
+                }
+              } catch (e: any) {}
+            }}
+          >
+            {isSyncingPending ? (
+              <ActivityIndicator color="#0F172A" size="small" />
+            ) : (
+              <Text className="text-slate-800 font-semibold text-xs">Sync Pending Payment Statuses</Text>
+            )}
+          </TouchableOpacity>
+
+          {syncSummary && (
+            <View className="mt-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <Text className="text-[11px] font-bold text-slate-700">Sync Reconciled:</Text>
+              <Text className="text-[10px] text-slate-600">
+                Pending Checked: {syncSummary.totalPending} • Confirmed: {syncSummary.confirmedCount} • Expired/Failed: {syncSummary.failedCount}
+              </Text>
             </View>
           )}
         </View>
