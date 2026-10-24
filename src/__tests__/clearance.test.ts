@@ -1,8 +1,16 @@
 import { ClearanceService } from '../api/clearanceService';
 import { AuthService } from '../api/authService';
 import { EligibilityService } from '../api/eligibilityService';
+import { validateDocumentFile } from '../utils/validation';
 
-describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-01]', () => {
+/**
+ * Automated Test Suite for Digital Clearance Document Screening [CLEARANCE-01 & CLEARANCE-02].
+ * Verifies document uploads, format validations, document deletions, clearance submissions,
+ * and warden approvals using real Turso libSQL SQLite queries without mocks.
+ *
+ * Includes plain-language English comments for non-technical stakeholders.
+ */
+describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-01 & CLEARANCE-02]', () => {
   const testStudentId = `usr_clearance_test_${Date.now()}`;
   const testWardenId = `usr_warden_test_${Date.now()}`;
 
@@ -33,18 +41,44 @@ describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-0
     expect(pkg.documents).toHaveLength(0);
   });
 
-  test('should allow uploading a Medical Certificate document', async () => {
+  test('should validate document file URLs and formats using validateDocumentFile', () => {
+    // Valid passport photo image
+    const photoRes = validateDocumentFile('https://unilagstay.edu.ng/docs/passport.jpg', 'PASSPORT_PHOTO');
+    expect(photoRes.isValid).toBe(true);
+    expect(photoRes.detectedMimeType).toBe('image/jpeg');
+
+    // Invalid passport photo format (e.g. text file instead of image)
+    const invalidPhotoRes = validateDocumentFile('https://unilagstay.edu.ng/docs/passport.txt', 'PASSPORT_PHOTO');
+    expect(invalidPhotoRes.isValid).toBe(false);
+    expect(invalidPhotoRes.errorMessage).toContain('must be an image file');
+
+    // Valid medical certificate PDF
+    const medRes = validateDocumentFile('https://unilagstay.edu.ng/docs/med_cert.pdf', 'MEDICAL_CERTIFICATE');
+    expect(medRes.isValid).toBe(true);
+    expect(medRes.detectedMimeType).toBe('application/pdf');
+
+    // Empty URL
+    const emptyRes = validateDocumentFile('   ', 'MEDICAL_CERTIFICATE');
+    expect(emptyRes.isValid).toBe(false);
+  });
+
+  test('should allow uploading a Medical Certificate document with metadata and notes', async () => {
     const doc = await ClearanceService.uploadDocument({
       userId: testStudentId,
       documentType: 'MEDICAL_CERTIFICATE',
       fileUrl: 'https://unilagstay.edu.ng/docs/med_cert.pdf',
-      fileName: 'Medical_Certificate.pdf'
+      fileName: 'Medical_Certificate.pdf',
+      fileSizeBytes: 512000,
+      mimeType: 'application/pdf',
+      notes: 'Issued at Jaja Clinic Ref #1024'
     });
 
     expect(doc).toBeDefined();
     expect(doc.userId).toBe(testStudentId);
     expect(doc.documentType).toBe('MEDICAL_CERTIFICATE');
     expect(doc.verificationStatus).toBe('PENDING');
+    expect(doc.fileSizeBytes).toBe(512000);
+    expect(doc.notes).toBe('Issued at Jaja Clinic Ref #1024');
 
     const pkg = await ClearanceService.getClearancePackage(testStudentId);
     expect(pkg.documents).toHaveLength(1);
@@ -62,24 +96,50 @@ describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-0
       userId: testStudentId,
       documentType: 'PASSPORT_PHOTO',
       fileUrl: 'https://unilagstay.edu.ng/docs/passport.jpg',
-      fileName: 'Passport_Photo.jpg'
+      fileName: 'Passport_Photo.jpg',
+      fileSizeBytes: 204800,
+      notes: 'Red background confirmed'
     });
 
     await ClearanceService.uploadDocument({
       userId: testStudentId,
       documentType: 'CODE_OF_CONDUCT',
       fileUrl: 'https://unilagstay.edu.ng/docs/code_of_conduct.pdf',
-      fileName: 'Code_of_Conduct.pdf'
+      fileName: 'Code_of_Conduct.pdf',
+      fileSizeBytes: 300000,
+      notes: 'Signed by student'
     });
 
     const pkg = await ClearanceService.getClearancePackage(testStudentId);
     expect(pkg.documents).toHaveLength(3);
   });
 
-  test('should successfully submit clearance package when all documents are present', async () => {
-    const submittedPkg = await ClearanceService.submitClearancePackage(testStudentId);
+  test('should allow deleting an uploaded document and reset clearance status', async () => {
+    const pkgBefore = await ClearanceService.getClearancePackage(testStudentId);
+    const docToDelete = pkgBefore.documents.find(d => d.documentType === 'CODE_OF_CONDUCT');
+    expect(docToDelete).toBeDefined();
 
+    // Delete Code of Conduct document
+    const pkgAfter = await ClearanceService.deleteDocument(testStudentId, docToDelete!.id);
+
+    expect(pkgAfter.documents).toHaveLength(2);
+    expect(pkgAfter.documents.find(d => d.documentType === 'CODE_OF_CONDUCT')).toBeUndefined();
+    expect(pkgAfter.overallStatus).toBe('NOT_STARTED');
+  });
+
+  test('should re-upload deleted document and successfully submit clearance package', async () => {
+    // Re-upload Code of Conduct
+    await ClearanceService.uploadDocument({
+      userId: testStudentId,
+      documentType: 'CODE_OF_CONDUCT',
+      fileUrl: 'https://unilagstay.edu.ng/docs/code_of_conduct_updated.pdf',
+      fileName: 'Code_of_Conduct_Updated.pdf',
+      fileSizeBytes: 310000
+    });
+
+    const submittedPkg = await ClearanceService.submitClearancePackage(testStudentId);
     expect(submittedPkg.overallStatus).toBe('PENDING');
+    expect(submittedPkg.documents).toHaveLength(3);
   });
 
   test('should allow Warden review to approve clearance package and generate certificate hash', async () => {
