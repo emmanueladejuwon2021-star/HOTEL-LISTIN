@@ -2,6 +2,7 @@ import { Client } from '@libsql/client';
 import CryptoJS from 'crypto-js';
 import { AuthService } from './authService';
 import { EligibilityService } from './eligibilityService';
+import { validateDocumentFile } from '../utils/validation';
 import {
   ClearanceDocument,
   DigitalClearancePackage,
@@ -12,13 +13,16 @@ import {
 import { ClearanceStatus } from '../types/auth';
 
 /**
- * Service handling student digital document clearance uploads and warden approvals.
+ * Service handling student digital document clearance uploads, document deletions, and warden approvals.
  * Interacts directly with Turso libSQL edge SQLite database following zero-mock principles.
+ *
+ * Fully commented with simple English descriptions so non-technical stakeholders and university officials
+ * can easily understand how student document data is created, validated, updated, and deleted.
  */
 export class ClearanceService {
   /**
    * Initializes the database schema for clearance document management.
-   * Creates the clearance_documents table if it does not already exist.
+   * Creates the clearance_documents table if it does not already exist and safely adds metadata columns.
    */
   public static async initializeSchema(): Promise<void> {
     await AuthService.initializeSchema();
@@ -35,10 +39,26 @@ export class ClearanceService {
         verification_status TEXT CHECK(verification_status IN ('PENDING', 'APPROVED', 'REJECTED')) DEFAULT 'PENDING',
         rejection_reason TEXT,
         uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        file_size_bytes INTEGER DEFAULT 0,
+        mime_type TEXT,
+        notes TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`,
       args: []
     });
+
+    // Safely attempt adding columns if table was created in an earlier migration
+    const safeAddColumn = async (colDef: string) => {
+      try {
+        await client.execute({ sql: `ALTER TABLE clearance_documents ADD COLUMN ${colDef}`, args: [] });
+      } catch (e) {
+        // Column already exists or table already updated
+      }
+    };
+
+    await safeAddColumn('file_size_bytes INTEGER DEFAULT 0');
+    await safeAddColumn('mime_type TEXT');
+    await safeAddColumn('notes TEXT');
 
     // Ensure index exists for fast query performance
     await client.execute({
@@ -48,18 +68,28 @@ export class ClearanceService {
   }
 
   /**
-   * Uploads or replaces a student's clearance document in the database.
+   * Uploads or replaces a student's clearance document in the database after validating format and URL.
    *
-   * @param params Document upload details
+   * @param params Document upload details including file URL, name, optional file size, and notes
    * @returns Newly stored ClearanceDocument record
    */
   public static async uploadDocument(params: DocumentUploadParams): Promise<ClearanceDocument> {
     await ClearanceService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    if (!params.fileUrl.trim() || !params.fileName.trim()) {
-      throw new Error('Valid document file URL and name are required.');
+    // Perform validation check on document format and URL path
+    const valResult = validateDocumentFile(params.fileUrl, params.documentType);
+    if (!valResult.isValid) {
+      throw new Error(valResult.errorMessage || 'Invalid clearance document file provided.');
     }
+
+    if (!params.fileName.trim()) {
+      throw new Error('Valid document file name is required.');
+    }
+
+    const detectedMime = params.mimeType || valResult.detectedMimeType || 'application/octet-stream';
+    const estimatedSize = params.fileSizeBytes || 256000; // default estimated 250KB if size not supplied
+    const notesContent = params.notes ? params.notes.trim() : null;
 
     // Check if document of this type already exists for student
     const existingResult = await client.execute({
@@ -74,19 +104,39 @@ export class ClearanceService {
     const nowIso = new Date().toISOString();
 
     if (existingResult.rows.length > 0) {
-      // Replace existing record
+      // Replace existing record with new upload information
       await client.execute({
         sql: `UPDATE clearance_documents
-              SET file_url = ?, file_name = ?, verification_status = 'PENDING', rejection_reason = NULL, uploaded_at = CURRENT_TIMESTAMP
+              SET file_url = ?,
+                  file_name = ?,
+                  verification_status = 'PENDING',
+                  rejection_reason = NULL,
+                  file_size_bytes = ?,
+                  mime_type = ?,
+                  notes = ?,
+                  uploaded_at = CURRENT_TIMESTAMP
               WHERE id = ?`,
-        args: [params.fileUrl, params.fileName, docId]
+        args: [params.fileUrl, params.fileName, estimatedSize, detectedMime, notesContent, docId]
       });
     } else {
-      // Insert new document record
+      // Insert brand new document record into database
       await client.execute({
-        sql: `INSERT INTO clearance_documents (id, user_id, document_type, file_url, file_name, verification_status, rejection_reason, uploaded_at)
-              VALUES (?, ?, ?, ?, ?, 'PENDING', NULL, CURRENT_TIMESTAMP)`,
-        args: [docId, params.userId, params.documentType, params.fileUrl, params.fileName]
+        sql: `INSERT INTO clearance_documents (id, user_id, document_type, file_url, file_name, verification_status, rejection_reason, file_size_bytes, mime_type, notes, uploaded_at)
+              VALUES (?, ?, ?, ?, ?, 'PENDING', NULL, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        args: [docId, params.userId, params.documentType, params.fileUrl, params.fileName, estimatedSize, detectedMime, notesContent]
+      });
+    }
+
+    // Reset student overall clearance status back to NOT_STARTED if previously REJECTED
+    const profileRes = await client.execute({
+      sql: `SELECT clearance_status FROM student_profiles WHERE user_id = ?`,
+      args: [params.userId]
+    });
+
+    if (profileRes.rows.length > 0 && String(profileRes.rows[0].clearance_status) === 'REJECTED') {
+      await client.execute({
+        sql: `UPDATE student_profiles SET clearance_status = 'NOT_STARTED', clearance_rejection_reason = NULL WHERE user_id = ?`,
+        args: [params.userId]
       });
     }
 
@@ -97,8 +147,52 @@ export class ClearanceService {
       fileUrl: params.fileUrl,
       fileName: params.fileName,
       uploadedAt: nowIso,
-      verificationStatus: 'PENDING'
+      verificationStatus: 'PENDING',
+      fileSizeBytes: estimatedSize,
+      mimeType: detectedMime,
+      notes: notesContent || undefined
     };
+  }
+
+  /**
+   * Removes/deletes an uploaded clearance document from the database.
+   * Resets overall clearance status to NOT_STARTED if package was PENDING or REJECTED.
+   *
+   * @param userId Student ID
+   * @param documentId Document ID to delete
+   * @returns Updated DigitalClearancePackage
+   */
+  public static async deleteDocument(userId: string, documentId: string): Promise<DigitalClearancePackage> {
+    await ClearanceService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Check if document exists for student
+    const checkResult = await client.execute({
+      sql: `SELECT id, document_type FROM clearance_documents WHERE id = ? AND user_id = ?`,
+      args: [documentId, userId]
+    });
+
+    if (checkResult.rows.length === 0) {
+      throw new Error('Document not found or does not belong to student.');
+    }
+
+    // Delete record from database
+    await client.execute({
+      sql: `DELETE FROM clearance_documents WHERE id = ? AND user_id = ?`,
+      args: [documentId, userId]
+    });
+
+    // Reset clearance status to NOT_STARTED if package was submitted or rejected
+    await client.execute({
+      sql: `UPDATE student_profiles
+            SET clearance_status = 'NOT_STARTED',
+                clearance_rejection_reason = NULL,
+                clearance_certificate_hash = NULL
+            WHERE user_id = ? AND clearance_status IN ('PENDING', 'REJECTED')`,
+      args: [userId]
+    });
+
+    return await ClearanceService.getClearancePackage(userId);
   }
 
   /**
@@ -128,7 +222,7 @@ export class ClearanceService {
 
     // Fetch documents
     const docResult = await client.execute({
-      sql: `SELECT id, user_id, document_type, file_url, file_name, verification_status, rejection_reason, uploaded_at
+      sql: `SELECT id, user_id, document_type, file_url, file_name, verification_status, rejection_reason, uploaded_at, file_size_bytes, mime_type, notes
             FROM clearance_documents WHERE user_id = ?
             ORDER BY uploaded_at DESC`,
       args: [userId]
@@ -142,7 +236,10 @@ export class ClearanceService {
       fileName: String(row.file_name),
       uploadedAt: String(row.uploaded_at || new Date().toISOString()),
       verificationStatus: String(row.verification_status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED',
-      rejectionReason: row.rejection_reason ? String(row.rejection_reason) : undefined
+      rejectionReason: row.rejection_reason ? String(row.rejection_reason) : undefined,
+      fileSizeBytes: row.file_size_bytes ? Number(row.file_size_bytes) : undefined,
+      mimeType: row.mime_type ? String(row.mime_type) : undefined,
+      notes: row.notes ? String(row.notes) : undefined
     }));
 
     return {
