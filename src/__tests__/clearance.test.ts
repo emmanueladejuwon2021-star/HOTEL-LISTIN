@@ -4,13 +4,13 @@ import { EligibilityService } from '../api/eligibilityService';
 import { validateDocumentFile } from '../utils/validation';
 
 /**
- * Automated Test Suite for Digital Clearance Document Screening [CLEARANCE-01 & CLEARANCE-02].
+ * Automated Test Suite for Digital Clearance Document Screening [CLEARANCE-01 through CLEARANCE-05].
  * Verifies document uploads, format validations, document deletions, clearance submissions,
- * and warden approvals using real Turso libSQL SQLite queries without mocks.
+ * warden approvals, certificate verification, and physical inspection checks using real Turso libSQL SQLite queries without mocks.
  *
  * Includes plain-language English comments for non-technical stakeholders.
  */
-describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-01 & CLEARANCE-02]', () => {
+describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-01 - CLEARANCE-05]', () => {
   const testStudentId = `usr_clearance_test_${Date.now()}`;
   const testWardenId = `usr_warden_test_${Date.now()}`;
 
@@ -213,5 +213,17 @@ describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-0
     expect(updatedPkg.physicalInspectionDetails?.officerId).toBe(officerId);
     expect(updatedPkg.physicalInspectionDetails?.verifiedOriginals).toContain('Medical Certificate');
     expect(updatedPkg.physicalInspectionDetails?.notes).toBe(notes);
+  });
+
+  test('should execute full end-to-end clearance document screening workflow [CLEARANCE-05 / UAT-0025]', async () => {
+    // Verify complete clearance status state machine transition and certificate validation
+    const pkg = await ClearanceService.getClearancePackage(testStudentId);
+    expect(pkg.overallStatus).toBe('APPROVED');
+    expect(pkg.physicalInspectionStatus).toBe('INSPECTED_PASSED');
+    expect(pkg.clearanceCertificateHash).toBeDefined();
+
+    const certLookup = await ClearanceService.verifyClearanceCertificate(pkg.clearanceCertificateHash!);
+    expect(certLookup.isValid).toBe(true);
+    expect(certLookup.clearanceStatus).toBe('APPROVED');
   });
 });
