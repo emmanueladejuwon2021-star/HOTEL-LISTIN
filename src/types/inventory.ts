@@ -1,0 +1,69 @@
+/**
+ * Types and interface definitions for Room Check-In Audit & Property Inspection.
+ * Handles digital room condition checklist (mattress, fan, sockets, door locks),
+ * student/porter touchscreen signatures, and room inventory audit certificates.
+ *
+ * Designed with simple, clear English descriptions for non-technical stakeholders and hall porters.
+ */
+
+/**
+ * Standard condition states for room fixtures and infrastructure.
+ * - GOOD: Fully operational with no damage
+ * - FAIR: Functional with minor wear
+ * - POOR: Damaged or needs repair/maintenance
+ */
+export type ItemCondition = 'GOOD' | 'FAIR' | 'POOR';
+
+/**
+ * Interface representing a room property check-in audit record.
+ */
+export interface RoomInventoryAudit {
+  // Unique identification code for this audit record
+  id: string;
+  // Room identification code
+  roomId: string;
+  // Room designation label (e.g. "Room 101, Block A")
+  roomNumber?: string;
+  // Unique student user ID assigned to the room
+  studentId: string;
+  // Student full name
+  studentName?: string;
+  // Student matriculation or staff number
+  studentMatricNo?: string;
+  // Unique porter/staff user ID conducting the joint inspection
+  porterId: string;
+  // Porter full name
+  porterName?: string;
+  // Physical condition of assigned bed mattress
+  mattressCondition: ItemCondition;
+  // Physical condition of ceiling fan / regulator
+  fanCondition: ItemCondition;
+  // Physical condition of electrical wall sockets
+  socketsCondition: ItemCondition;
+  // Physical condition of room door lock & window latches
+  locksCondition: ItemCondition;
+  // URL or base64 string of student digital touchscreen signature
+  studentSignatureUrl?: string;
+  // URL or base64 string of porter digital touchscreen signature
+  porterSignatureUrl?: string;
+  // Inspection notes or property defect observations
+  notes?: string;
+  // Exact date and time when the audit was recorded
+  auditedAt: string;
+}
+
+/**
+ * Parameters provided by porter when submitting a room check-in inventory audit.
+ */
+export interface RecordAuditParams {
+  roomId: string;
+  studentId: string;
+  porterId: string;
+  mattressCondition: ItemCondition;
+  fanCondition: ItemCondition;
+  socketsCondition: ItemCondition;
+  locksCondition: ItemCondition;
+  studentSignatureUrl?: string;
+  porterSignatureUrl?: string;
+  notes?: string;
+}
