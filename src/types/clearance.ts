@@ -125,3 +125,35 @@ export interface ReviewClearanceParams {
   status: 'APPROVED' | 'REJECTED';
   rejectionReason?: string;
 }
+
+/**
+ * Result structure returned when verifying an official clearance certificate hash.
+ */
+export interface ClearanceCertificateVerification {
+  // True if the certificate hash exists in the database and belongs to an approved student clearance
+  isValid: boolean;
+  // Student user ID associated with the certificate
+  userId?: string;
+  // Student full name
+  fullName?: string;
+  // Student matriculation or staff number
+  matricNo?: string;
+  // Clearance status (e.g., APPROVED)
+  clearanceStatus?: ClearanceStatus;
+  // Unique certificate verification code hash string
+  certificateHash?: string;
+  // Descriptive summary message for non-technical stakeholders and porters
+  message: string;
+}
+
+/**
+ * Entry record tracking clearance package review history and decision logs.
+ */
+export interface ClearanceReviewHistoryEntry {
+  id: string;
+  userId: string;
+  wardenId: string;
+  actionStatus: 'APPROVED' | 'REJECTED';
+  notes?: string;
+  timestamp: string;
+}

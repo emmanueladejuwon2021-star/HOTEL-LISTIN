@@ -160,4 +160,37 @@ describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-0
     expect(eligibility.clearanceStatus).toBe('APPROVED');
     expect(eligibility.clearanceCertificateHash).toBeDefined();
   });
+
+  test('should verify valid clearance certificate hash using verifyClearanceCertificate [CLEARANCE-03]', async () => {
+    const pkg = await ClearanceService.getClearancePackage(testStudentId);
+    expect(pkg.clearanceCertificateHash).toBeDefined();
+
+    const verification = await ClearanceService.verifyClearanceCertificate(pkg.clearanceCertificateHash!);
+
+    expect(verification.isValid).toBe(true);
+    expect(verification.userId).toBe(testStudentId);
+    expect(verification.fullName).toBe('Test Clearance Student');
+    expect(verification.clearanceStatus).toBe('APPROVED');
+    expect(verification.message).toContain('holds an officially approved UNILAG hostel clearance certificate');
+  });
+
+  test('should reject invalid or fake clearance certificate hashes [CLEARANCE-03]', async () => {
+    const fakeVerification = await ClearanceService.verifyClearanceCertificate('CERT-FAKE12345678');
+
+    expect(fakeVerification.isValid).toBe(false);
+    expect(fakeVerification.message).toContain('Verification Failed');
+
+    const emptyVerification = await ClearanceService.verifyClearanceCertificate('   ');
+    expect(emptyVerification.isValid).toBe(false);
+  });
+
+  test('should record and retrieve clearance review history logs [CLEARANCE-03 / UAT-0023]', async () => {
+    const logs = await ClearanceService.getClearanceReviewHistory(testStudentId);
+
+    expect(logs).toBeDefined();
+    expect(logs.length).toBeGreaterThan(0);
+    expect(logs[0].userId).toBe(testStudentId);
+    expect(logs[0].wardenId).toBe(testWardenId);
+    expect(logs[0].actionStatus).toBe('APPROVED');
+  });
 });

@@ -8,7 +8,9 @@ import {
   DigitalClearancePackage,
   DocumentUploadParams,
   DocumentType,
-  ReviewClearanceParams
+  ReviewClearanceParams,
+  ClearanceCertificateVerification,
+  ClearanceReviewHistoryEntry
 } from '../types/clearance';
 import { ClearanceStatus } from '../types/auth';
 
@@ -60,9 +62,28 @@ export class ClearanceService {
     await safeAddColumn('mime_type TEXT');
     await safeAddColumn('notes TEXT');
 
-    // Ensure index exists for fast query performance
+    // Create review logs table if it does not already exist
+    await client.execute({
+      sql: `CREATE TABLE IF NOT EXISTS clearance_review_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        warden_id TEXT NOT NULL,
+        action_status TEXT CHECK(action_status IN ('APPROVED', 'REJECTED')) NOT NULL,
+        notes TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      args: []
+    });
+
+    // Ensure indexes exist for fast query performance
     await client.execute({
       sql: `CREATE INDEX IF NOT EXISTS idx_clearance_docs_user ON clearance_documents(user_id)`,
+      args: []
+    });
+
+    await client.execute({
+      sql: `CREATE INDEX IF NOT EXISTS idx_clearance_cert_hash ON student_profiles(clearance_certificate_hash)`,
       args: []
     });
   }
@@ -315,6 +336,92 @@ export class ClearanceService {
       args: [params.status, rejectionReason, params.userId]
     });
 
+    // Log review action entry into clearance_review_logs for full audit history
+    const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    await client.execute({
+      sql: `INSERT INTO clearance_review_logs (id, user_id, warden_id, action_status, notes, timestamp)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      args: [logId, params.userId, params.wardenId, params.status, rejectionReason]
+    });
+
     return await ClearanceService.getClearancePackage(params.userId);
+  }
+
+  /**
+   * Verifies the validity and authenticity of an official digital clearance certificate hash code.
+   * Enables porters, wardens, and administrative officials to confirm whether a student has an officially
+   * verified and approved clearance certificate before hostel admission.
+   *
+   * @param certificateHash The unique clearance certificate verification code string (e.g. "CERT-A1B2C3D4E5F67890")
+   * @returns ClearanceCertificateVerification object containing validity status, student info, and message
+   */
+  public static async verifyClearanceCertificate(certificateHash: string): Promise<ClearanceCertificateVerification> {
+    await ClearanceService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    if (!certificateHash || !certificateHash.trim()) {
+      return {
+        isValid: false,
+        message: 'Invalid certificate hash: No verification code provided.'
+      };
+    }
+
+    const cleanHash = certificateHash.trim().toUpperCase();
+
+    // Query student_profiles joined with users by clearance_certificate_hash
+    const result = await client.execute({
+      sql: `SELECT sp.user_id, sp.clearance_status, sp.clearance_certificate_hash, u.full_name, u.matric_or_staff_no
+            FROM student_profiles sp
+            JOIN users u ON sp.user_id = u.id
+            WHERE sp.clearance_certificate_hash = ? AND sp.clearance_status = 'APPROVED'`,
+      args: [cleanHash]
+    });
+
+    if (result.rows.length === 0) {
+      return {
+        isValid: false,
+        certificateHash: cleanHash,
+        message: `Verification Failed: Clearance certificate hash '${cleanHash}' is unverified, expired, or rejected.`
+      };
+    }
+
+    const row = result.rows[0];
+
+    return {
+      isValid: true,
+      userId: String(row.user_id),
+      fullName: String(row.full_name),
+      matricNo: String(row.matric_or_staff_no),
+      clearanceStatus: String(row.clearance_status) as ClearanceStatus,
+      certificateHash: String(row.clearance_certificate_hash),
+      message: `Verified Official Clearance: Student '${row.full_name}' (${row.matric_or_staff_no}) holds an officially approved UNILAG hostel clearance certificate.`
+    };
+  }
+
+  /**
+   * Fetches full audit review logs and decision history for a student's clearance package.
+   *
+   * @param userId Student ID
+   * @returns Array of ClearanceReviewHistoryEntry records
+   */
+  public static async getClearanceReviewHistory(userId: string): Promise<ClearanceReviewHistoryEntry[]> {
+    await ClearanceService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const result = await client.execute({
+      sql: `SELECT id, user_id, warden_id, action_status, notes, timestamp
+            FROM clearance_review_logs WHERE user_id = ?
+            ORDER BY timestamp DESC`,
+      args: [userId]
+    });
+
+    return result.rows.map(row => ({
+      id: String(row.id),
+      userId: String(row.user_id),
+      wardenId: String(row.warden_id),
+      actionStatus: String(row.action_status) as 'APPROVED' | 'REJECTED',
+      notes: row.notes ? String(row.notes) : undefined,
+      timestamp: String(row.timestamp || new Date().toISOString())
+    }));
   }
 }
