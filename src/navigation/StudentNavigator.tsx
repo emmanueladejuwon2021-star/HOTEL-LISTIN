@@ -9,6 +9,7 @@ import { BallotingCountdownScreen } from '../screens/BallotingCountdownScreen';
 import { BedspaceLockScreen } from '../screens/BedspaceLockScreen';
 import { ClearanceScreen } from '../screens/ClearanceScreen';
 import { PaymentHoldScreen } from '../screens/PaymentHoldScreen';
+import { GatePassScreen } from '../screens/GatePassScreen';
 import { useAuthStore } from '../store/useAuthStore';
 
 const Tab = createBottomTabNavigator<StudentTabParamList>();
@@ -31,7 +32,7 @@ const BallotingStackNavigator: React.FC = () => {
  * StudentNavigator Component.
  * Implements isolated navigation tab/stack tree for UNILAG Student role.
  * Guides student through the sequential accommodation workflow:
- * Eligibility → Balloting → Clearance → Payment.
+ * Eligibility → Balloting → Clearance → Payment → Gate Pass.
  * Provides clear labels, high-contrast badges, and sign-out controls for non-technical users.
  */
 export const StudentNavigator: React.FC = () => {
@@ -58,7 +59,7 @@ export const StudentNavigator: React.FC = () => {
           paddingTop: 8
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600'
         },
         headerRight: () => (
@@ -105,6 +106,15 @@ export const StudentNavigator: React.FC = () => {
           title: 'Fee Payment',
           tabBarLabel: '4. Payment',
           tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 16 }}>💳</Text>
+        }}
+      />
+      <Tab.Screen
+        name="GatePass"
+        component={GatePassScreen}
+        options={{
+          title: 'Gate Pass',
+          tabBarLabel: '5. Gate Pass',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 16 }}>🔑</Text>
         }}
       />
     </Tab.Navigator>
