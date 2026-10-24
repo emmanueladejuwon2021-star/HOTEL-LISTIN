@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useInventoryStore } from '../store/useInventoryStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { ItemCondition } from '../types/inventory';
+import { ItemCondition, AuditType } from '../types/inventory';
 
 /**
- * Screen P-02 / Room Check-In Audit UI Component for UNILAG Hostel Porters.
- * Allows porters to conduct joint check-in inspections of student rooms (mattress, fan, sockets, door locks),
- * record property conditions, attach inspection remarks, and save immutable digital room audit certificates.
+ * Screen P-02 / Room Check-In & Check-Out Audit UI Component for UNILAG Hostel Porters.
+ * Allows porters to conduct joint check-in and check-out inspections of student rooms
+ * (mattress, fan, sockets, door locks), record property conditions, assess check-out damage liabilities,
+ * release bedspaces upon clean check-out clearance, and save immutable digital room audit certificates.
  *
  * Styled using NativeWind v4 (Tailwind CSS) with clear comments for non-technical team members.
  */
@@ -15,6 +16,7 @@ export const RoomInventoryScreen: React.FC = () => {
   const { session } = useAuthStore();
   const { audits, isLoading, errorMessage, successMessage, recordAudit, clearMessages } = useInventoryStore();
 
+  const [auditType, setAuditType] = useState<AuditType>('CHECK_IN');
   const [roomId, setRoomId] = useState('rm_jaja_a_101');
   const [studentId, setStudentId] = useState('usr_student_01');
 
@@ -28,6 +30,14 @@ export const RoomInventoryScreen: React.FC = () => {
   const [notes, setNotes] = useState('');
 
   const porterId = session?.user.id || 'usr_porter_01';
+
+  // Calculate damage fee if items are POOR during check-out
+  let poorCount = 0;
+  if (mattressCondition === 'POOR') poorCount++;
+  if (fanCondition === 'POOR') poorCount++;
+  if (socketsCondition === 'POOR') poorCount++;
+  if (locksCondition === 'POOR') poorCount++;
+  const estimatedDamageFee = auditType === 'CHECK_OUT' ? poorCount * 2500 : 0;
 
   const handleSubmitAudit = async () => {
     if (!roomId.trim() || !studentId.trim()) {
@@ -45,13 +55,16 @@ export const RoomInventoryScreen: React.FC = () => {
       locksCondition,
       studentSignatureUrl: studentSig.trim() || undefined,
       porterSignatureUrl: porterSig.trim() || undefined,
-      notes: notes.trim() || undefined
+      notes: notes.trim() || undefined,
+      auditType,
+      damageFee: estimatedDamageFee
     });
 
     if (audit) {
+      const modeText = auditType === 'CHECK_OUT' ? 'Check-Out Clearance' : 'Check-In';
       Alert.alert(
-        'Audit Saved',
-        `Digital room check-in audit certificate generated for Room ${roomId}.`
+        'Audit Certificate Saved',
+        `Digital room ${modeText} certificate generated for Room ${roomId}. ${auditType === 'CHECK_OUT' && audit.checkoutStatus === 'CLEARED' ? 'Student clearance approved & bedspace recycled.' : ''}`
       );
       setNotes('');
     }
@@ -91,11 +104,32 @@ export const RoomInventoryScreen: React.FC = () => {
       {/* Header Banner */}
       <View className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
         <Text className="text-2xl font-bold text-[#7A0000] mb-1">
-          Room Check-In Property Audit
+          Room Property Inspection & Audit
         </Text>
         <Text className="text-slate-600 text-xs">
-          Conduct joint physical check-in inspection of assigned student room fixtures before key release.
+          Conduct joint physical check-in or check-out inspection of room fixtures with digital certificate logging.
         </Text>
+      </View>
+
+      {/* Mode Selector Tabs (Check-In vs Check-Out) */}
+      <View className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm mb-6 flex-row">
+        <TouchableOpacity
+          className={`flex-1 py-3 rounded-xl items-center ${auditType === 'CHECK_IN' ? 'bg-[#7A0000]' : 'bg-transparent'}`}
+          onPress={() => setAuditType('CHECK_IN')}
+        >
+          <Text className={`font-bold text-xs ${auditType === 'CHECK_IN' ? 'text-white' : 'text-slate-700'}`}>
+            Check-In Inspection
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className={`flex-1 py-3 rounded-xl items-center ${auditType === 'CHECK_OUT' ? 'bg-[#7A0000]' : 'bg-transparent'}`}
+          onPress={() => setAuditType('CHECK_OUT')}
+        >
+          <Text className={`font-bold text-xs ${auditType === 'CHECK_OUT' ? 'text-white' : 'text-slate-700'}`}>
+            Check-Out & Clearance
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Error & Success Messages */}
@@ -113,7 +147,12 @@ export const RoomInventoryScreen: React.FC = () => {
 
       {/* Form Card */}
       <View className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
-        <Text className="text-lg font-bold text-slate-800 mb-3">1. Student & Room Identification</Text>
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className="text-lg font-bold text-slate-800">1. Student & Room Identification</Text>
+          <Text className="text-xs font-bold px-2.5 py-1 bg-amber-100 text-amber-900 rounded-full">
+            {auditType === 'CHECK_IN' ? 'CHECK-IN MODE' : 'CHECK-OUT MODE'}
+          </Text>
+        </View>
 
         <Text className="text-xs font-semibold text-slate-600 mb-1">Room ID / Room Number</Text>
         <TextInput
@@ -142,8 +181,22 @@ export const RoomInventoryScreen: React.FC = () => {
         {renderConditionSelector('Electrical Wall Sockets Condition', socketsCondition, setSocketsCondition)}
         {renderConditionSelector('Door Locks & Window Latch Condition', locksCondition, setLocksCondition)}
 
-        {/* Property Defect Auto-Dispatch Alert Banner (Issue 28) */}
-        {(mattressCondition === 'POOR' || fanCondition === 'POOR' || socketsCondition === 'POOR' || locksCondition === 'POOR') && (
+        {/* Check-Out Liability & Clearance Status Banner */}
+        {auditType === 'CHECK_OUT' && (
+          <View className={`p-4 rounded-xl border mb-4 ${poorCount > 0 ? 'bg-red-50 border-red-300' : 'bg-emerald-50 border-emerald-300'}`}>
+            <Text className={`font-bold text-xs mb-1 ${poorCount > 0 ? 'text-red-900' : 'text-emerald-900'}`}>
+              {poorCount > 0 ? '⚠️ Check-Out Property Damages Assessed' : '✓ Check-Out Clearance Approved'}
+            </Text>
+            <Text className={`text-[11px] ${poorCount > 0 ? 'text-red-800' : 'text-emerald-800'}`}>
+              {poorCount > 0
+                ? `${poorCount} item(s) damaged/POOR. Estimated damage liability charge: ₦${estimatedDamageFee.toLocaleString()}. Auto-repair ticket will be dispatched.`
+                : 'All room property intact and in good order. Submitting will issue clean check-out clearance and release bedspace for recycling.'}
+            </Text>
+          </View>
+        )}
+
+        {/* Property Defect Auto-Dispatch Alert Banner (Check-In Mode) */}
+        {auditType === 'CHECK_IN' && poorCount > 0 && (
           <View className="bg-amber-50 p-4 rounded-xl border border-amber-300 mb-4">
             <Text className="text-amber-900 font-bold text-xs mb-1">
               ⚠️ Property Defect Flagged
@@ -185,7 +238,7 @@ export const RoomInventoryScreen: React.FC = () => {
         </Text>
         <TextInput
           className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-xs mb-4"
-          placeholder="Optional remarks (e.g. Fan regulator knob loose on check-in)"
+          placeholder="Optional remarks (e.g. Key returned and room vacated in clean condition)"
           placeholderTextColor="#94A3B8"
           value={notes}
           onChangeText={setNotes}
@@ -201,7 +254,7 @@ export const RoomInventoryScreen: React.FC = () => {
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Text className="text-white font-bold text-base">
-              Save Room Audit Certificate
+              {auditType === 'CHECK_IN' ? 'Save Check-In Audit Certificate' : 'Issue Check-Out Clearance Certificate'}
             </Text>
           )}
         </TouchableOpacity>
@@ -210,14 +263,29 @@ export const RoomInventoryScreen: React.FC = () => {
       {/* Recent Audits Log List */}
       {audits.length > 0 && (
         <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-12">
-          <Text className="text-lg font-bold text-slate-800 mb-3">Recent Room Check-In Certificates</Text>
+          <Text className="text-lg font-bold text-slate-800 mb-3">Recent Room Inspection Certificates</Text>
           {audits.map((item) => (
             <View key={item.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-3">
               <View className="flex-row justify-between items-center mb-1">
-                <Text className="font-bold text-sm text-slate-800">Room: {item.roomId}</Text>
+                <View className="flex-row items-center space-x-2">
+                  <Text className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.auditType === 'CHECK_OUT' ? 'bg-purple-100 text-purple-900' : 'bg-blue-100 text-blue-900'}`}>
+                    {item.auditType === 'CHECK_OUT' ? 'CHECK-OUT' : 'CHECK-IN'}
+                  </Text>
+                  <Text className="font-bold text-sm text-slate-800">Room: {item.roomId}</Text>
+                </View>
                 <Text className="text-slate-400 text-[10px]">{new Date(item.auditedAt).toLocaleDateString()}</Text>
               </View>
-              <Text className="text-slate-600 text-xs mb-2">Student ID: {item.studentId}</Text>
+              <Text className="text-slate-600 text-xs mb-1">Student ID: {item.studentId}</Text>
+              {item.auditType === 'CHECK_OUT' && (
+                <View className="flex-row items-center space-x-2 mb-2">
+                  <Text className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.checkoutStatus === 'CLEARED' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                    Clearance: {item.checkoutStatus}
+                  </Text>
+                  {item.damageFee ? (
+                    <Text className="text-[10px] font-bold text-red-700">Fee: ₦{item.damageFee.toLocaleString()}</Text>
+                  ) : null}
+                </View>
+              )}
               <View className="flex-row flex-wrap gap-1">
                 <Text className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded">Mattress: {item.mattressCondition}</Text>
                 <Text className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded">Fan: {item.fanCondition}</Text>
