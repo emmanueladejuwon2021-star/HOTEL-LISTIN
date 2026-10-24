@@ -1,6 +1,6 @@
 import { Client } from '@libsql/client';
 import { AuthService } from './authService';
-import { PaymentHoldDetails, RemitaPaymentParams, PaymentProcessResult, PaymentReceipt, HoldReleaseResult } from '../types/payment';
+import { PaymentHoldDetails, RemitaPaymentParams, PaymentProcessResult, PaymentReceipt, HoldReleaseResult, RemitaRRRDetails, RemitaFeeBreakdown, PaymentVerificationResult } from '../types/payment';
 import { validateRemitaRef } from '../utils/validation';
 
 /**
@@ -321,6 +321,146 @@ export class PaymentService {
       bedspaceId: bedId,
       message: 'Your provisional bedspace hold has been cancelled and returned to the available room pool.',
       recycledAt
+    };
+  }
+
+  /**
+   * Calculates an itemized breakdown of hostel fees and processing charges.
+   * Provides students with clear financial transparency before initiating payment.
+   *
+   * @param baseAmount - Optional base hostel fee amount (defaults to ₦25,000.00)
+   * @returns RemitaFeeBreakdown object containing itemized charges
+   */
+  public static calculateFeeBreakdown(baseAmount: number = 25000.00): RemitaFeeBreakdown {
+    const remitaServiceFee = 300.00;
+    const ictProcessingFee = 500.00;
+    const totalAmount = baseAmount + remitaServiceFee + ictProcessingFee;
+
+    return {
+      baseHostelFee: baseAmount,
+      remitaServiceFee,
+      ictProcessingFee,
+      totalAmount,
+      currency: 'NGN'
+    };
+  }
+
+  /**
+   * Generates a unique 12-digit Remita Retrieval Reference (RRR) for a student's active hold.
+   * Binds the generated RRR directly to the student's pending payment record in Turso DB.
+   *
+   * @param userId - Student's unique user ID
+   * @returns RemitaRRRDetails object containing the generated RRR and payment info
+   */
+  public static async generateRemitaRRR(userId: string): Promise<RemitaRRRDetails> {
+    await PaymentService.initializeSchema();
+
+    // Verify active hold status first
+    const holdStatus = await PaymentService.getPaymentHoldStatus(userId);
+    if (!holdStatus) {
+      throw new Error('No active bedspace hold found. Please select and lock a bedspace first.');
+    }
+
+    if (holdStatus.isExpired) {
+      throw new Error('Your provisional bedspace hold has expired. Please reserve an available room again.');
+    }
+
+    const client = AuthService.getDbClient();
+
+    // Generate a unique 12-digit RRR code starting with '23'
+    const timestampDigits = String(Date.now()).slice(-8);
+    const randomDigits = String(Math.floor(10 + Math.random() * 90));
+    const generatedRRR = `23${timestampDigits}${randomDigits}`;
+
+    const feeBreakdown = PaymentService.calculateFeeBreakdown(holdStatus.amount);
+    const generatedAt = new Date().toISOString();
+
+    // Update transaction reference in Turso DB payments table
+    if (holdStatus.paymentId) {
+      await client.execute({
+        sql: `UPDATE payments SET transaction_reference = ? WHERE id = ?`,
+        args: [generatedRRR, holdStatus.paymentId]
+      });
+    } else {
+      const newPaymentId = `pay_${Date.now()}`;
+      await client.execute({
+        sql: `INSERT INTO payments (id, user_id, bedspace_id, transaction_reference, amount, payment_type, payment_status)
+              VALUES (?, ?, ?, ?, ?, 'HOSTEL_FEE', 'PENDING')`,
+        args: [newPaymentId, userId, holdStatus.bedspaceId, generatedRRR, feeBreakdown.totalAmount]
+      });
+    }
+
+    return {
+      rrr: generatedRRR,
+      paymentId: holdStatus.paymentId || `pay_${Date.now()}`,
+      userId,
+      bedspaceId: holdStatus.bedspaceId,
+      generatedAt,
+      expiresAt: holdStatus.holdExpiresAt,
+      amountPayable: feeBreakdown.totalAmount
+    };
+  }
+
+  /**
+   * Verifies the status of a Remita payment transaction reference in Turso DB.
+   * Checks whether payment is successful, pending, or failed, returning full room & student details.
+   *
+   * @param transactionReference - 12-digit Remita RRR or transaction reference string
+   * @returns PaymentVerificationResult object containing verification details
+   */
+  public static async verifyRemitaPaymentStatus(transactionReference: string): Promise<PaymentVerificationResult> {
+    await PaymentService.initializeSchema();
+
+    const val = validateRemitaRef(transactionReference);
+    if (!val.isValid) {
+      throw new Error(val.error || 'Invalid Remita transaction reference format.');
+    }
+
+    const cleanRef = transactionReference.trim().toUpperCase();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT p.id, p.transaction_reference, p.amount, p.payment_status, p.paid_at,
+                   u.full_name, u.matric_or_staff_no,
+                   b.bed_label, r.room_number, r.block_name, h.name as hostel_name
+            FROM payments p
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN bedspaces b ON p.bedspace_id = b.id
+            LEFT JOIN rooms r ON b.room_id = r.id
+            LEFT JOIN hostels h ON r.hostel_id = h.id
+            WHERE p.transaction_reference = ?
+            ORDER BY COALESCE(p.paid_at, CURRENT_TIMESTAMP) DESC LIMIT 1`,
+      args: [cleanRef]
+    });
+
+    if (res.rows.length === 0) {
+      return {
+        transactionReference: cleanRef,
+        status: 'NOT_FOUND',
+        amount: 25800.00,
+        message: `No payment record found for Remita reference ${cleanRef}. You may use this reference to make a payment.`
+      };
+    }
+
+    const row = res.rows[0];
+    const status = String(row.payment_status) as 'PENDING' | 'SUCCESSFUL' | 'FAILED';
+
+    let message = 'Payment is pending processing at Remita.';
+    if (status === 'SUCCESSFUL') {
+      message = 'Payment verified successfully. Accommodation confirmed.';
+    } else if (status === 'FAILED') {
+      message = 'Payment attempt failed or was declined.';
+    }
+
+    return {
+      transactionReference: cleanRef,
+      status,
+      amount: Number(row.amount || 25800.00),
+      paidAt: row.paid_at ? String(row.paid_at) : undefined,
+      payerName: String(row.full_name),
+      hostelName: row.hostel_name ? String(row.hostel_name) : undefined,
+      roomDetails: row.room_number ? `Block ${row.block_name} Room ${row.room_number} (${row.bed_label})` : undefined,
+      message
     };
   }
 

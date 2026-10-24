@@ -19,13 +19,13 @@ describe('[PAYMENT-01 / UAT-0016] 72-Hour Payment Hold & Remita Gateway Integrat
     await PaymentService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    // Clean test records
-    await client.execute({ sql: "DELETE FROM payments WHERE user_id = ? OR transaction_reference IN ('123456789012', '993456789012')", args: [testUserId] });
-    await client.execute({ sql: 'DELETE FROM bedspaces WHERE id = ?', args: [bedId] });
+    // Clean test records in correct foreign key order
+    await client.execute({ sql: "DELETE FROM payments WHERE user_id IN (?, 'usr_expired_p1', 'usr_cancel_p3', 'usr_rrr_test17') OR transaction_reference IN ('123456789012', '993456789012')", args: [testUserId] });
+    await client.execute({ sql: "DELETE FROM bedspaces WHERE id IN (?, 'bed_expired_p1', 'bed_cancel_p3', 'bed_rrr_test17') OR room_id = ?", args: [bedId, roomId] });
     await client.execute({ sql: 'DELETE FROM rooms WHERE id = ?', args: [roomId] });
     await client.execute({ sql: 'DELETE FROM hostels WHERE id = ?', args: [hostelId] });
-    await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id = ?', args: [testUserId] });
-    await client.execute({ sql: 'DELETE FROM users WHERE id = ? OR matric_or_staff_no = ?', args: [testUserId, '990407089'] });
+    await client.execute({ sql: 'DELETE FROM student_profiles WHERE user_id IN (?, \'usr_expired_p1\', \'usr_cancel_p3\', \'usr_rrr_test17\')', args: [testUserId] });
+    await client.execute({ sql: "DELETE FROM users WHERE id IN (?, 'usr_expired_p1', 'usr_cancel_p3', 'usr_rrr_test17') OR matric_or_staff_no IN ('990407089', '200000001', '990407099', '990407117')", args: [testUserId] });
 
     // Seed test student
     await client.execute({
@@ -252,5 +252,89 @@ describe('[PAYMENT-01 / UAT-0016] 72-Hour Payment Hold & Remita Gateway Integrat
     // Reset selected receipt
     store.setSelectedReceipt(null);
     expect(usePaymentStore.getState().selectedReceipt).toBeNull();
+  });
+
+  describe('[PAYMENT-02 / UAT-0017] Remita RRR Generator & Payment Verification Tests', () => {
+    const rrrUserId = 'usr_rrr_test17';
+    const rrrBedId = 'bed_rrr_test17';
+
+    beforeAll(async () => {
+      const client = AuthService.getDbClient();
+      await client.execute({ sql: 'DELETE FROM payments WHERE user_id = ? OR bedspace_id = ?', args: [rrrUserId, rrrBedId] });
+      await client.execute({ sql: 'DELETE FROM bedspaces WHERE id = ?', args: [rrrBedId] });
+      await client.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [rrrUserId] });
+
+      await client.execute({
+        sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [rrrUserId, '990407117', 'RRR Test Student', 'rrr17@live.unilag.edu.ng', '+2348022222222', 'STUDENT', 'MALE', 'hash', 1]
+      });
+
+      await client.execute({
+        sql: `INSERT INTO bedspaces (id, room_id, bed_label, status, allocated_to_user_id, hold_expires_at)
+              VALUES (?, ?, ?, 'LOCKED_HOLD', ?, DATETIME('now', '+72 hours'))`,
+        args: [rrrBedId, roomId, 'Bed B Up', rrrUserId]
+      });
+    });
+
+    test('calculates accurate itemized fee breakdown', () => {
+      const fees = PaymentService.calculateFeeBreakdown(25000.00);
+
+      expect(fees.baseHostelFee).toBe(25000.00);
+      expect(fees.remitaServiceFee).toBe(300.00);
+      expect(fees.ictProcessingFee).toBe(500.00);
+      expect(fees.totalAmount).toBe(25800.00);
+      expect(fees.currency).toBe('NGN');
+    });
+
+    test('generates 12-digit Remita Retrieval Reference (RRR) bound to user hold in Turso DB', async () => {
+      const rrrDetails = await PaymentService.generateRemitaRRR(rrrUserId);
+
+      expect(rrrDetails.rrr).toBeDefined();
+      expect(rrrDetails.rrr.length).toBe(12);
+      expect(rrrDetails.rrr.startsWith('23')).toBe(true);
+      expect(rrrDetails.amountPayable).toBe(25800.00);
+
+      // Verify transaction reference stored in Turso DB
+      const client = AuthService.getDbClient();
+      const payRes = await client.execute({
+        sql: 'SELECT transaction_reference, payment_status FROM payments WHERE user_id = ?',
+        args: [rrrUserId]
+      });
+
+      expect(payRes.rows.length).toBeGreaterThan(0);
+      expect(String(payRes.rows[0].transaction_reference)).toBe(rrrDetails.rrr);
+      expect(String(payRes.rows[0].payment_status)).toBe('PENDING');
+    });
+
+    test('verifies payment reference status for existing and non-existing RRR codes', async () => {
+      // Verify existing reference created in previous test
+      const existingRefRes = await PaymentService.verifyRemitaPaymentStatus('993456789012');
+
+      expect(existingRefRes.status).toBe('SUCCESSFUL');
+      expect(existingRefRes.payerName).toBe('Kelechi Okafor');
+      expect(existingRefRes.message).toContain('Payment verified successfully');
+
+      // Verify non-existing reference
+      const notFoundRes = await PaymentService.verifyRemitaPaymentStatus('888888888888');
+
+      expect(notFoundRes.status).toBe('NOT_FOUND');
+      expect(notFoundRes.message).toContain('No payment record found');
+    });
+
+    test('executes generateRRR and verifyPaymentReference via Zustand store', async () => {
+      const store = usePaymentStore.getState();
+
+      // Fetch hold status first so store has active hold
+      await store.fetchHoldStatus(rrrUserId);
+
+      const rrr = await store.generateRRR(rrrUserId);
+      expect(rrr.rrr.length).toBe(12);
+      expect(usePaymentStore.getState().rrrDetails?.rrr).toBe(rrr.rrr);
+
+      const verification = await store.verifyPaymentReference('993456789012');
+      expect(verification.status).toBe('SUCCESSFUL');
+      expect(usePaymentStore.getState().verificationResult?.status).toBe('SUCCESSFUL');
+    });
   });
 });

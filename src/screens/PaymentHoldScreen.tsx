@@ -16,20 +16,30 @@ export const PaymentHoldScreen: React.FC = () => {
     paymentResult,
     paymentHistory,
     selectedReceipt,
+    rrrDetails,
+    feeBreakdown,
+    verificationResult,
     isLoading,
     isProcessing,
     isCancellingHold,
+    isGeneratingRRR,
+    isVerifyingRef,
+    isUrgentHold,
     error,
     formattedCountdown,
     fetchHoldStatus,
     payHostelFee,
     fetchPaymentHistory,
     releaseCurrentHold,
+    generateRRR,
+    verifyPaymentReference,
     setSelectedReceipt,
+    setVerificationResult,
     updateCountdownTimer
   } = usePaymentStore();
 
   const [remitaRefInput, setRemitaRefInput] = useState('');
+  const [verifyRefInput, setVerifyRefInput] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
 
@@ -92,6 +102,37 @@ export const PaymentHoldScreen: React.FC = () => {
     }
   };
 
+  const handleGenerateRRR = async () => {
+    setLocalError(null);
+    setNoticeMessage(null);
+    if (!userId) {
+      setLocalError('User session invalid. Please log in.');
+      return;
+    }
+
+    try {
+      const details = await generateRRR(userId);
+      setRemitaRefInput(details.rrr);
+      setNoticeMessage(`Remita RRR generated successfully: ${details.rrr}`);
+    } catch (e: any) {
+      // Error handled in store state
+    }
+  };
+
+  const handleVerifyReference = async () => {
+    setLocalError(null);
+    if (!verifyRefInput.trim()) {
+      setLocalError('Please enter a 12-digit Remita reference to verify.');
+      return;
+    }
+
+    try {
+      await verifyPaymentReference(verifyRefInput.trim());
+    } catch (e: any) {
+      // Error handled in store state
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-slate-100">
       <ScrollView contentContainerClassName="p-6 items-center pb-12">
@@ -140,12 +181,24 @@ export const PaymentHoldScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Urgent Time Warning Banner (< 12 Hours) */}
+        {isUrgentHold && (
+          <View className="w-full bg-amber-500 p-4 rounded-2xl mb-6 shadow-md border border-amber-600">
+            <Text className="text-white text-base font-extrabold text-center mb-1">
+              ⚠️ URGENT HOLD WARNING
+            </Text>
+            <Text className="text-amber-950 text-xs font-medium text-center">
+              You have less than 12 hours remaining on your 72-hour room hold! Pay now to avoid losing your bedspace allocation.
+            </Text>
+          </View>
+        )}
+
         {/* Main Countdown Timer Ring (PRD S-04 Spec: w-48 h-48 rounded-full border-4 border-[#D4AF37]) */}
         {holdDetails && !holdDetails.isExpired && holdDetails.paymentStatus !== 'SUCCESSFUL' && (
           <>
-            <View className="w-48 h-48 rounded-full border-4 border-[#D4AF37] justify-center items-center mb-6 bg-white shadow-lg">
+            <View className={`w-48 h-48 rounded-full border-4 ${isUrgentHold ? 'border-amber-500 bg-amber-50' : 'border-[#D4AF37] bg-white'} justify-center items-center mb-6 shadow-lg`}>
               <Text className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Hold Time Left</Text>
-              <Text className="text-2xl font-black text-slate-900 tracking-wider">{formattedCountdown}</Text>
+              <Text className={`text-2xl font-black ${isUrgentHold ? 'text-amber-900' : 'text-slate-900'} tracking-wider`}>{formattedCountdown}</Text>
               <Text className="text-[10px] text-amber-700 font-semibold mt-1">72-HR PAYMENT LOCK</Text>
             </View>
 
@@ -174,10 +227,63 @@ export const PaymentHoldScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Remita Payment Entry */}
+            {/* Itemized Fee Breakdown Card */}
+            {feeBreakdown && (
+              <View className="bg-white w-full p-6 rounded-2xl shadow-sm mb-6 border border-slate-200">
+                <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                  Itemized Fee Breakdown
+                </Text>
+                <View className="flex-row justify-between mb-2">
+                  <Text className="text-slate-600 text-xs">Hostel Accommodation Fee:</Text>
+                  <Text className="text-slate-800 font-bold text-xs">₦{feeBreakdown.baseHostelFee.toLocaleString()}</Text>
+                </View>
+                <View className="flex-row justify-between mb-2">
+                  <Text className="text-slate-600 text-xs">Remita Gateway Service Charge:</Text>
+                  <Text className="text-slate-800 font-bold text-xs">₦{feeBreakdown.remitaServiceFee.toLocaleString()}</Text>
+                </View>
+                <View className="flex-row justify-between mb-2">
+                  <Text className="text-slate-600 text-xs">ICT System Processing Fee:</Text>
+                  <Text className="text-slate-800 font-bold text-xs">₦{feeBreakdown.ictProcessingFee.toLocaleString()}</Text>
+                </View>
+                <View className="flex-row justify-between pt-2 border-t border-slate-100">
+                  <Text className="text-slate-900 font-bold text-sm">Total Amount Payable:</Text>
+                  <Text className="text-emerald-700 font-black text-base">₦{feeBreakdown.totalAmount.toLocaleString()}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Remita RRR Generator Button & Card */}
             <View className="bg-white w-full p-6 rounded-2xl shadow-sm mb-6 border border-slate-200">
-              <Text className="text-sm font-bold text-slate-800 mb-2">
-                Enter Remita RRR or Transaction Reference
+              <Text className="text-sm font-bold text-slate-800 mb-1">Remita RRR Generator</Text>
+              <Text className="text-xs text-slate-500 mb-3">
+                Generate a 12-digit Remita Retrieval Reference (RRR) code to pay at any bank or online portal.
+              </Text>
+
+              {rrrDetails ? (
+                <View className="bg-amber-50 border border-amber-200 p-4 rounded-xl mb-4 items-center">
+                  <Text className="text-xs text-amber-800 font-semibold mb-1">Your Remita RRR Code:</Text>
+                  <Text className="text-xl font-black text-slate-900 tracking-widest">{rrrDetails.rrr}</Text>
+                  <Text className="text-[10px] text-slate-500 mt-1">
+                    Total Payable: ₦{rrrDetails.amountPayable.toLocaleString()}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  className="bg-[#7A0000] w-full py-3 rounded-xl items-center justify-center mb-4 active:opacity-90"
+                  disabled={isGeneratingRRR}
+                  onPress={handleGenerateRRR}
+                >
+                  {isGeneratingRRR ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text className="text-white font-bold text-sm">Generate Remita RRR Code</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {/* Remita Payment Entry */}
+              <Text className="text-xs font-bold text-slate-700 mb-2">
+                Enter 12-Digit Remita RRR to Confirm Payment
               </Text>
               <TextInput
                 className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 text-base mb-4"
@@ -272,6 +378,62 @@ export const PaymentHoldScreen: React.FC = () => {
             </Text>
           </View>
         )}
+
+        {/* Remita Transaction Reference Status Lookup Tool */}
+        <View className="w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+          <Text className="text-base font-bold text-slate-900 mb-1">Remita Reference Status Lookup</Text>
+          <Text className="text-xs text-slate-500 mb-3">
+            Check the status of any Remita RRR or payment reference code.
+          </Text>
+
+          <View className="flex-row space-x-2 mb-3">
+            <TextInput
+              className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-slate-800 text-sm"
+              placeholder="Enter 12-digit RRR"
+              placeholderTextColor="#94A3B8"
+              value={verifyRefInput}
+              onChangeText={setVerifyRefInput}
+            />
+            <TouchableOpacity
+              className="bg-slate-900 px-4 py-2 rounded-xl justify-center items-center"
+              disabled={isVerifyingRef}
+              onPress={handleVerifyReference}
+            >
+              {isVerifyingRef ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text className="text-white font-bold text-xs">Verify</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {verificationResult && (
+            <View className={`p-4 rounded-xl border ${
+              verificationResult.status === 'SUCCESSFUL'
+                ? 'bg-emerald-50 border-emerald-200'
+                : verificationResult.status === 'PENDING'
+                ? 'bg-amber-50 border-amber-200'
+                : 'bg-slate-50 border-slate-200'
+            }`}>
+              <Text className="text-xs font-bold text-slate-800 mb-1">
+                Reference: {verificationResult.transactionReference}
+              </Text>
+              <Text className="text-xs text-slate-600 mb-2">{verificationResult.message}</Text>
+              {verificationResult.payerName && (
+                <Text className="text-[11px] text-slate-500">Payer: {verificationResult.payerName}</Text>
+              )}
+              {verificationResult.roomDetails && (
+                <Text className="text-[11px] text-slate-500">Room: {verificationResult.roomDetails}</Text>
+              )}
+              <TouchableOpacity
+                className="mt-2 text-xs text-blue-600 font-semibold"
+                onPress={() => setVerificationResult(null)}
+              >
+                <Text className="text-xs text-slate-500 underline text-right">Clear</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         {/* Payment History & Digital Clearance Receipts */}
         {paymentHistory.length > 0 && (
