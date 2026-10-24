@@ -4,6 +4,22 @@
 
 ---
 
+## 0. PHASE 3 STRICT IMPLEMENTATION PROTOCOL (MANDATORY FOR ALL AI AGENTS & ENGINEERS)
+
+Before implementing any GitHub issue, every engineer or AI agent working on this repository MUST strictly read, understand, and adhere to this 9-step implementation process:
+
+1. **Atomic Execution**: Implement exactly one GitHub issue at a time unless explicitly authorized by the project lead to work on a tightly related group.
+2. **Pre-Execution Context Check**: Read the complete issue description, linked parent issue, dependencies, and relevant existing code in `src/`. Confirm exact acceptance criteria before editing.
+3. **Architecture & Pattern Reuse**: Inspect existing architecture patterns (React Native, NativeWind v4, Zustand, Turso libSQL client) and reuse established conventions.
+4. **Minimal Complete Changes**: Make the smallest complete code change that fully satisfies the issue requirements. Do not perform unrelated refactoring or alter product requirements silently.
+5. **Strict Zero-Mock Policy**: Never write mock code, placeholder functions, dummy JSON data, or hardcoded UI stubs. All features must connect to live or local Turso libSQL SQLite database operations. Never use fake payment confirmations as proof of payment integration.
+6. **Security & Secrets Protection**: Never expose secrets, database credentials, or Turso access tokens in mobile client bundles. Use server-side API proxies/middleware for sensitive operations. Store tokens securely using `expo-secure-store`.
+7. **Comprehensive Automated & Manual Testing**: Add or update appropriate unit, integration, and UAT tests. Include failure cases, edge cases, and security checks. Run `npm test -- --runInBand`, type checks (`tsc`), and lint checks.
+8. **Regression & Safety Inspection**: Inspect all modified files for unintended side effects, security flaws, exposed secrets, or breaking changes across isolated role navigation routes (Student, Porter, Warden, Maintenance).
+9. **Traceable Completion Report**: Report files changed, behavior implemented, executed tests with pass/fail results, remaining risks, and blockers. Mark the issue complete ONLY when all acceptance criteria are genuinely satisfied and all required automated checks pass.
+
+---
+
 | Document Metadata | Specification Details |
 | :--- | :--- |
 | **Project Name** | UNILAG Hostel Management Mobile Ecosystem (`UnilagStay`) |
