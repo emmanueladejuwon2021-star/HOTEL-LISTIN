@@ -35,6 +35,11 @@ export const ClearanceScreen: React.FC = () => {
   const [verifyHashInput, setVerifyHashInput] = useState('');
   const [officerNotes, setOfficerNotes] = useState('');
 
+  // Physical document inspection checklist state for Porter / Desk Officer
+  const [jajaStampChecked, setJajaStampChecked] = useState(true);
+  const [passportBgChecked, setPassportBgChecked] = useState(true);
+  const [conductSignedChecked, setConductSignedChecked] = useState(true);
+
   const [medicalUrl, setMedicalUrl] = useState('');
   const [medicalNotes, setMedicalNotes] = useState('');
 
@@ -439,6 +444,40 @@ export const ClearanceScreen: React.FC = () => {
         <Text className="text-slate-300 text-xs mb-3">
           Simulate physical document verification at the porter desk after inspecting original student physical copies.
         </Text>
+
+        {/* Physical Checklist Verification Toggles */}
+        <View className="bg-slate-800 p-3 rounded-xl mb-3 space-y-2">
+          <TouchableOpacity
+            className="flex-row items-center justify-between py-1"
+            onPress={() => setJajaStampChecked(!jajaStampChecked)}
+          >
+            <Text className="text-slate-200 text-xs font-semibold">1. Jaja Clinic Official Medical Stamp Verified</Text>
+            <Text className={`text-xs font-bold px-2 py-0.5 rounded ${jajaStampChecked ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+              {jajaStampChecked ? 'PASSED' : 'UNCHECKED'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-row items-center justify-between py-1 border-t border-slate-700/50"
+            onPress={() => setPassportBgChecked(!passportBgChecked)}
+          >
+            <Text className="text-slate-200 text-xs font-semibold">2. Passport Photo Red Background & Facial Match</Text>
+            <Text className={`text-xs font-bold px-2 py-0.5 rounded ${passportBgChecked ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+              {passportBgChecked ? 'PASSED' : 'UNCHECKED'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-row items-center justify-between py-1 border-t border-slate-700/50"
+            onPress={() => setConductSignedChecked(!conductSignedChecked)}
+          >
+            <Text className="text-slate-200 text-xs font-semibold">3. Signed Code of Conduct (Student & Guardian)</Text>
+            <Text className={`text-xs font-bold px-2 py-0.5 rounded ${conductSignedChecked ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+              {conductSignedChecked ? 'PASSED' : 'UNCHECKED'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <TextInput
           className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white text-xs mb-3"
           placeholder="Optional inspection remark (e.g. Originals verified against Jaja Clinic stamp)"
@@ -450,7 +489,24 @@ export const ClearanceScreen: React.FC = () => {
           <TouchableOpacity
             className="flex-1 bg-emerald-600 py-3 rounded-xl items-center active:opacity-80"
             onPress={async () => {
-              const ok = await recordPhysicalInspection(userId, 'officer_porter_01', 'INSPECTED_PASSED', ['Medical Certificate', 'Passport Photo', 'Code of Conduct'], officerNotes);
+              const checklist = {
+                jajaMedicalStampVerified: jajaStampChecked,
+                redBackgroundPassportVerified: passportBgChecked,
+                signedCodeOfConductVerified: conductSignedChecked
+              };
+              const verifiedList: string[] = [];
+              if (jajaStampChecked) verifiedList.push('Medical Certificate');
+              if (passportBgChecked) verifiedList.push('Passport Photo');
+              if (conductSignedChecked) verifiedList.push('Code of Conduct Form');
+
+              const ok = await recordPhysicalInspection(
+                userId,
+                'officer_porter_01',
+                'INSPECTED_PASSED',
+                verifiedList,
+                checklist,
+                officerNotes || 'Original physical documents verified at porter desk.'
+              );
               if (ok) setOfficerNotes('');
             }}
             disabled={isLoading}
@@ -460,7 +516,19 @@ export const ClearanceScreen: React.FC = () => {
           <TouchableOpacity
             className="flex-1 bg-red-600 py-3 rounded-xl items-center active:opacity-80"
             onPress={async () => {
-              const ok = await recordPhysicalInspection(userId, 'officer_porter_01', 'INSPECTED_FAILED', ['Medical Certificate'], officerNotes || 'Incomplete physical documents presented.');
+              const checklist = {
+                jajaMedicalStampVerified: jajaStampChecked,
+                redBackgroundPassportVerified: passportBgChecked,
+                signedCodeOfConductVerified: conductSignedChecked
+              };
+              const ok = await recordPhysicalInspection(
+                userId,
+                'officer_porter_01',
+                'INSPECTED_FAILED',
+                ['Incomplete Documents'],
+                checklist,
+                officerNotes || 'Physical inspection failed due to missing or unverified document originals.'
+              );
               if (ok) setOfficerNotes('');
             }}
             disabled={isLoading}

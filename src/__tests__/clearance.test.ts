@@ -197,6 +197,11 @@ describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-0
   test('should record physical document inspection at porter desk and update clearance package [CLEARANCE-04 / UAT-0024]', async () => {
     const officerId = `porter_officer_${Date.now()}`;
     const verifiedDocs = ['Medical Certificate', 'Passport Photo', 'Code of Conduct Form'];
+    const checklist = {
+      jajaMedicalStampVerified: true,
+      redBackgroundPassportVerified: true,
+      signedCodeOfConductVerified: true
+    };
     const notes = 'Original documents inspected and stamped at King Jaja Hall porter desk.';
 
     const updatedPkg = await ClearanceService.recordPhysicalInspection({
@@ -204,6 +209,7 @@ describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-0
       officerId,
       inspectionStatus: 'INSPECTED_PASSED',
       verifiedOriginals: verifiedDocs,
+      checklist,
       notes
     });
 
@@ -212,6 +218,9 @@ describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-0
     expect(updatedPkg.physicalInspectionDetails).toBeDefined();
     expect(updatedPkg.physicalInspectionDetails?.officerId).toBe(officerId);
     expect(updatedPkg.physicalInspectionDetails?.verifiedOriginals).toContain('Medical Certificate');
+    expect(updatedPkg.physicalInspectionDetails?.checklistVerified?.jajaMedicalStampVerified).toBe(true);
+    expect(updatedPkg.physicalInspectionDetails?.checklistVerified?.redBackgroundPassportVerified).toBe(true);
+    expect(updatedPkg.physicalInspectionDetails?.checklistVerified?.signedCodeOfConductVerified).toBe(true);
     expect(updatedPkg.physicalInspectionDetails?.notes).toBe(notes);
   });
 

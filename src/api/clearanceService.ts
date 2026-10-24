@@ -57,6 +57,7 @@ export class ClearanceService {
         officer_id TEXT NOT NULL,
         inspection_status TEXT CHECK(inspection_status IN ('INSPECTED_PASSED', 'INSPECTED_FAILED')) NOT NULL,
         verified_originals TEXT NOT NULL,
+        checklist_verified TEXT,
         notes TEXT,
         inspected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -76,6 +77,12 @@ export class ClearanceService {
     await safeAddColumn('file_size_bytes INTEGER DEFAULT 0');
     await safeAddColumn('mime_type TEXT');
     await safeAddColumn('notes TEXT');
+
+    try {
+      await client.execute({ sql: `ALTER TABLE physical_clearance_inspections ADD COLUMN checklist_verified TEXT`, args: [] });
+    } catch (e) {
+      // Column already exists
+    }
 
     // Create review logs table if it does not already exist
     await client.execute({
@@ -266,7 +273,7 @@ export class ClearanceService {
 
     // Fetch physical inspection details if available
     const physicalRes = await client.execute({
-      sql: `SELECT id, user_id, officer_id, inspection_status, verified_originals, notes, inspected_at
+      sql: `SELECT id, user_id, officer_id, inspection_status, verified_originals, checklist_verified, notes, inspected_at
             FROM physical_clearance_inspections WHERE user_id = ?
             ORDER BY inspected_at DESC LIMIT 1`,
       args: [userId]
@@ -278,12 +285,23 @@ export class ClearanceService {
     if (physicalRes.rows.length > 0) {
       const pRow = physicalRes.rows[0];
       physicalInspectionStatus = String(pRow.inspection_status) as 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
+
+      let checklistParsed = undefined;
+      if (pRow.checklist_verified) {
+        try {
+          checklistParsed = JSON.parse(String(pRow.checklist_verified));
+        } catch (e) {
+          // Fallback if parsing fails
+        }
+      }
+
       physicalInspectionDetails = {
         id: String(pRow.id),
         userId: String(pRow.user_id),
         officerId: String(pRow.officer_id),
         inspectionStatus: physicalInspectionStatus,
         verifiedOriginals: String(pRow.verified_originals),
+        checklistVerified: checklistParsed,
         notes: pRow.notes ? String(pRow.notes) : undefined,
         inspectedAt: String(pRow.inspected_at || new Date().toISOString())
       };
@@ -452,6 +470,11 @@ export class ClearanceService {
     officerId: string;
     inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED';
     verifiedOriginals?: string[];
+    checklist?: {
+      jajaMedicalStampVerified: boolean;
+      redBackgroundPassportVerified: boolean;
+      signedCodeOfConductVerified: boolean;
+    };
     notes?: string;
   }): Promise<DigitalClearancePackage> {
     await ClearanceService.initializeSchema();
@@ -462,12 +485,13 @@ export class ClearanceService {
       ? params.verifiedOriginals.join(', ')
       : 'Medical Certificate, Passport Photo, Code of Conduct';
 
+    const checklistStr = params.checklist ? JSON.stringify(params.checklist) : null;
     const notesContent = params.notes ? params.notes.trim() : null;
 
     await client.execute({
-      sql: `INSERT INTO physical_clearance_inspections (id, user_id, officer_id, inspection_status, verified_originals, notes, inspected_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-      args: [inspectionId, params.userId, params.officerId, params.inspectionStatus, verifiedListStr, notesContent]
+      sql: `INSERT INTO physical_clearance_inspections (id, user_id, officer_id, inspection_status, verified_originals, checklist_verified, notes, inspected_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      args: [inspectionId, params.userId, params.officerId, params.inspectionStatus, verifiedListStr, checklistStr, notesContent]
     });
 
     return await ClearanceService.getClearancePackage(params.userId);

@@ -41,7 +41,14 @@ export interface ClearanceState {
   // Verifies official clearance certificate hash code
   verifyCertificate: (certificateHash: string) => Promise<ClearanceCertificateVerification>;
   // Records physical document screening inspection conducted by porter/warden
-  recordPhysicalInspection: (userId: string, officerId: string, inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED', verifiedOriginals?: string[], notes?: string) => Promise<boolean>;
+  recordPhysicalInspection: (
+    userId: string,
+    officerId: string,
+    inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED',
+    verifiedOriginals?: string[],
+    checklist?: { jajaMedicalStampVerified: boolean; redBackgroundPassportVerified: boolean; signedCodeOfConductVerified: boolean },
+    notes?: string
+  ) => Promise<boolean>;
   // Fetches clearance review audit logs for a student
   fetchReviewHistory: (userId: string) => Promise<void>;
   // Clears active error and success alert message banners
@@ -166,7 +173,14 @@ export const useClearanceStore = create<ClearanceState>((set, get) => ({
     }
   },
 
-  recordPhysicalInspection: async (userId: string, officerId: string, inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED', verifiedOriginals?: string[], notes?: string) => {
+  recordPhysicalInspection: async (
+    userId: string,
+    officerId: string,
+    inspectionStatus: 'INSPECTED_PASSED' | 'INSPECTED_FAILED',
+    verifiedOriginals?: string[],
+    checklist?: { jajaMedicalStampVerified: boolean; redBackgroundPassportVerified: boolean; signedCodeOfConductVerified: boolean },
+    notes?: string
+  ) => {
     set({ isLoading: true, errorMessage: null, successMessage: null });
     try {
       const updatedPkg = await ClearanceService.recordPhysicalInspection({
@@ -174,6 +188,7 @@ export const useClearanceStore = create<ClearanceState>((set, get) => ({
         officerId,
         inspectionStatus,
         verifiedOriginals,
+        checklist,
         notes
       });
 
