@@ -312,4 +312,60 @@ describe('GatePassService - Dynamic QR Gate Pass & Gatekeeper Engine [GATEPASS-0
       expect(logs[0].timestamp).toBeDefined();
     });
   });
+
+  describe('[VISITOR-05 / UAT-0050] Visitor Pass PIN Generation, Log & Cancellation', () => {
+    let createdVisitorPassId: string;
+
+    test('student can generate a 6-digit PIN visitor pass and retrieve it in pass log', async () => {
+      const pass = await GatePassService.createVisitorPass(
+        residentStudentId,
+        'Chidi Nnamdi',
+        '08098765432'
+      );
+
+      expect(pass.id).toBeDefined();
+      expect(pass.studentId).toBe(residentStudentId);
+      expect(pass.visitorName).toBe('Chidi Nnamdi');
+      expect(pass.visitorPhone).toBe('08098765432');
+      expect(pass.passCode).toMatch(/^\d{6}$/);
+      expect(pass.status).toBe('EXPECTED');
+      createdVisitorPassId = pass.id;
+
+      const passes = await GatePassService.getVisitorPassesByStudent(residentStudentId);
+      expect(passes.length).toBeGreaterThan(0);
+      const found = passes.find(p => p.id === createdVisitorPassId);
+      expect(found).toBeDefined();
+      expect(found?.visitorName).toBe('Chidi Nnamdi');
+    });
+
+    test('student can cancel an expected visitor pass and transition status to EXPIRED', async () => {
+      const cancelledPass = await GatePassService.cancelVisitorPass(createdVisitorPassId, residentStudentId);
+
+      expect(cancelledPass.id).toBe(createdVisitorPassId);
+      expect(cancelledPass.status).toBe('EXPIRED');
+
+      const passes = await GatePassService.getVisitorPassesByStudent(residentStudentId);
+      const found = passes.find(p => p.id === createdVisitorPassId);
+      expect(found?.status).toBe('EXPIRED');
+    });
+
+    test('Zustand useGatePassStore manages visitor pass cancellation action cleanly', async () => {
+      const store = useGatePassStore.getState();
+
+      const newPass = await store.createVisitorPass!(
+        residentStudentId,
+        'Ngozi Eze',
+        '08087654321'
+      );
+
+      expect(newPass.status).toBe('EXPECTED');
+
+      const cancelled = await store.cancelVisitorPass!(newPass.id, residentStudentId);
+      expect(cancelled.status).toBe('EXPIRED');
+
+      const updatedStoreState = useGatePassStore.getState();
+      const matchInStore = updatedStoreState.visitorPasses?.find(p => p.id === newPass.id);
+      expect(matchInStore?.status).toBe('EXPIRED');
+    });
+  });
 });

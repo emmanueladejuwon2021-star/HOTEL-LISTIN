@@ -63,6 +63,7 @@ export const GatePassScreen: React.FC = () => {
     refreshGatePass,
     tickTimer,
     createVisitorPass,
+    cancelVisitorPass,
     loadVisitorPasses
   } = useGatePassStore();
 
@@ -102,6 +103,13 @@ export const GatePassScreen: React.FC = () => {
       setGeneratedVisitorPin(pass.passCode);
       setVisitorName('');
       setVisitorPhone('');
+    } catch {}
+  };
+
+  const handleCancelVisitorPass = async (passId: string) => {
+    if (!cancelVisitorPass) return;
+    try {
+      await cancelVisitorPass(passId, userId);
     } catch {}
   };
 
@@ -207,6 +215,76 @@ export const GatePassScreen: React.FC = () => {
         <Text className="text-slate-500 text-xs text-center mt-6 px-4">
           Show this dynamic QR code to the hostel gate porter for sub-second verification. The code automatically updates every 30 seconds for security.
         </Text>
+
+        {/* Visitor Pass History Log ([VISITOR-05] / PRD Section 4.7) */}
+        <View className="w-full max-w-xs mt-8">
+          <View className="flex-row justify-between items-center mb-3 px-1">
+            <Text className="text-white text-base font-bold">
+              Visitor Pass Log ({visitorPasses?.length || 0})
+            </Text>
+            <TouchableOpacity
+              onPress={() => loadVisitorPasses && loadVisitorPasses(userId)}
+              className="px-2 py-1 bg-slate-800 rounded-lg border border-slate-700"
+            >
+              <Text className="text-amber-400 text-xs font-semibold">↻ Refresh Log</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!visitorPasses || visitorPasses.length === 0 ? (
+            <View className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/50 items-center">
+              <Text className="text-slate-400 text-xs text-center">
+                No visitor passes created yet. Tap "+ Generate 6-Digit Visitor Pass PIN" to invite a guest.
+              </Text>
+            </View>
+          ) : (
+            <View className="space-y-3">
+              {visitorPasses.map((pass) => {
+                let badgeBg = 'bg-amber-950 border-amber-500 text-amber-400';
+                if (pass.status === 'CHECKED_IN') badgeBg = 'bg-emerald-950 border-emerald-500 text-emerald-400';
+                if (pass.status === 'CHECKED_OUT') badgeBg = 'bg-slate-800 border-slate-600 text-slate-300';
+                if (pass.status === 'EXPIRED') badgeBg = 'bg-red-950 border-red-700 text-red-400';
+
+                return (
+                  <View
+                    key={pass.id}
+                    className="bg-slate-800 p-4 rounded-2xl border border-slate-700 flex-row justify-between items-center"
+                  >
+                    <View className="flex-1 mr-2">
+                      <View className="flex-row items-center space-x-2 mb-1">
+                        <Text className="text-white font-bold text-sm" numberOfLines={1}>
+                          {pass.visitorName}
+                        </Text>
+                        <View className={`px-2 py-0.5 rounded-md border ${badgeBg.split(' ')[0]} ${badgeBg.split(' ')[1]}`}>
+                          <Text className={`text-[10px] font-extrabold uppercase ${badgeBg.split(' ')[2]}`}>
+                            {pass.status}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text className="text-slate-400 text-xs">
+                        Phone: {pass.visitorPhone} • Date: {pass.visitDate}
+                      </Text>
+                      <View className="flex-row items-center mt-1.5">
+                        <Text className="text-slate-400 text-xs font-semibold mr-1">PIN:</Text>
+                        <Text className="text-amber-400 text-xs font-black font-mono tracking-wider">
+                          {pass.passCode}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {pass.status === 'EXPECTED' && (
+                      <TouchableOpacity
+                        onPress={() => handleCancelVisitorPass(pass.id)}
+                        className="bg-red-950 border border-red-800 px-3 py-1.5 rounded-lg active:opacity-80"
+                      >
+                        <Text className="text-red-400 text-xs font-bold">Cancel</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
 
         {/* Visitor Pass Modal */}
         <Modal

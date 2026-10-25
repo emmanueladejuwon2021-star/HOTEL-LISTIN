@@ -264,7 +264,7 @@ npm start
 - [ ] Temporary 6-digit PIN and temporary QR code for guests (`[VISITOR-02]` - Issue #47)
 - [ ] Porter guest entry check-in and exit logging (`[VISITOR-03]` - Issue #48)
 - [ ] Visitor curfew alert for guests remaining past allowed hours (`[VISITOR-04]` - Issue #49)
-- [ ] Visitor log history and frequent guest management (`[VISITOR-05]` - Issue #50)
+- [x] Visitor log history and frequent guest management (`[VISITOR-05]` - Issue #50)
 
 ### Maintenance & Artisan Ticket System
 - [ ] Student maintenance ticket creation with live problem photo capture (`[MAINTENANCE-01]` - Issue #51)

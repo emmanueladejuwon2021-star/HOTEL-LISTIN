@@ -263,6 +263,7 @@ export interface GatePassStoreState extends GatePassState {
   tickTimer: (userId: string) => Promise<void> | void;
   resetGatePassState: () => void;
   createVisitorPass?: (studentId: string, visitorName: string, visitorPhone: string, visitDate?: string) => Promise<VisitorPass>;
+  cancelVisitorPass?: (visitorPassId: string, studentId: string) => Promise<VisitorPass>;
   loadVisitorPasses?: (studentId: string) => Promise<void>;
   initializePass?: (userId: string) => Promise<void>;
   refreshPass?: (userId: string) => Promise<void>;

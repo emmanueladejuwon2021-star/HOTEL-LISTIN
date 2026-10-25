@@ -106,6 +106,23 @@ export const useGatePassStore = create<GatePassStoreState>((set, get) => ({
     }
   },
 
+  cancelVisitorPass: async (visitorPassId: string, studentId: string): Promise<VisitorPass> => {
+    set({ isLoading: true, errorMessage: null });
+    try {
+      const updatedPass = await GatePassService.cancelVisitorPass(visitorPassId, studentId);
+      const existing = get().visitorPasses || [];
+      const updatedList = existing.map(p => p.id === visitorPassId ? updatedPass : p);
+      set({
+        visitorPasses: updatedList,
+        isLoading: false
+      });
+      return updatedPass;
+    } catch (error: any) {
+      set({ isLoading: false, errorMessage: error.message || 'Failed to cancel visitor pass.' });
+      throw error;
+    }
+  },
+
   loadVisitorPasses: async (studentId: string) => {
     try {
       const passes = await GatePassService.getVisitorPassesByStudent(studentId);
