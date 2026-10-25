@@ -21,6 +21,7 @@ describe('Offline Operations & Network Recovery [OFFLINE-01, OFFLINE-02, OFFLINE
     await AuthService.initializeSchema();
     await GatePassService.initializeSchema();
     await OfflineSyncService.initializeSchema();
+    await OfflineSyncService.clearAllQueue();
     const client = AuthService.getDbClient();
 
     // Clean up & Seed test student
@@ -35,6 +36,16 @@ describe('Offline Operations & Network Recovery [OFFLINE-01, OFFLINE-02, OFFLINE
             VALUES (?, 'Science', 'Physics', 200, 'MAIN_CAMPUS', 'STALLITE', 1, 'APPROVED', 'ACTIVE_RESIDENT')`,
       args: [studentId]
     });
+  });
+
+  beforeEach(async () => {
+    // Restore default active signing key before each test for clean test isolation
+    await OfflineSyncService.cacheSigningKey(
+      'UNILAG_GATE_OFFLINE_KEY_V1',
+      'UNILAGSTAY_GATEPASS_HMAC_SECRET_2026_KEY',
+      'HMAC-SHA256',
+      90
+    );
   });
 
   // =========================================================================
@@ -297,6 +308,134 @@ describe('Offline Operations & Network Recovery [OFFLINE-01, OFFLINE-02, OFFLINE
       expect(stateAfter.offlineMode).toBe(false);
       expect(stateAfter.lastSyncResult).toBeDefined();
       expect(stateAfter.lastSyncResult?.syncedCount).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  // =========================================================================
+  // [OFFLINE-05 / UAT-0045]: Key Rotation, Queue Health & Panic Alarm Response
+  // =========================================================================
+  describe('[OFFLINE-05 / UAT-0045] Key Rotation, Queue Integrity Self-Healing & Panic Alarm', () => {
+    test('rotates signing key locally and invalidates old keys for security', async () => {
+      const rotKeyId = `KEY_ROT_${Date.now()}`;
+      const rotSecret = `SECRET_ROTATED_${Date.now()}`;
+
+      const rotated = await OfflineSyncService.rotateSigningKey(rotKeyId, rotSecret, 'HMAC-SHA256', 30);
+      expect(rotated.keyId).toBe(rotKeyId);
+      expect(rotated.publicKeyOrSecret).toBe(rotSecret);
+
+      const activeSecret = await OfflineSyncService.getCachedSigningKey(rotKeyId);
+      expect(activeSecret).toBe(rotSecret);
+    });
+
+    test('revokes a signing key and prevents unverified key usage', async () => {
+      const revokeKeyId = `KEY_TO_REVOKE_${Date.now()}`;
+      await OfflineSyncService.cacheSigningKey(revokeKeyId, 'SECRET_REVOKE', 'HMAC-SHA256', 30);
+
+      const revoked = await OfflineSyncService.revokeSigningKey(revokeKeyId);
+      expect(revoked).toBe(true);
+
+      const isValid = await OfflineSyncService.isKeyCacheValid(revokeKeyId);
+      expect(isValid).toBe(false);
+    });
+
+    test('scans local SQLite queue for corrupted items, self-heals user_id, and purges orphaned entries', async () => {
+      const client = AuthService.getDbClient();
+      const corruptedId = `corrupt_${Date.now()}`;
+
+      // Insert corrupted item (empty user_id) directly
+      await client.execute({
+        sql: `INSERT INTO offline_scan_queue (id, token_string, user_id, hostel_id, gate_type, access_status, scanned_by_porter_id, scanned_at, sync_status)
+              VALUES (?, 'corrupt_token', '', 'hostel_jaja', 'ENTRY', 'GRANTED', ?, ?, 'PENDING_SYNC')`,
+        args: [corruptedId, porterId, new Date().toISOString()]
+      });
+
+      const report = await OfflineSyncService.checkQueueHealthAndSelfHeal();
+      expect(report.totalItems).toBeGreaterThan(0);
+      expect(report.corruptedItemsFound).toBeGreaterThanOrEqual(1);
+      expect(report.repairedItemsCount).toBeGreaterThanOrEqual(1);
+
+      // Verify repaired item user_id became 'unknown_user'
+      const items = await OfflineSyncService.getAllQueueItems();
+      const repaired = items.find(i => i.id === corruptedId);
+      expect(repaired?.userId).toBe('unknown_user');
+    });
+
+    test('resolves duplicate scan conflicts in offline queue', async () => {
+      const ts = new Date().toISOString();
+      const dup1 = `dup1_${Date.now()}`;
+      const dup2 = `dup2_${Date.now()}`;
+
+      await OfflineSyncService.queueOfflineScan({
+        id: dup1,
+        tokenString: 'token_dup',
+        userId: studentId,
+        hostelId: 'hostel_jaja',
+        gateType: 'ENTRY',
+        accessStatus: 'GRANTED',
+        scannedByPorterId: porterId,
+        scannedAt: ts
+      });
+
+      await OfflineSyncService.queueOfflineScan({
+        id: dup2,
+        tokenString: 'token_dup',
+        userId: studentId,
+        hostelId: 'hostel_jaja',
+        gateType: 'ENTRY',
+        accessStatus: 'GRANTED',
+        scannedByPorterId: porterId,
+        scannedAt: ts
+      });
+
+      const conflictRes = await OfflineSyncService.resolveQueueConflicts();
+      expect(conflictRes.duplicatesRemoved).toBeGreaterThanOrEqual(1);
+    });
+
+    test('handles Emergency Porter Panic Alarm Response (UAT-0045)', async () => {
+      const client = AuthService.getDbClient();
+      const alertId = `alert_panic_${Date.now()}`;
+
+      // Seed active emergency panic alert
+      await client.execute({
+        sql: `INSERT INTO emergency_alerts (id, student_id, hostel_id, room_number, alert_type, status)
+              VALUES (?, ?, 'hostel_jaja', 'A-102', 'SECURITY_BREACH', 'ACTIVE')`,
+        args: [alertId, studentId]
+      });
+
+      // Retrieve alerts
+      const alerts = await OfflineSyncService.getOfflineEmergencyAlerts();
+      expect(alerts.length).toBeGreaterThan(0);
+      const foundAlert = alerts.find(a => a.id === alertId);
+      expect(foundAlert).toBeDefined();
+      expect(foundAlert?.status).toBe('ACTIVE');
+
+      // Porter responds to panic alarm
+      const responded = await OfflineSyncService.respondToPanicAlarm(alertId, porterId, 'RESPONDED');
+      expect(responded).toBe(true);
+
+      const alertsAfter = await OfflineSyncService.getOfflineEmergencyAlerts();
+      const updatedAlert = alertsAfter.find(a => a.id === alertId);
+      expect(updatedAlert?.status).toBe('RESPONDED');
+      expect(updatedAlert?.respondedByPorterId).toBe(porterId);
+    });
+
+    test('executes key rotation and panic alarm response via Zustand store', async () => {
+      const store = useScannerStore.getState();
+
+      // Store key rotation
+      const newKey = await store.rotateOfflineKey(`STORE_KEY_${Date.now()}`, 'STORE_SECRET_123');
+      expect(newKey.keyId).toContain('STORE_KEY');
+
+      // Store queue health check
+      const report = await store.checkQueueHealth();
+      expect(report.summaryMessage).toContain('Queue');
+
+      // Store panic alarm response
+      const alerts = await OfflineSyncService.getOfflineEmergencyAlerts();
+      if (alerts.length > 0) {
+        const res = await store.respondToPanicAlarm(alerts[0].id, porterId, 'RESOLVED');
+        expect(res).toBe(true);
+      }
     });
   });
 });

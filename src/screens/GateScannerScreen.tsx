@@ -50,6 +50,8 @@ export const GateScannerScreen: React.FC = () => {
     isQueueModalVisible,
     isSyncing,
     lastSyncResult,
+    queueHealthReport,
+    emergencyAlerts,
     scanQrCode,
     lookupManualPin,
     executeVisitorCheckIn,
@@ -67,17 +69,25 @@ export const GateScannerScreen: React.FC = () => {
     retryQueueItem,
     deleteQueueItem,
     triggerAutoSync,
-    simulateNetworkChange
+    simulateNetworkChange,
+    checkQueueHealth,
+    rotateOfflineKey,
+    revokeOfflineKey,
+    resolveQueueConflicts,
+    respondToPanicAlarm,
+    loadEmergencyAlerts
   } = useScannerStore();
 
   const [simulatedTokenInput, setSimulatedTokenInput] = useState('');
   const [showSimInput, setShowSimInput] = useState(false);
   const [incidentReason, setIncidentReason] = useState('');
   const [showIncidentModal, setShowIncidentModal] = useState(false);
+  const [isHealthChecking, setIsHealthChecking] = useState(false);
 
   useEffect(() => {
     loadShiftStats();
     loadQueueItems();
+    loadEmergencyAlerts();
   }, []);
 
   const handleSimulateScan = async (mockToken?: string) => {
@@ -154,6 +164,41 @@ export const GateScannerScreen: React.FC = () => {
             >
               <Text className="text-white text-[10px] font-bold">RE-SYNC</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Active Emergency Panic Alerts Banner ([OFFLINE-05 / UAT-0045]) */}
+        {emergencyAlerts.length > 0 && emergencyAlerts.some(a => a.status === 'ACTIVE') && (
+          <View className="w-full bg-red-950 border-2 border-red-500 p-4 rounded-2xl mb-4 animate-pulse">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-red-400 font-black text-sm uppercase tracking-widest">
+                🚨 STUDENT EMERGENCY PANIC ALERT TRIGGERED
+              </Text>
+              <View className="bg-red-600 px-2 py-0.5 rounded">
+                <Text className="text-white text-[10px] font-bold">ACTIVE</Text>
+              </View>
+            </View>
+            {emergencyAlerts.filter(a => a.status === 'ACTIVE').map(alert => (
+              <View key={alert.id} className="bg-slate-900/80 p-3 rounded-xl mb-2 border border-red-500/50">
+                <Text className="text-white font-bold text-xs">
+                  {alert.studentName} ({alert.studentMatric})
+                </Text>
+                <Text className="text-red-300 text-xs font-semibold">
+                  Location: {alert.hostelName} • Room {alert.roomNumber}
+                </Text>
+                <Text className="text-slate-400 text-[10px] mb-2">
+                  Type: {alert.alertType} • {new Date(alert.createdAt).toLocaleTimeString()}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => respondToPanicAlarm(alert.id, porterId, 'RESPONDED')}
+                  className="bg-red-600 py-2 rounded-lg items-center"
+                >
+                  <Text className="text-white font-black text-xs uppercase">
+                    DISPATCH PORTER / ACKNOWLEDGE SOS
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
         )}
 
@@ -602,7 +647,7 @@ export const GateScannerScreen: React.FC = () => {
               </View>
 
               {/* Queue Status Breakdown Pills */}
-              <View className="flex-row space-x-2 mb-4 bg-slate-800/60 p-2.5 rounded-2xl justify-between">
+              <View className="flex-row space-x-2 mb-3 bg-slate-800/60 p-2.5 rounded-2xl justify-between">
                 <View className="items-center">
                   <Text className="text-slate-400 text-[10px] uppercase font-bold">Total</Text>
                   <Text className="text-white text-sm font-black">{queueSummary.total}</Text>
@@ -619,6 +664,45 @@ export const GateScannerScreen: React.FC = () => {
                   <Text className="text-red-400 text-[10px] uppercase font-bold">Failed</Text>
                   <Text className="text-red-400 text-sm font-black">{queueSummary.failed}</Text>
                 </View>
+              </View>
+
+              {/* Queue Health & Conflict Resolution Banner ([OFFLINE-05]) */}
+              {queueHealthReport && (
+                <View className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 mb-3">
+                  <Text className="text-emerald-400 font-bold text-[10px] uppercase">
+                    🏥 Health Status: {queueHealthReport.isHealthy ? 'PASSED' : 'ISSUES HEALED'}
+                  </Text>
+                  <Text className="text-slate-300 text-[11px] mt-0.5">
+                    {queueHealthReport.summaryMessage}
+                  </Text>
+                </View>
+              )}
+
+              {/* Health Check & Key Security Controls ([OFFLINE-05]) */}
+              <View className="flex-row space-x-2 mb-3">
+                <TouchableOpacity
+                  onPress={async () => {
+                    setIsHealthChecking(true);
+                    await checkQueueHealth();
+                    await resolveQueueConflicts();
+                    setIsHealthChecking(false);
+                  }}
+                  disabled={isHealthChecking}
+                  className="flex-1 bg-purple-900/80 border border-purple-500 py-2 rounded-xl items-center"
+                >
+                  <Text className="text-purple-200 text-[10px] font-bold uppercase">
+                    {isHealthChecking ? 'HEALING...' : '🩺 HEAL QUEUE'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => rotateOfflineKey()}
+                  className="flex-1 bg-amber-900/80 border border-amber-500 py-2 rounded-xl items-center"
+                >
+                  <Text className="text-amber-200 text-[10px] font-bold uppercase">
+                    🔑 ROTATE KEY
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* Queue Items List */}

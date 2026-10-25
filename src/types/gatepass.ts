@@ -211,6 +211,30 @@ export interface QueueSummary {
   failed: number;
 }
 
+export interface QueueHealthReport {
+  isHealthy: boolean;
+  totalItems: number;
+  corruptedItemsFound: number;
+  repairedItemsCount: number;
+  orphanedItemsPurged: number;
+  summaryMessage: string;
+}
+
+export interface EmergencyAlertItem {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  studentMatric?: string;
+  hostelId: string;
+  hostelName?: string;
+  roomNumber?: string;
+  alertType: string;
+  status: 'ACTIVE' | 'RESPONDED' | 'RESOLVED';
+  respondedByPorterId?: string;
+  respondedAt?: string;
+  createdAt: string;
+}
+
 export interface SyncResult {
   syncedCount: number;
   failedCount: number;
@@ -334,6 +358,17 @@ export interface ScannerStoreState {
   deleteQueueItem: (id: string) => Promise<void>;
   triggerAutoSync: (porterId: string) => Promise<SyncResult>;
   simulateNetworkChange: (online: boolean, porterId?: string) => Promise<void>;
+
+  // Component 5: Queue Health, Key Security & Panic Alarm Response ([OFFLINE-05]):
+  queueHealthReport: QueueHealthReport | null;
+  emergencyAlerts: EmergencyAlertItem[];
+  checkQueueHealth: () => Promise<QueueHealthReport>;
+  rotateOfflineKey: (newKeyId?: string, newSecret?: string) => Promise<OfflineSecurityKey>;
+  revokeOfflineKey: (keyId?: string) => Promise<boolean>;
+  resolveQueueConflicts: () => Promise<{ duplicatesRemoved: number }>;
+  respondToPanicAlarm: (alertId: string, porterId: string, action?: 'RESPONDED' | 'RESOLVED') => Promise<boolean>;
+  loadEmergencyAlerts: () => Promise<void>;
+
   /** Resets scanner state */
   resetScanner: () => void;
 }

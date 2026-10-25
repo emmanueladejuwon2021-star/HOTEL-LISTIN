@@ -67,6 +67,10 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
   isSyncing: false,
   lastSyncResult: null,
 
+  // Component 5: Queue Health, Key Security & Panic Alarm Response ([OFFLINE-05])
+  queueHealthReport: null,
+  emergencyAlerts: [],
+
   scanQrCode: async (tokenString: string, porterId: string): Promise<GatePassVerificationResult> => {
     if (autoResetTimeout) {
       clearTimeout(autoResetTimeout);
@@ -402,6 +406,107 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
       }
     } else {
       await OfflineSyncService.setNetworkOnline(online, porterId);
+    }
+  },
+
+  // =========================================================================
+  // Component 5: Queue Health, Key Security & Panic Alarm Response ([OFFLINE-05])
+  // =========================================================================
+
+  checkQueueHealth: async () => {
+    try {
+      const report = await OfflineSyncService.checkQueueHealthAndSelfHeal();
+      set({ queueHealthReport: report });
+      await get().loadQueueItems();
+      return report;
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+      const fallbackReport = {
+        isHealthy: false,
+        totalItems: 0,
+        corruptedItemsFound: 0,
+        repairedItemsCount: 0,
+        orphanedItemsPurged: 0,
+        summaryMessage: error.message || 'Queue health check failed'
+      };
+      set({ queueHealthReport: fallbackReport });
+      return fallbackReport;
+    }
+  },
+
+  rotateOfflineKey: async (newKeyId?: string, newSecret?: string) => {
+    try {
+      const key = await OfflineSyncService.rotateSigningKey(newKeyId, newSecret);
+      set({
+        audioFeedback: {
+          type: 'SUCCESS_CHIME',
+          timestamp: Date.now(),
+          message: `Signing Key Rotated: ${key.keyId}`
+        }
+      });
+      return key;
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+      throw error;
+    }
+  },
+
+  revokeOfflineKey: async (keyId?: string) => {
+    try {
+      const revoked = await OfflineSyncService.revokeSigningKey(keyId);
+      if (revoked) {
+        set({
+          audioFeedback: {
+            type: 'REJECTION_BUZZ',
+            timestamp: Date.now(),
+            message: `Signing Key Revoked: ${keyId || 'DEFAULT'}`
+          }
+        });
+      }
+      return revoked;
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+      return false;
+    }
+  },
+
+  resolveQueueConflicts: async () => {
+    try {
+      const result = await OfflineSyncService.resolveQueueConflicts();
+      await get().loadQueueItems();
+      return result;
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+      return { duplicatesRemoved: 0 };
+    }
+  },
+
+  respondToPanicAlarm: async (alertId: string, porterId: string, action: 'RESPONDED' | 'RESOLVED' = 'RESPONDED') => {
+    try {
+      const success = await OfflineSyncService.respondToPanicAlarm(alertId, porterId, action);
+      if (success) {
+        set({
+          audioFeedback: {
+            type: 'SUCCESS_CHIME',
+            timestamp: Date.now(),
+            message: `Emergency Alert ${action}: Porter Dispatched`
+          }
+        });
+        await get().loadEmergencyAlerts();
+      }
+      return success;
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+      return false;
+    }
+  },
+
+  loadEmergencyAlerts: async () => {
+    try {
+      const alerts = await OfflineSyncService.getOfflineEmergencyAlerts();
+      set({ emergencyAlerts: alerts });
+    } catch (error: any) {
+      set({ errorMessage: error.message });
     }
   },
 
