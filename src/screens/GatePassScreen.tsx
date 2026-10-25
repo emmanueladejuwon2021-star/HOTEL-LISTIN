@@ -4,12 +4,11 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
-  TextInput,
-  Modal
+  ScrollView
 } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGatePassStore } from '../store/useGatePassStore';
+import { VisitorPassScreen } from './VisitorPassScreen';
 
 /**
  * Visual QR Code Matrix Component rendering dynamic token string as visual blocks.
@@ -58,11 +57,9 @@ export const GatePassScreen: React.FC = () => {
     secondsRemaining,
     isLoading,
     errorMessage,
-    visitorPasses,
     loadGatePass,
     refreshGatePass,
     tickTimer,
-    createVisitorPass,
     loadVisitorPasses
   } = useGatePassStore();
 
@@ -72,11 +69,8 @@ export const GatePassScreen: React.FC = () => {
   const hostelName = payload?.hostelName || 'King Jaja Hall';
   const roomNumber = payload?.roomNumber || 'Room A-102';
 
-  // Visitor pass modal state
-  const [visitorModalVisible, setVisitorModalVisible] = useState(false);
-  const [visitorName, setVisitorName] = useState('');
-  const [visitorPhone, setVisitorPhone] = useState('');
-  const [generatedVisitorPin, setGeneratedVisitorPin] = useState<string | null>(null);
+  // Segment tab switcher state: 'DYNAMIC_PASS' or 'VISITOR_PASSES'
+  const [activeTab, setActiveTab] = useState<'DYNAMIC_PASS' | 'VISITOR_PASSES'>('DYNAMIC_PASS');
 
   // Load pass and visitor list on mount
   useEffect(() => {
@@ -95,21 +89,61 @@ export const GatePassScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [userId]);
 
-  const handleCreateVisitorPass = async () => {
-    if (!visitorName.trim() || !visitorPhone.trim() || !createVisitorPass) return;
-    try {
-      const pass = await createVisitorPass(userId, visitorName, visitorPhone);
-      setGeneratedVisitorPin(pass.passCode);
-      setVisitorName('');
-      setVisitorPhone('');
-    } catch {}
-  };
-
   // Calculate progress bar percentage width for 30s timer
   const progressPercent = Math.max(0, Math.min(100, (secondsRemaining / 30) * 100));
 
+  if (activeTab === 'VISITOR_PASSES') {
+    return (
+      <View className="flex-1 bg-slate-100">
+        {/* Top Navigation Segment Bar */}
+        <View className="bg-slate-900 px-4 pt-3 pb-2 flex-row justify-center space-x-2 border-b border-slate-800">
+          <TouchableOpacity
+            onPress={() => setActiveTab('DYNAMIC_PASS')}
+            className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 active:opacity-80 mr-2"
+          >
+            <Text className="text-slate-300 font-bold text-xs">
+              📲 My Dynamic QR Pass
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setActiveTab('VISITOR_PASSES')}
+            className="px-4 py-2 rounded-xl bg-amber-500 active:opacity-80"
+          >
+            <Text className="text-slate-950 font-extrabold text-xs">
+              🧑‍🤝‍🧑 Visitor Pass Generator
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <VisitorPassScreen />
+      </View>
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="bg-slate-900">
+      {/* Top Navigation Segment Bar */}
+      <View className="bg-slate-950 px-4 pt-3 pb-2 flex-row justify-center space-x-2 border-b border-slate-800">
+        <TouchableOpacity
+          onPress={() => setActiveTab('DYNAMIC_PASS')}
+          className="px-4 py-2 rounded-xl bg-amber-500 active:opacity-80 mr-2"
+        >
+          <Text className="text-slate-950 font-extrabold text-xs">
+            📲 My Dynamic QR Pass
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setActiveTab('VISITOR_PASSES')}
+          className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 active:opacity-80"
+        >
+          <Text className="text-slate-300 font-bold text-xs">
+            🧑‍🤝‍🧑 Visitor Pass Generator
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View className="bg-slate-900 flex-1 items-center justify-center p-6">
         {/* Offline / Online Status Badge (Component 5 / Spec S-05) */}
         <View className="bg-slate-800 px-3 py-1 rounded-full border border-slate-700 mb-3 flex-row items-center">
@@ -191,14 +225,11 @@ export const GatePassScreen: React.FC = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => {
-              setGeneratedVisitorPin(null);
-              setVisitorModalVisible(true);
-            }}
+            onPress={() => setActiveTab('VISITOR_PASSES')}
             className="bg-slate-800 border border-slate-700 py-3 rounded-xl items-center w-full mt-2 active:opacity-80"
           >
             <Text className="text-amber-400 font-bold text-xs">
-              + Generate 6-Digit Visitor Pass PIN
+              🧑‍🤝‍🧑 Open Visitor Pass Manager
             </Text>
           </TouchableOpacity>
         </View>
@@ -207,90 +238,6 @@ export const GatePassScreen: React.FC = () => {
         <Text className="text-slate-500 text-xs text-center mt-6 px-4">
           Show this dynamic QR code to the hostel gate porter for sub-second verification. The code automatically updates every 30 seconds for security.
         </Text>
-
-        {/* Visitor Pass Modal */}
-        <Modal
-          visible={visitorModalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setVisitorModalVisible(false)}
-        >
-          <View className="flex-1 bg-black/80 items-center justify-center p-5">
-            <View className="bg-slate-900 border border-slate-700 w-full max-w-sm p-6 rounded-3xl shadow-2xl">
-              <Text className="text-amber-400 font-bold text-xs uppercase tracking-widest mb-1 text-center">
-                UNILAG Visitor Management
-              </Text>
-              <Text className="text-white text-xl font-black mb-1 text-center">
-                Create Visitor Access Pass
-              </Text>
-              <Text className="text-slate-400 text-xs text-center mb-5">
-                Generate an official 6-digit access PIN for your guest to present at the gatehouse.
-              </Text>
-
-              {generatedVisitorPin ? (
-                <View className="items-center my-4">
-                  <Text className="text-slate-300 text-xs mb-1">Generated 6-Digit PIN:</Text>
-                  <View className="bg-emerald-950 border border-emerald-500 px-6 py-3 rounded-2xl mb-3">
-                    <Text className="text-emerald-400 text-3xl font-black font-mono tracking-widest">
-                      {generatedVisitorPin}
-                    </Text>
-                  </View>
-                  <Text className="text-slate-400 text-xs text-center">
-                    Share this PIN with your visitor. Porter will verify it at the gatehouse.
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => setVisitorModalVisible(false)}
-                    className="bg-emerald-600 w-full py-3 rounded-xl items-center mt-5"
-                  >
-                    <Text className="text-white font-bold text-sm">Done</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View>
-                  <Text className="text-slate-300 text-xs font-semibold mb-1">Visitor's Full Name</Text>
-                  <TextInput
-                    placeholder="e.g. Babatunde Adeyemi"
-                    placeholderTextColor="#64748B"
-                    value={visitorName}
-                    onChangeText={setVisitorName}
-                    className="bg-slate-800 text-white p-3 rounded-xl border border-slate-700 mb-3 text-sm"
-                  />
-
-                  <Text className="text-slate-300 text-xs font-semibold mb-1">Visitor's Phone Number</Text>
-                  <TextInput
-                    placeholder="e.g. 08012345678"
-                    placeholderTextColor="#64748B"
-                    value={visitorPhone}
-                    onChangeText={setVisitorPhone}
-                    keyboardType="phone-pad"
-                    className="bg-slate-800 text-white p-3 rounded-xl border border-slate-700 mb-5 text-sm"
-                  />
-
-                  <TouchableOpacity
-                    onPress={handleCreateVisitorPass}
-                    disabled={isLoading || !visitorName.trim() || !visitorPhone.trim()}
-                    className="bg-amber-500 py-3.5 rounded-xl items-center mb-3 active:opacity-90"
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator color="#0F172A" />
-                    ) : (
-                      <Text className="text-slate-950 font-black text-sm">
-                        GENERATE VISITOR PIN
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setVisitorModalVisible(false)}
-                    className="py-2 items-center"
-                  >
-                    <Text className="text-slate-400 text-xs font-semibold">Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </View>
-        </Modal>
       </View>
     </ScrollView>
   );

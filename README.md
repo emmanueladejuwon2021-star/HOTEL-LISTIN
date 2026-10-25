@@ -58,8 +58,8 @@ The accommodation lifecycle in `UnilagStay` guides students step-by-step through
 
 ## 6. STATUS OF APPLICATION FEATURES
 
-- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, and offline JWT key caching with SQLite queueing.
-- **In Active Development / Planned**: Network connectivity monitoring state, visitor pass management, artisan work queue dispatch screen, night exeat Warden workflow UI, and emergency SOS gate panic alarm UI.
+- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, offline JWT key caching with SQLite queueing, and visitor pass PIN generation & gate logging.
+- **In Active Development / Planned**: Network connectivity monitoring state, artisan work queue dispatch screen, night exeat Warden workflow UI, and emergency SOS gate panic alarm UI.
 
 ---
 
@@ -262,7 +262,7 @@ npm start
 ### Visitor Management System
 - [ ] Student visitor pass creation with guest name, phone, and visit date (`[VISITOR-01]` - Issue #46)
 - [ ] Temporary 6-digit PIN and temporary QR code for guests (`[VISITOR-02]` - Issue #47)
-- [ ] Porter guest entry check-in and exit logging (`[VISITOR-03]` - Issue #48)
+- [x] Porter guest entry check-in and exit logging (`[VISITOR-03]` - Issue #48)
 - [ ] Visitor curfew alert for guests remaining past allowed hours (`[VISITOR-04]` - Issue #49)
 - [ ] Visitor log history and frequent guest management (`[VISITOR-05]` - Issue #50)
 
