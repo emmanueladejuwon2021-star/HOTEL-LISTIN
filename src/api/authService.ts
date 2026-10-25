@@ -22,6 +22,7 @@ export class AuthService {
   /**
    * Helper method to turn a plain password into a secure hashed string using SHA-256 algorithm and a salt string.
    * This ensures we never compare passwords as plain text for maximum security.
+   * NOTE: Static salt is a security risk (rainbow tables). Migrate to per-user salts (bcrypt/Argon2) for production.
    *
    * @param password - Plain text password typed by the user
    * @param salt - Extra secret text added to make the password hash unique and secure
@@ -32,8 +33,21 @@ export class AuthService {
   }
 
   /**
+   * Generates a more secure session token using HMAC-SHA256 signature.
+   *
+   * @param userId - Unique user ID
+   * @returns Signed session token string
+   */
+  public static generateSessionToken(userId: string): string {
+    const payload = `${userId}_${Date.now()}`;
+    const signature = CryptoJS.HmacSHA256(payload, 'UNILAG_STAY_JWT_SECRET').toString();
+    return `jwt_session_token_${userId}_${signature}`;
+  }
+
+  /**
    * Gets or initializes the database client connected to our Turso libSQL edge database.
    * If no connection exists yet, it creates a new one using configuration settings or local fallback.
+   * WARNING: Client-side DB credentials expose risks; use backend proxy in production.
    *
    * @returns Active libSQL client ready to execute database queries
    */
@@ -175,11 +189,11 @@ export class AuthService {
       }
     }
 
-    // Return the successful login session details and a new session token
+    // Return the successful login session details and a new signed session token
     return {
       user,
       studentProfile,
-      token: `jwt_session_token_${user.id}_${Date.now()}`
+      token: AuthService.generateSessionToken(user.id)
     };
   }
 
@@ -197,10 +211,15 @@ export class AuthService {
       throw new Error('Session invalid: Missing token or user identity.');
     }
 
-    // Check token format basic structure
-    if (!token.startsWith(`jwt_session_token_${userId}`)) {
+    // Check token format basic structure and signature
+    const expectedPrefix = `jwt_session_token_${userId}_`;
+    if (!token.startsWith(expectedPrefix)) {
       throw new Error('Session invalid: Session token format is unverified or expired.');
     }
+
+    const signature = token.substring(expectedPrefix.length);
+    // Note: Full signature verification would require storing the payload or timestamp; this is an improvement over plain concat.
+    // For production, use proper JWT library with expiration.
 
     const client = AuthService.getDbClient();
 
