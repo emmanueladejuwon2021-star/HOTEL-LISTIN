@@ -1,6 +1,7 @@
 import CryptoJS from 'crypto-js';
 import { AuthService } from './authService';
 import { PaymentService } from './paymentService';
+import { OfflineSyncService } from './offlineSyncService';
 import {
   GatePassRecord,
   GatePassTokenPayload,
@@ -10,45 +11,60 @@ import {
   GateType,
   AccessStatus,
   VisitorPass,
-  ManualPinLookupResult
+  ManualPinLookupResult,
+  ShiftStatistics
 } from '../types/gatepass';
 
-/**
- * Secret key used to generate HMAC signatures for dynamic student gate pass tokens.
- * In production environments, this key is served securely from server middleware or SecureStore.
- */
 export const GATE_PASS_SECRET = 'UNILAGSTAY_GATEPASS_HMAC_SECRET_2026_KEY';
 const GATE_PASS_HMAC_SECRET = GATE_PASS_SECRET;
 
 /**
  * Service managing dynamic QR code gate pass creation, database persistence,
  * automatic token refreshing, porter high-visibility camera scanning,
- * sub-500ms verification performance, and 6-digit manual PIN visitor access codes.
+ * sub-500ms verification performance, 6-digit manual PIN visitor access codes,
+ * emergency lockdown mode, and shift statistics.
  *
  * Implements:
  * - [GATEPASS-01] Dynamic QR Gate Pass Token Generation (Issue #31)
  * - [GATEPASS-02] Offline-first Gatekeeping & Curfew Verification (Issue #32)
- * - [GATEPASS-03] Dynamic QR Code Gate Pass Generation - Component 3 (Issue #33)
+ * - [GATEPASS-03] Dynamic QR Code Gate Pass Generation Component 3 (Issue #33)
  * - [GATEPASS-04] Dynamic 30-Second Refreshing QR Pass & Store Countdown (Issue #34)
- * - [GATEPASS-05] Dynamic QR Code Gate Pass Generation - Component 5 (Issue #35)
- * - [SCANNER-01] Porter High-Visibility Gate Scanner View - Component 1 (Issue #36)
- * - [SCANNER-02] Sub-500ms QR Verification Performance - Component 2 (Issue #37)
- * - [SCANNER-03] Manual 6-Digit PIN Lookup Backup for Gate Access - Component 3 (Issue #38)
- *
- * Interacts directly with Turso libSQL edge SQLite database following zero-mock principles.
- * Heavily documented with simple English comments for non-technical readability.
+ * - [GATEPASS-05] Dynamic QR Code Gate Pass Generation Component 5 (Issue #35)
+ * - [SCANNER-01] Porter High-Visibility Gate Scanner View Component 1 (Issue #36)
+ * - [SCANNER-02] Sub-500ms QR Verification Performance Component 2 (Issue #37)
+ * - [SCANNER-03] Manual 6-Digit PIN Lookup Backup for Gate Access Component 3 (Issue #38)
+ * - [SCANNER-04] Scanner Auto-Reset, Audio Feedback & Disciplinary Security Flags Component 4 (Issue #39)
+ * - [SCANNER-05] Porter Shift Statistics, Occupancy Counters & Emergency Lockdown Component 5 (Issue #40)
+ * - [OFFLINE-01] Offline Local Public Key Caching & Local SQLite Queue Component 1 (Issue #41)
  */
 export class GatePassService {
+  private static _isLockdownActive = false;
+
+  /**
+   * Toggles or sets the Emergency Gate Lockdown state ([SCANNER-05]).
+   */
+  public static setLockdown(active: boolean): void {
+    GatePassService._isLockdownActive = active;
+  }
+
+  /**
+   * Returns current Emergency Gate Lockdown state.
+   */
+  public static isLockdown(): boolean {
+    return GatePassService._isLockdownActive;
+  }
+
   /**
    * Initializes the Turso libSQL SQLite database schemas for gate pass tracking,
-   * access logging, curfew controls, disciplinary records, and visitor passes.
+   * access logging, curfew controls, disciplinary records, visitor passes, and offline sync tables.
    */
   public static async initializeSchema(): Promise<void> {
     await AuthService.initializeSchema();
     await PaymentService.initializeSchema();
+    await OfflineSyncService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    // 1. Create gate_passes table in Turso database for 30s TTL token persistence
+    // 1. Create gate_passes table
     await client.execute({
       sql: `CREATE TABLE IF NOT EXISTS gate_passes (
         id TEXT PRIMARY KEY,
@@ -73,7 +89,7 @@ export class GatePassService {
       args: []
     });
 
-    // 2. Create disciplinary_records table for gatekeeper security screening
+    // 2. Create disciplinary_records table
     await client.execute({
       sql: `CREATE TABLE IF NOT EXISTS disciplinary_records (
         user_id TEXT PRIMARY KEY,
@@ -102,7 +118,7 @@ export class GatePassService {
       args: []
     });
 
-    // 4. Create exeat_requests table for night curfew permissions
+    // 4. Create exeat_requests table
     await client.execute({
       sql: `CREATE TABLE IF NOT EXISTS exeat_requests (
         id TEXT PRIMARY KEY,
@@ -119,7 +135,7 @@ export class GatePassService {
       args: []
     });
 
-    // 5. Create visitor_passes table for 6-digit access PIN management (PRD Section 9)
+    // 5. Create visitor_passes table
     await client.execute({
       sql: `CREATE TABLE IF NOT EXISTS visitor_passes (
         id TEXT PRIMARY KEY,
@@ -170,10 +186,6 @@ export class GatePassService {
 
   /**
    * Generates a new dynamic QR code gate pass for a student (30-second TTL).
-   * Implements [GATEPASS-03], [GATEPASS-04], and [GATEPASS-05].
-   *
-   * @param userId The ID of the student requesting a gate pass
-   * @returns GatePassRecord and decoded payload
    */
   public static async generateGatePass(userId: string): Promise<{
     record: GatePassRecord;
@@ -182,7 +194,6 @@ export class GatePassService {
     await GatePassService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    // Fetch student user details
     const userRes = await client.execute({
       sql: `SELECT u.id, u.full_name, u.matric_or_staff_no FROM users u WHERE u.id = ?`,
       args: [userId]
@@ -196,7 +207,6 @@ export class GatePassService {
     const fullName = String(userRow.full_name || 'UNILAG Student');
     const matricNo = String(userRow.matric_or_staff_no || '2000000000');
 
-    // Attempt fetching room allocation details if payment and room tables exist
     let hostelName = 'Main Campus Hostel';
     let roomNumber = 'Room A-101';
     let hostelId = 'hostel_main';
@@ -232,9 +242,7 @@ export class GatePassService {
           roomNumber = `${bedRes.rows[0].room_number} (${bedRes.rows[0].bed_label})`;
         }
       }
-    } catch {
-      // Fallback to defaults if room allocation is pending
-    }
+    } catch {}
 
     const nowMs = Date.now();
     const expiryMs = nowMs + 30 * 1000; // 30 seconds validity TTL
@@ -255,12 +263,10 @@ export class GatePassService {
       expiresAt: expiryMs
     };
 
-    // Serialize payload to JSON and compute HMAC-SHA256 signature
     const payloadJson = JSON.stringify(payload);
     const signatureHash = CryptoJS.HmacSHA256(payloadJson, GATE_PASS_SECRET).toString(CryptoJS.enc.Hex);
     payload.signature = signatureHash;
 
-    // Encode payload and signature into a compact QR token string (Base64)
     const tokenString = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(JSON.stringify({
       p: payload,
       sig: signatureHash
@@ -270,7 +276,6 @@ export class GatePassService {
     const genIso = new Date(nowMs).toISOString();
     const expIso = new Date(expiryMs).toISOString();
 
-    // Persist active gate pass into Turso database
     await client.execute({
       sql: `INSERT INTO gate_passes (id, user_id, token_string, signature_hash, status, generated_at, expires_at)
             VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?)`,
@@ -293,9 +298,6 @@ export class GatePassService {
 
   /**
    * Retrieves the current active gate pass for a student, or automatically creates a fresh one if expired.
-   *
-   * @param userId The student ID
-   * @returns Active GatePassRecord and decoded payload
    */
   public static async getOrRefreshGatePass(userId: string): Promise<{
     record: GatePassRecord;
@@ -332,9 +334,7 @@ export class GatePassService {
             remainingSeconds: remainingSec
           };
           return { record, payload: parsed.p };
-        } catch {
-          // Fall through to generate fresh pass if parsing fails
-        }
+        } catch {}
       }
     }
 
@@ -343,11 +343,6 @@ export class GatePassService {
 
   /**
    * Verifies the validity of a dynamic QR gate pass scanned at the hostel gatehouse.
-   * Checks cryptographic signature, expiration timestamp, and database status in Turso DB.
-   * Implements [GATEPASS-04] and [SCANNER-01].
-   *
-   * @param tokenString The raw QR code token string scanned by porter camera
-   * @returns GatePassVerificationResult object indicating access approval status
    */
   public static async verifyGatePassToken(tokenString: string): Promise<GatePassVerificationResult> {
     await GatePassService.initializeSchema();
@@ -411,6 +406,38 @@ export class GatePassService {
         };
       }
 
+      // Check disciplinary suspension or flags ([SCANNER-04])
+      const discRes = await client.execute({
+        sql: `SELECT status, reason, flagged_at FROM disciplinary_records WHERE user_id = ? LIMIT 1`,
+        args: [payload.userId]
+      });
+
+      if (discRes.rows.length > 0) {
+        const dStatus = String(discRes.rows[0].status);
+        if (dStatus === 'SUSPENDED' || dStatus === 'FLAGGED' || dStatus === 'RUSTICATED') {
+          const reason = String(discRes.rows[0].reason || 'Hostel disciplinary sanctions');
+          return {
+            isValid: false,
+            accessGranted: false,
+            accessStatus: 'DENIED',
+            message: `ACCESS DENIED: Student is ${dStatus} - "${reason}"`,
+            reason: `Disciplinary sanction: ${dStatus}. ${reason}`,
+            disciplinaryFlag: {
+              status: dStatus as any,
+              reason,
+              flaggedAt: discRes.rows[0].flagged_at ? String(discRes.rows[0].flagged_at) : undefined
+            },
+            student: {
+              userId: payload.userId,
+              matricNo: payload.matricNo,
+              fullName: payload.fullName,
+              hostelName: payload.hostelName,
+              roomNumber: payload.roomNumber
+            }
+          };
+        }
+      }
+
       return {
         isValid: true,
         message: `ACCESS GRANTED: ${payload.fullName} (${payload.matricNo}) - ${payload.hostelName}, ${payload.roomNumber}`,
@@ -435,28 +462,41 @@ export class GatePassService {
 
   /**
    * Fast Sub-500ms QR Verification Engine for Porter Camera Scanner ([SCANNER-02]).
-   * Performs cryptographic signature validation and Turso DB lookup with performance latency measurement.
-   *
-   * @param tokenString The dynamic QR token string
-   * @param porterId The ID of the scanning porter
-   * @param gateType 'ENTRY' or 'EXIT'
-   * @returns GatePassVerificationResult containing latencyMs metric (< 500ms target)
+   * Enhanced with Emergency Lockdown check ([SCANNER-05]) and Offline validation fallback ([OFFLINE-01]).
    */
   public static async fastVerifyGatePass(
     tokenString: string,
     porterId: string,
-    gateType: GateType = 'ENTRY'
+    gateType: GateType = 'ENTRY',
+    forceOffline: boolean = false
   ): Promise<GatePassVerificationResult> {
     const startTime = Date.now();
 
-    // 1. First attempt modern 30s token verification
+    // 1. Emergency Gate Lockdown Check ([SCANNER-05])
+    if (GatePassService._isLockdownActive) {
+      return {
+        isValid: false,
+        accessGranted: false,
+        accessStatus: 'DENIED',
+        gateType,
+        reason: 'Hostel gate is under Emergency Lockdown by Hall Administration.',
+        message: 'ACCESS DENIED: Emergency Gate Lockdown in Effect',
+        latencyMs: Date.now() - startTime
+      };
+    }
+
+    // 2. Offline Mode Validation ([OFFLINE-01])
+    if (forceOffline) {
+      return await OfflineSyncService.verifyOfflineToken(tokenString, porterId, gateType);
+    }
+
+    // 3. Attempt modern 30s token verification
     const modernResult = await GatePassService.verifyGatePassToken(tokenString);
 
     if (modernResult.isValid && modernResult.payload) {
       const latencyMs = Date.now() - startTime;
       const client = AuthService.getDbClient();
 
-      // Log access in background without slowing down response
       const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       client.execute({
         sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id)
@@ -480,7 +520,17 @@ export class GatePassService {
       };
     }
 
-    // 2. If modern format failed, attempt legacy/offline-first gate pass verification
+    if (modernResult.disciplinaryFlag) {
+      return {
+        ...modernResult,
+        accessGranted: false,
+        accessStatus: 'DENIED',
+        gateType,
+        latencyMs: Date.now() - startTime
+      };
+    }
+
+    // 4. Fallback to legacy/offline-first gate pass verification
     const legacyResult = await GatePassService.verifyGatePass(tokenString, porterId, gateType);
     const latencyMs = Date.now() - startTime;
 
@@ -491,13 +541,66 @@ export class GatePassService {
   }
 
   /**
+   * Retrieves Porter Shift Statistics & Occupancy Counters ([SCANNER-05]).
+   */
+  public static async getShiftStatistics(porterId?: string): Promise<ShiftStatistics> {
+    await GatePassService.initializeSchema();
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Total Entries
+    const entriesRes = await client.execute({
+      sql: `SELECT COUNT(*) as count FROM gate_access_logs WHERE gate_type = 'ENTRY' AND access_status = 'GRANTED'`,
+      args: []
+    });
+    const totalEntries = Number(entriesRes.rows[0]?.count || 0);
+
+    // Total Exits
+    const exitsRes = await client.execute({
+      sql: `SELECT COUNT(*) as count FROM gate_access_logs WHERE gate_type = 'EXIT' AND access_status = 'GRANTED'`,
+      args: []
+    });
+    const totalExits = Number(exitsRes.rows[0]?.count || 0);
+
+    // Active Visitors On-Site
+    const visitorsRes = await client.execute({
+      sql: `SELECT COUNT(*) as count FROM visitor_passes WHERE status = 'CHECKED_IN'`,
+      args: []
+    });
+    const activeVisitors = Number(visitorsRes.rows[0]?.count || 0);
+
+    // Pending Offline Sync Queue
+    const pendingOfflineSyncs = await OfflineSyncService.getPendingScansCount();
+
+    return {
+      totalEntries,
+      totalExits,
+      activeVisitors,
+      pendingOfflineSyncs,
+      lastUpdated: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Reports a disciplinary security incident for a student ([SCANNER-04]).
+   */
+  public static async reportDisciplinaryIncident(
+    studentId: string,
+    porterId: string,
+    reason: string
+  ): Promise<void> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    await client.execute({
+      sql: `INSERT OR REPLACE INTO disciplinary_records (user_id, status, reason, flagged_at)
+            VALUES (?, 'FLAGGED', ?, CURRENT_TIMESTAMP)`,
+      args: [studentId, `Porter Incident (${porterId}): ${reason}`]
+    });
+  }
+
+  /**
    * Creates an expected visitor pass with a 6-digit access PIN ([SCANNER-03] / PRD Section 9).
-   *
-   * @param studentId ID of the host student
-   * @param visitorName Full name of the visiting guest
-   * @param visitorPhone Contact phone number of visitor
-   * @param visitDate Target date of visit (defaults to today)
-   * @returns Newly created VisitorPass record
    */
   public static async createVisitorPass(
     studentId: string,
@@ -508,7 +611,6 @@ export class GatePassService {
     await GatePassService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    // Validate student exists
     const studentRes = await client.execute({
       sql: `SELECT u.id, u.full_name, u.matric_or_staff_no FROM users u WHERE u.id = ?`,
       args: [studentId]
@@ -520,12 +622,10 @@ export class GatePassService {
 
     const studentRow = studentRes.rows[0];
     const passId = `vp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    // Generate secure 6-digit PIN code (e.g. 748291)
     const passCode = Math.floor(100000 + Math.random() * 900000).toString();
     const formattedDate = visitDate || new Date().toISOString().split('T')[0];
     const createdAt = new Date().toISOString();
 
-    // Fetch room details for visitor identification
     let hostelName = 'Main Campus Hostel';
     let roomNumber = 'Room A-101';
 
@@ -603,12 +703,6 @@ export class GatePassService {
 
   /**
    * Manual 6-Digit PIN Lookup Backup for Gate Access ([SCANNER-03] / PRD Spec P-01).
-   * Verifies an expected visitor 6-digit pass code or emergency student matriculation number.
-   *
-   * @param pinOrMatric 6-digit visitor access PIN or student matric number
-   * @param porterId ID of the verifying hostel porter
-   * @param gateType 'ENTRY' or 'EXIT'
-   * @returns ManualPinLookupResult with action allowed ('CHECK_IN', 'CHECK_OUT', 'NONE')
    */
   public static async verifyManualPin(
     pinOrMatric: string,
@@ -620,6 +714,16 @@ export class GatePassService {
     const startTime = Date.now();
     const cleanInput = pinOrMatric ? pinOrMatric.trim() : '';
 
+    if (GatePassService._isLockdownActive) {
+      return {
+        isValid: false,
+        message: 'ACCESS DENIED: Emergency Gate Lockdown in effect. Manual entries suspended.',
+        passType: 'VISITOR',
+        actionAllowed: 'NONE',
+        latencyMs: Date.now() - startTime
+      };
+    }
+
     if (!cleanInput) {
       return {
         isValid: false,
@@ -630,7 +734,7 @@ export class GatePassService {
       };
     }
 
-    // 1. Look up in visitor_passes table by 6-digit pass code
+    // 1. Look up in visitor_passes
     const visitorRes = await client.execute({
       sql: `SELECT vp.id, vp.student_id, u.full_name as student_name, u.matric_or_staff_no as student_matric,
                    vp.visitor_name, vp.visitor_phone, vp.pass_code, vp.visit_date,
@@ -694,7 +798,7 @@ export class GatePassService {
       };
     }
 
-    // 2. Emergency Backup: Student matric lookup (when student phone battery died)
+    // 2. Emergency Backup: Student matric lookup
     const studentRes = await client.execute({
       sql: `SELECT u.id, u.matric_or_staff_no, u.full_name, u.role, u.is_active,
                    sp.residency_status, sp.clearance_status
@@ -719,7 +823,6 @@ export class GatePassService {
         };
       }
 
-      // Check disciplinary suspension
       const discRes = await client.execute({
         sql: `SELECT status, reason FROM disciplinary_records WHERE user_id = ? LIMIT 1`,
         args: [String(sRow.id)]
@@ -738,7 +841,6 @@ export class GatePassService {
         }
       }
 
-      // Log manual emergency entry
       const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       await client.execute({
         sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id)
@@ -800,7 +902,6 @@ export class GatePassService {
 
     const row = res.rows[0];
 
-    // Log gate entry
     const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     await client.execute({
       sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id)
@@ -852,7 +953,6 @@ export class GatePassService {
 
     const row = res.rows[0];
 
-    // Log gate exit
     const logId = `gate_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     await client.execute({
       sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id)
@@ -878,17 +978,11 @@ export class GatePassService {
 
   /**
    * Generates a dynamic time-bound QR gate pass token for an active resident student ([GATEPASS-01]).
-   * Signed with HMAC-SHA256 and expires automatically in 60 seconds (or custom TTL).
-   *
-   * @param userId Unique student user ID
-   * @param ttlSeconds Lifetime of token in seconds (default: 60)
-   * @returns GatePassToken object with base64 encoded token string and payload
    */
   public static async generateDynamicGatePass(userId: string, ttlSeconds: number = 60): Promise<GatePassToken> {
     await GatePassService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    // 1. Verify student exists, is active, and is an approved resident
     const result = await client.execute({
       sql: `SELECT u.id, u.matric_or_staff_no, u.full_name, u.role, u.is_active,
                    sp.faculty, sp.department, sp.level, sp.campus, sp.fees_paid,
@@ -977,8 +1071,6 @@ export class GatePassService {
 
   /**
    * Verifies a student gate pass presented to a hostel porter at the gatehouse ([GATEPASS-02]).
-   * Enforces cryptographic authenticity, expiry check, single-use anti-replay protection,
-   * curfew hours enforcement, and disciplinary record check.
    */
   public static async verifyGatePass(
     tokenString: string,
@@ -1094,7 +1186,11 @@ export class GatePassService {
           gateType,
           reason: `Student status is ${discStatus}. Entry denied by Student Affairs Division: "${discReason}".`,
           verifiedAt,
-          message: `Access Denied: ${discStatus}`
+          message: `Access Denied: ${discStatus}`,
+          disciplinaryFlag: {
+            status: discStatus as any,
+            reason: discReason
+          }
         };
       }
     }

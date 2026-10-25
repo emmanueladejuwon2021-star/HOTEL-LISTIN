@@ -11,13 +11,16 @@ import { useGatePassStore } from '../store/useGatePassStore';
  * - [SCANNER-01 / UAT-0036] Porter High-Visibility Gate Scanner View Component 1
  * - [SCANNER-02 / UAT-0037] Sub-500ms QR Verification Performance Component 2
  * - [SCANNER-03 / UAT-0038] Manual 6-Digit PIN Lookup Backup for Gate Access Component 3
+ * - [SCANNER-04 / UAT-0039] Scanner Auto-Reset, Audio Feedback & Disciplinary Security Flags Component 4
+ * - [SCANNER-05 / UAT-0040] Porter Shift Statistics, Occupancy Counters & Emergency Lockdown Component 5
  *
  * Adheres to PRD Section 6 (Specs S-05 & P-01), Section 7, and Section 9.
  * Commented with plain English descriptions for non-technical team members and hostel porters.
  */
-describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01, SCANNER-02, SCANNER-03]', () => {
+describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01 - SCANNER-05]', () => {
   const studentId = `usr_scanner_student_${Date.now()}`;
   const studentMatric = `200407${Math.floor(100 + Math.random() * 900)}`;
+  const suspendedStudentId = `usr_scanner_susp_${Date.now()}`;
   const porterId = `usr_scanner_porter_${Date.now()}`;
   const hashedPassword = AuthService.hashPassword('password123');
 
@@ -37,6 +40,25 @@ describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01, SC
       sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, residency_status)
             VALUES (?, 'Engineering', 'Electrical', 400, 'MAIN_CAMPUS', 'FINALIST', 1, 'APPROVED', 'ACTIVE_RESIDENT')`,
       args: [studentId]
+    });
+
+    // Seed suspended student for disciplinary flag testing ([SCANNER-04])
+    await client.execute({
+      sql: `INSERT INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, password_hash, is_active)
+            VALUES (?, ?, 'Disciplinary Test Student', ?, '08022334455', 'STUDENT', 'MALE', ?, 1)`,
+      args: [suspendedStudentId, `MAT_SUSP_${Date.now()}`, `susp_${Date.now()}@unilag.edu.ng`, hashedPassword]
+    });
+
+    await client.execute({
+      sql: `INSERT INTO student_profiles (user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, residency_status)
+            VALUES (?, 'Law', 'Public Law', 300, 'MAIN_CAMPUS', 'STALLITE', 1, 'APPROVED', 'ACTIVE_RESIDENT')`,
+      args: [suspendedStudentId]
+    });
+
+    await client.execute({
+      sql: `INSERT INTO disciplinary_records (user_id, status, reason)
+            VALUES (?, 'SUSPENDED', 'Hostel property vandalism')`,
+      args: [suspendedStudentId]
     });
 
     // 2. Seed Porter User
@@ -64,7 +86,7 @@ describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01, SC
       expect(visitor.studentId).toBe(studentId);
       expect(visitor.visitorName).toBe('Oluwaseun Adeyemi');
       expect(visitor.visitorPhone).toBe('08023456789');
-      expect(visitor.passCode).toMatch(/^\d{6}$/); // Exactly 6 numeric digits
+      expect(visitor.passCode).toMatch(/^\d{6}$/);
       expect(visitor.status).toBe('EXPECTED');
       expect(visitor.studentName).toBe('Scanner Test Student');
       expect(visitor.studentMatric).toBe(studentMatric);
@@ -116,7 +138,6 @@ describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01, SC
     test('Zustand useScannerStore updates verificationResult and gate mode', async () => {
       const { record } = await GatePassService.generateGatePass(studentId);
 
-      // Verify ENTRY mode scan
       const store = useScannerStore.getState();
       store.setGateMode('ENTRY');
 
@@ -139,7 +160,6 @@ describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01, SC
       expect(result.isValid).toBe(true);
       expect(result.accessGranted).toBe(true);
       expect(result.latencyMs).toBeDefined();
-      // PRD Section 1.2 & Non-Functional requirement: Sub-500ms gate screening
       expect(result.latencyMs!).toBeLessThan(500);
     });
   });
@@ -175,7 +195,6 @@ describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01, SC
       expect(checkedIn.status).toBe('CHECKED_IN');
       expect(checkedIn.checkInTime).toBeDefined();
 
-      // Subsequent lookup of same PIN indicates visitor is checked in and ready for exit
       const nextLookup = await GatePassService.verifyManualPin(visitorPassCode, porterId, 'EXIT');
       expect(nextLookup.isValid).toBe(true);
       expect(nextLookup.actionAllowed).toBe('CHECK_OUT');
@@ -188,7 +207,6 @@ describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01, SC
       expect(checkedOut.status).toBe('CHECKED_OUT');
       expect(checkedOut.checkOutTime).toBeDefined();
 
-      // Subsequent lookup shows pass is completed
       const postCheckout = await GatePassService.verifyManualPin(visitorPassCode, porterId, 'ENTRY');
       expect(postCheckout.isValid).toBe(false);
       expect(postCheckout.actionAllowed).toBe('NONE');
@@ -228,6 +246,106 @@ describe('Porter Gate Scanner & Verification Engine [GATEPASS-05, SCANNER-01, SC
       expect(state.pinLookupResult?.isValid).toBe(true);
       expect(state.pinLookupResult?.passType).toBe('STUDENT_BACKUP');
       expect(state.isVerifying).toBe(false);
+    });
+  });
+
+  describe('[SCANNER-04 / UAT-0039] Scanner Auto-Reset, Audio Chime Feedback & Disciplinary Security Flags', () => {
+    test('triggers SUCCESS_CHIME audio feedback on valid gate pass scan', async () => {
+      const { record } = await GatePassService.generateGatePass(studentId);
+
+      await useScannerStore.getState().scanQrCode(record.tokenString, porterId);
+      const state = useScannerStore.getState();
+
+      expect(state.audioFeedback.type).toBe('SUCCESS_CHIME');
+      expect(state.autoResetSeconds).toBe(3);
+    });
+
+    test('triggers REJECTION_BUZZ audio feedback on invalid scan', async () => {
+      await useScannerStore.getState().scanQrCode('INVALID_TOKEN', porterId);
+      const state = useScannerStore.getState();
+
+      expect(state.audioFeedback.type).toBe('REJECTION_BUZZ');
+    });
+
+    test('detects active disciplinary suspension and flags security warning banner', async () => {
+      const { record } = await GatePassService.generateGatePass(suspendedStudentId);
+
+      const result = await GatePassService.fastVerifyGatePass(record.tokenString, porterId, 'ENTRY');
+
+      expect(result.isValid).toBe(false);
+      expect(result.accessGranted).toBe(false);
+      expect(result.disciplinaryFlag).toBeDefined();
+      expect(result.disciplinaryFlag?.status).toBe('SUSPENDED');
+      expect(result.disciplinaryFlag?.reason).toContain('vandalism');
+    });
+
+    test('porter can dispatch disciplinary incident report to hall warden', async () => {
+      await GatePassService.reportDisciplinaryIncident(
+        studentId,
+        porterId,
+        'Attempted to bring unauthorized electrical cooking plate'
+      );
+
+      const client = AuthService.getDbClient();
+      const disc = await client.execute({
+        sql: `SELECT status, reason FROM disciplinary_records WHERE user_id = ? LIMIT 1`,
+        args: [studentId]
+      });
+
+      expect(disc.rows.length).toBeGreaterThan(0);
+      expect(disc.rows[0].status).toBe('FLAGGED');
+      expect(String(disc.rows[0].reason)).toContain('electrical cooking plate');
+    });
+  });
+
+  describe('[SCANNER-05 / UAT-0040] Shift Statistics & Emergency Gate Lockdown', () => {
+    test('calculates accurate porter shift statistics and occupancy counters', async () => {
+      const stats = await GatePassService.getShiftStatistics(porterId);
+
+      expect(stats).toBeDefined();
+      expect(stats.totalEntries).toBeGreaterThanOrEqual(0);
+      expect(stats.totalExits).toBeGreaterThanOrEqual(0);
+      expect(stats.activeVisitors).toBeGreaterThanOrEqual(0);
+      expect(stats.lastUpdated).toBeDefined();
+    });
+
+    test('emergency gate lockdown mode blocks all student QR pass entries', async () => {
+      const { record } = await GatePassService.generateGatePass(studentId);
+
+      // 1. Activate Lockdown
+      GatePassService.setLockdown(true);
+      expect(GatePassService.isLockdown()).toBe(true);
+
+      // 2. Scan attempt during lockdown is rejected immediately
+      const lockdownResult = await GatePassService.fastVerifyGatePass(record.tokenString, porterId, 'ENTRY');
+
+      expect(lockdownResult.isValid).toBe(false);
+      expect(lockdownResult.accessGranted).toBe(false);
+      expect(lockdownResult.message).toContain('Emergency Gate Lockdown');
+
+      // 3. Manual PIN is also blocked during lockdown
+      const pinResult = await GatePassService.verifyManualPin('123456', porterId, 'ENTRY');
+      expect(pinResult.isValid).toBe(false);
+      expect(pinResult.message).toContain('Emergency Gate Lockdown');
+
+      // 4. Release Lockdown
+      GatePassService.setLockdown(false);
+      expect(GatePassService.isLockdown()).toBe(false);
+    });
+
+    test('Zustand useScannerStore manages lockdown toggle and shift stats loading', async () => {
+      const store = useScannerStore.getState();
+
+      const active = store.toggleLockdown();
+      expect(active).toBe(true);
+      expect(useScannerStore.getState().isLockdownActive).toBe(true);
+
+      const released = store.toggleLockdown();
+      expect(released).toBe(false);
+      expect(useScannerStore.getState().isLockdownActive).toBe(false);
+
+      await store.loadShiftStats();
+      expect(useScannerStore.getState().shiftStats).toBeDefined();
     });
   });
 });

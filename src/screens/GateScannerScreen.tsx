@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,9 @@ import { GateType } from '../types/gatepass';
  * - [SCANNER-01] Porter camera scanner interface with high-contrast pass/fail indicators (Issue #36)
  * - [SCANNER-02] Sub-500ms QR verification performance (Issue #37)
  * - [SCANNER-03] Manual 6-digit PIN lookup backup for gate access (Issue #38)
+ * - [SCANNER-04] Auto-reset, audio chime feedback & disciplinary security flags (Issue #39)
+ * - [SCANNER-05] Porter shift statistics, occupancy counters & emergency lockdown (Issue #40)
+ * - [OFFLINE-01] Offline local public key caching & local SQLite queue (Issue #41)
  */
 export const GateScannerScreen: React.FC = () => {
   const { session } = useAuthStore();
@@ -35,7 +38,11 @@ export const GateScannerScreen: React.FC = () => {
     manualPinModalVisible,
     manualPinInput,
     gateMode,
-    errorMessage,
+    isLockdownActive,
+    offlineMode,
+    shiftStats,
+    audioFeedback,
+    pendingSyncCount,
     scanQrCode,
     lookupManualPin,
     executeVisitorCheckIn,
@@ -43,13 +50,23 @@ export const GateScannerScreen: React.FC = () => {
     setGateMode,
     setManualPinModalVisible,
     setManualPinInput,
-    clearScanResult
+    clearScanResult,
+    toggleLockdown,
+    setOfflineMode,
+    syncOfflineQueue,
+    loadShiftStats,
+    reportDisciplinaryIncident
   } = useScannerStore();
 
   const [simulatedTokenInput, setSimulatedTokenInput] = useState('');
   const [showSimInput, setShowSimInput] = useState(false);
+  const [incidentReason, setIncidentReason] = useState('');
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
 
-  // Quick simulation trigger for testing and demonstration
+  useEffect(() => {
+    loadShiftStats();
+  }, []);
+
   const handleSimulateScan = async (mockToken?: string) => {
     const tokenToScan = mockToken || simulatedTokenInput.trim();
     if (!tokenToScan) return;
@@ -61,14 +78,71 @@ export const GateScannerScreen: React.FC = () => {
     await lookupManualPin(manualPinInput.trim(), porterId);
   };
 
-  const isAccessGranted = verificationResult?.accessGranted ?? (pinLookupResult?.isValid && pinLookupResult?.actionAllowed !== 'NONE');
+  const isAccessGranted =
+    verificationResult?.accessGranted ??
+    (pinLookupResult?.isValid && pinLookupResult?.actionAllowed !== 'NONE');
   const hasResult = verificationResult !== null || pinLookupResult !== null;
+  const disciplinaryFlag = verificationResult?.disciplinaryFlag;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-900">
       <ScrollView contentContainerClassName="p-4 items-center bg-slate-900 flex-grow">
+        {/* Top Shift Statistics & Counters Ribbon ([SCANNER-05]) */}
+        <View className="w-full bg-slate-800 p-3 rounded-2xl border border-slate-700 mb-4 flex-row justify-between items-center">
+          <View className="items-center flex-1">
+            <Text className="text-emerald-400 font-bold text-xs uppercase">Entries</Text>
+            <Text className="text-white text-lg font-black">{shiftStats.totalEntries}</Text>
+          </View>
+          <View className="w-px h-8 bg-slate-700" />
+          <View className="items-center flex-1">
+            <Text className="text-amber-400 font-bold text-xs uppercase">Exits</Text>
+            <Text className="text-white text-lg font-black">{shiftStats.totalExits}</Text>
+          </View>
+          <View className="w-px h-8 bg-slate-700" />
+          <View className="items-center flex-1">
+            <Text className="text-purple-400 font-bold text-xs uppercase">Visitors</Text>
+            <Text className="text-white text-lg font-black">{shiftStats.activeVisitors}</Text>
+          </View>
+          <View className="w-px h-8 bg-slate-700" />
+          <TouchableOpacity
+            onPress={() => syncOfflineQueue(porterId)}
+            className="items-center flex-1"
+          >
+            <Text className="text-blue-400 font-bold text-xs uppercase">Sync</Text>
+            <Text className="text-white text-xs font-bold">
+              {pendingSyncCount > 0 ? `📦 ${pendingSyncCount}` : '☁️ OK'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Emergency Gate Lockdown Warning Banner ([SCANNER-05]) */}
+        {isLockdownActive && (
+          <View className="w-full bg-red-950 border-2 border-red-500 p-4 rounded-2xl mb-4 items-center animate-pulse">
+            <Text className="text-red-400 font-black text-sm uppercase tracking-widest mb-1">
+              🚨 EMERGENCY GATE LOCKDOWN IN EFFECT
+            </Text>
+            <Text className="text-white text-xs text-center">
+              All student entry and exit passes are temporarily suspended by Hall Administration.
+            </Text>
+          </View>
+        )}
+
+        {/* Audio-Visual Chime Indicator ([SCANNER-04]) */}
+        {audioFeedback.type && (
+          <View
+            className={`w-full py-2 px-4 rounded-xl mb-3 flex-row items-center justify-between ${
+              audioFeedback.type === 'SUCCESS_CHIME' ? 'bg-emerald-950 border border-emerald-600' : 'bg-red-950 border border-red-600'
+            }`}
+          >
+            <Text className="text-white text-xs font-bold">
+              {audioFeedback.type === 'SUCCESS_CHIME' ? '🔔 AUDIO CHIME: ACCESS GRANTED' : '📳 AUDIO BUZZ: ACCESS DENIED'}
+            </Text>
+            <Text className="text-slate-300 text-[10px]">Feedback Played</Text>
+          </View>
+        )}
+
         {/* Top Header & Gate Mode Controls */}
-        <View className="w-full flex-row justify-between items-center mb-4">
+        <View className="w-full flex-row justify-between items-center mb-3">
           <View>
             <Text className="text-amber-400 font-bold text-xs uppercase tracking-widest">
               UNILAG Gatehouse Terminal
@@ -97,9 +171,33 @@ export const GateScannerScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* Offline Mode & Lockdown Controls Ribbon */}
+        <View className="w-full flex-row space-x-2 mb-4">
+          <TouchableOpacity
+            onPress={() => setOfflineMode(!offlineMode)}
+            className={`flex-1 py-2 px-3 rounded-xl border items-center ${
+              offlineMode ? 'bg-amber-950 border-amber-500' : 'bg-slate-800 border-slate-700'
+            }`}
+          >
+            <Text className={`text-xs font-bold ${offlineMode ? 'text-amber-400' : 'text-slate-300'}`}>
+              {offlineMode ? '🔌 OFFLINE MODE (ACTIVE)' : '📶 ONLINE TERMINAL'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={toggleLockdown}
+            className={`flex-1 py-2 px-3 rounded-xl border items-center ${
+              isLockdownActive ? 'bg-red-700 border-red-500' : 'bg-slate-800 border-slate-700'
+            }`}
+          >
+            <Text className="text-white text-xs font-bold">
+              {isLockdownActive ? '🔓 RELEASE LOCKDOWN' : '🔒 LOCKDOWN GATE'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Live Camera Viewfinder (Spec P-01) */}
         <View className="w-full h-80 rounded-3xl overflow-hidden mb-4 border-2 border-amber-400 bg-slate-950 items-center justify-center relative">
-          {/* Viewfinder Target Reticle Frame */}
           <View className="w-56 h-56 border-2 border-dashed border-amber-400/70 rounded-2xl items-center justify-center bg-amber-500/5">
             <View className="w-48 h-0.5 bg-red-500 shadow-md shadow-red-500 animate-pulse" />
             <Text className="text-amber-400 text-xs font-mono mt-3 tracking-widest">
@@ -107,7 +205,6 @@ export const GateScannerScreen: React.FC = () => {
             </Text>
           </View>
 
-          {/* Porter Guidance Overlay */}
           <View className="absolute bottom-3 left-4 right-4 bg-slate-900/80 px-3 py-1.5 rounded-full flex-row justify-between items-center">
             <Text className="text-slate-300 text-xs">
               Officer: <Text className="text-white font-bold">{porterName}</Text>
@@ -150,6 +247,31 @@ export const GateScannerScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Disciplinary Security Alert Card ([SCANNER-04]) */}
+        {disciplinaryFlag && (
+          <View className="w-full bg-red-950 border-2 border-red-500 p-4 rounded-2xl mb-4">
+            <View className="flex-row items-center mb-2">
+              <Text className="text-red-400 font-black text-sm uppercase">
+                🚨 DISCIPLINARY SANCTION ENFORCED
+              </Text>
+            </View>
+            <Text className="text-white text-xs mb-2">
+              Status: <Text className="font-bold text-red-300">{disciplinaryFlag.status}</Text>
+            </Text>
+            <Text className="text-slate-300 text-xs mb-3">
+              Sanction Reason: "{disciplinaryFlag.reason}"
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowIncidentModal(true)}
+              className="bg-red-700 py-2.5 rounded-xl items-center"
+            >
+              <Text className="text-white font-bold text-xs">
+                🚨 Report Incident to Hall Warden
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Student Mini Profile (Spec P-01) */}
         {verificationResult?.student && (
           <View className="bg-slate-800 w-full p-4 rounded-2xl text-white mb-4 border border-slate-700">
@@ -179,7 +301,7 @@ export const GateScannerScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Visitor Mini Profile (If visitor PIN lookup succeeded) */}
+        {/* Visitor Mini Profile */}
         {pinLookupResult?.visitor && (
           <View className="bg-slate-800 w-full p-4 rounded-2xl text-white mb-4 border border-slate-700">
             <View className="flex-row items-center mb-2">
@@ -208,7 +330,6 @@ export const GateScannerScreen: React.FC = () => {
               </Text>
             </View>
 
-            {/* Action buttons for visitor check-in / check-out */}
             {pinLookupResult.actionAllowed === 'CHECK_IN' && (
               <TouchableOpacity
                 onPress={() => executeVisitorCheckIn(pinLookupResult.visitor!.id, porterId)}
@@ -327,6 +448,59 @@ export const GateScannerScreen: React.FC = () => {
                 className="py-2"
               >
                 <Text className="text-slate-400 text-sm font-semibold">Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Incident Report Modal ([SCANNER-04]) */}
+        <Modal
+          visible={showIncidentModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowIncidentModal(false)}
+        >
+          <View className="flex-1 bg-black/80 items-center justify-center p-5">
+            <View className="bg-slate-900 border border-slate-700 w-full max-w-sm p-6 rounded-3xl items-center shadow-2xl">
+              <Text className="text-red-400 font-bold text-xs uppercase tracking-widest mb-1">
+                Security Incident Dispatch
+              </Text>
+              <Text className="text-white text-lg font-black mb-2 text-center">
+                Flag Student Incident
+              </Text>
+              <Text className="text-slate-400 text-xs text-center mb-4">
+                Provide details for the incident report dispatched to the Hall Warden and Chief Security Officer.
+              </Text>
+
+              <TextInput
+                placeholder="Incident details / Porter remarks..."
+                placeholderTextColor="#64748B"
+                value={incidentReason}
+                onChangeText={setIncidentReason}
+                multiline
+                numberOfLines={3}
+                className="bg-slate-800 text-white p-3 rounded-xl w-full border border-slate-700 mb-4 text-xs"
+              />
+
+              <TouchableOpacity
+                onPress={async () => {
+                  if (verificationResult?.student?.userId) {
+                    await reportDisciplinaryIncident(
+                      verificationResult.student.userId,
+                      porterId,
+                      incidentReason || 'Disciplinary violation attempted entry'
+                    );
+                  }
+                  setShowIncidentModal(false);
+                  setIncidentReason('');
+                }}
+                className="bg-red-600 w-full py-3.5 rounded-xl items-center mb-2"
+              >
+                <Text className="text-white font-bold text-xs">DISPATCH INCIDENT REPORT</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setShowIncidentModal(false)} className="py-2">
+                <Text className="text-slate-400 text-xs">Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>

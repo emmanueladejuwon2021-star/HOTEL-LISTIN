@@ -58,12 +58,111 @@ The accommodation lifecycle in `UnilagStay` guides students step-by-step through
 
 ## 6. STATUS OF APPLICATION FEATURES
 
-- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, role-based navigation routing, and Turso libSQL edge database integrations.
-- **In Active Development / Planned**: Automated offline gate sync queueing, live camera QR scanner hardware integration, artisan work queue dispatch screen, night exeat Warden workflow UI, and emergency SOS gate panic alarm UI.
+- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, and offline JWT key caching with SQLite queueing.
+- **In Active Development / Planned**: Network connectivity monitoring state, visitor pass management, artisan work queue dispatch screen, night exeat Warden workflow UI, and emergency SOS gate panic alarm UI.
 
 ---
 
-## 7. DEVELOPER SETUP & QUICK START
+---
+
+## 7. HOW TO TEST AND RUN THE APP WITHOUT ANDROID STUDIO
+
+You **do not need Android Studio** or heavy SDK installations to test and interact with UnilagStay! You have multiple fast, lightweight options depending on what you want to test:
+
+### Option A: Interactive Testing on Your Physical Smartphone (Recommended)
+This provides the real native mobile experience (camera, touch gestures, smooth animations) on your personal smartphone without installing Android Studio.
+
+1. **Install Expo Go on your mobile phone**:
+   - **Android**: Search for **Expo Go** in the [Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent) and tap Install.
+   - **iOS (iPhone/iPad)**: Search for **Expo Go** in the [Apple App Store](https://apps.apple.com/app/expo-go/id982107779) and tap Get.
+
+2. **Connect Phone and Computer to the Same Wi-Fi Network** (or phone mobile hotspot).
+
+3. **Start the Development Bundler in Terminal**:
+   ```bash
+   cd HOTEL-LISTIN
+   npm start
+   ```
+   *(Or run `npx expo start`)*
+
+4. **Open the App on Your Phone**:
+   - **On Android**: Open the **Expo Go** app, tap **Scan QR code**, and point your camera at the QR code displayed in your terminal.
+   - **On iOS**: Open the built-in **iOS Camera** app, aim at the QR code, and tap the "Open in Expo Go" banner.
+
+> [!TIP]
+> **Wi-Fi Isolation / Tunnel Mode**: If your phone cannot reach your computer over local Wi-Fi (e.g. university network or campus hostel Wi-Fi with client isolation), start Expo with the tunnel flag:
+> ```bash
+> npx expo start --tunnel
+> ```
+> This creates a secure external link so your phone can connect from anywhere on cellular data or separate Wi-Fi!
+
+---
+
+### Option B: Instant Web Browser Preview (Zero Phone or App Setup)
+You can run and test the complete user interfaces, navigation flows, and forms directly in Google Chrome, Microsoft Edge, Firefox, or Safari on your computer:
+
+1. **Start Expo with Web Support**:
+   ```bash
+   cd HOTEL-LISTIN
+   npm run web
+   ```
+   *(Or run `npx expo start --web`, or press `w` in an active Expo terminal)*
+
+2. **Mobile Device Emulation in Chrome/Edge**:
+   - Open DevTools by pressing `F12` (or `Ctrl + Shift + I`).
+   - Click the **Toggle Device Toolbar** icon (or press `Ctrl + Shift + M`).
+   - Select a device preset such as **iPhone 14 Pro**, **Pixel 7**, or **Samsung Galaxy S20** to preview the exact mobile layout, tabs, and modals.
+
+---
+
+### Option C: Automated Test Verification (Headless CLI)
+To verify that all backend database constraints, SQLite encryption, JWT signatures, role permissions, payment locks, and offline gate sync queues are functioning with zero regressions:
+
+1. **Run All 11 Automated Test Suites (163+ Tests)**:
+   ```bash
+   cd HOTEL-LISTIN
+   npm test -- --runInBand
+   ```
+
+2. **Run a Specific Feature Test Suite**:
+   ```bash
+   # Test Offline Key Caching & Background Sync (Issue #41)
+   npx jest src/__tests__/offline.test.ts --runInBand
+
+   # Test Porter QR Scanner, 3s Reset, Audio Chimes & Lockdown (Issues #36-#40)
+   npx jest src/__tests__/scanner.test.ts --runInBand
+
+   # Test Digital Room Check-in/Check-out Audits (Issues #26-#30)
+   npx jest src/__tests__/inventory.test.ts --runInBand
+
+   # Test Dynamic RSA-256 Gate Pass Generation & Expiry (Issues #31-#32)
+   npx jest src/__tests__/gatepass.test.ts --runInBand
+   ```
+
+---
+
+### Option D: Build a Standalone `.apk` File in the Cloud (No Local Android Studio)
+If you need an installable `.apk` file to install directly onto Android devices without Android Studio installed on your computer:
+
+1. **Install EAS (Expo Application Services) CLI**:
+   ```bash
+   npm install -g eas-cli
+   ```
+
+2. **Log into Expo** (free account):
+   ```bash
+   eas login
+   ```
+
+3. **Build the Android APK in Expo's Cloud**:
+   ```bash
+   eas build -p android --profile preview
+   ```
+   Expo's cloud builders will compile the standalone APK and provide a download link and QR code to download and install the `.apk` directly onto any Android phone.
+
+---
+
+## 8. DEVELOPER SETUP & QUICK START
 
 ### Prerequisites
 - Node.js (v18 or higher)
@@ -87,7 +186,7 @@ npm start
 
 ---
 
-## 8. COMPLETE FEATURE CHECKLIST
+## 9. COMPLETE FEATURE CHECKLIST
 
 ### Status Legend
 - `[x]` **Implemented and Verified**: The feature is implemented and confirmed through passing automated unit, integration, or end-to-end tests.
@@ -141,18 +240,20 @@ npm start
 - [x] Digital room checklist audit for mattress, fan, light fittings, and locks (`[INVENTORY-01]` - Issue #26)
 - [x] Joint touchscreen signature capture for student and porter (`[INVENTORY-02]` - Issue #27)
 - [x] Room property defect reporting upon check-in (`[INVENTORY-03]` - Issue #28)
-- [ ] Generation of immutable digital room check-in certificate (`[INVENTORY-04]` - Issue #29)
-- [ ] Check-out inventory inspection and clearance recovery (`[INVENTORY-05]` - Issue #30)
+- [x] Generation of immutable digital room check-in certificate (`[INVENTORY-04]` - Issue #29)
+- [x] Check-out inventory inspection and clearance recovery (`[INVENTORY-05]` - Issue #30)
 
 ### Dynamic QR Pass & Gatekeeping
 - [x] RSA-256 dynamic QR gate pass generation for verified residents (`[GATEPASS-01]` - Issue #31)
-- [ ] 30-second token auto-refresh countdown to prevent pass sharing (`[GATEPASS-02]` - Issue #32)
-- [ ] Porter camera scanner interface with high-contrast pass/fail indicators (`[SCANNER-01]` - Issue #36)
-- [ ] Sub-500ms QR verification performance (`[SCANNER-02]` - Issue #37)
-- [ ] Manual 6-digit PIN lookup backup for gate access (`[SCANNER-03]` - Issue #38)
+- [x] 30-second token auto-refresh countdown to prevent pass sharing (`[GATEPASS-02]` - Issue #32)
+- [x] Porter camera scanner interface with high-contrast pass/fail indicators (`[SCANNER-01]` - Issue #36)
+- [x] Sub-500ms QR verification performance (`[SCANNER-02]` - Issue #37)
+- [x] Manual 6-digit PIN lookup backup for gate access (`[SCANNER-03]` - Issue #38)
+- [x] Porter scanner auto-reset after 3s, audio feedback chime/buzz & disciplinary security flags (`[SCANNER-04]` - Issue #39)
+- [x] Porter shift statistics, occupancy counters & emergency lockdown mode (`[SCANNER-05]` - Issue #40)
 
 ### Offline Operations & Network Recovery
-- [ ] Offline local public key caching for JWT gate pass verification (`[OFFLINE-01]` - Issue #41)
+- [x] Offline local public key caching for JWT gate pass verification (`[OFFLINE-01]` - Issue #41)
 - [ ] Local SQLite queueing for offline gate entry logs (`[OFFLINE-02]` - Issue #42)
 - [ ] Automatic background sync when internet connection resumes (`[OFFLINE-03]` - Issue #43)
 - [ ] Offline status badge and network connectivity state monitoring (`[OFFLINE-04]` - Issue #44)
