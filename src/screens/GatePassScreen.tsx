@@ -63,6 +63,7 @@ export const GatePassScreen: React.FC = () => {
     refreshGatePass,
     tickTimer,
     createVisitorPass,
+    cancelVisitorPass,
     loadVisitorPasses
   } = useGatePassStore();
 
@@ -102,6 +103,13 @@ export const GatePassScreen: React.FC = () => {
       setGeneratedVisitorPin(pass.passCode);
       setVisitorName('');
       setVisitorPhone('');
+    } catch {}
+  };
+
+  const handleCancelVisitorPass = async (passId: string) => {
+    if (!cancelVisitorPass) return;
+    try {
+      await cancelVisitorPass(passId, userId);
     } catch {}
   };
 
@@ -201,6 +209,74 @@ export const GatePassScreen: React.FC = () => {
               + Generate 6-Digit Visitor Pass PIN
             </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* My Visitor Passes Section ([VISITOR-02]) */}
+        <View className="w-full max-w-xs mt-8 mb-4">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-white font-bold text-sm uppercase tracking-wider">
+              My Visitor Passes
+            </Text>
+            <Text className="text-slate-400 text-xs font-semibold">
+              {visitorPasses ? visitorPasses.length : 0} Total
+            </Text>
+          </View>
+
+          {visitorPasses && visitorPasses.length > 0 ? (
+            <View className="space-y-2.5">
+              {visitorPasses.map((pass) => {
+                let badgeBg = 'bg-amber-950 border-amber-600 text-amber-400';
+                if (pass.status === 'CHECKED_IN') badgeBg = 'bg-emerald-950 border-emerald-500 text-emerald-400';
+                if (pass.status === 'CHECKED_OUT') badgeBg = 'bg-slate-800 border-slate-600 text-slate-400';
+                if (pass.status === 'EXPIRED') badgeBg = 'bg-red-950 border-red-800 text-red-400';
+
+                return (
+                  <View key={pass.id} className="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl">
+                    <View className="flex-row justify-between items-start mb-1.5">
+                      <View className="flex-1 mr-2">
+                        <Text className="text-white font-bold text-sm" numberOfLines={1}>
+                          {pass.visitorName}
+                        </Text>
+                        <Text className="text-slate-400 text-xs font-mono">
+                          📱 {pass.visitorPhone}
+                        </Text>
+                      </View>
+
+                      <View className={`px-2.5 py-0.5 rounded-full border ${badgeBg.split(' ').slice(0, 2).join(' ')}`}>
+                        <Text className={`text-[10px] font-black uppercase ${badgeBg.split(' ')[2]}`}>
+                          {pass.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-slate-700/60">
+                      <View className="flex-row items-center">
+                        <Text className="text-slate-400 text-xs font-semibold mr-1.5">PIN:</Text>
+                        <Text className="text-amber-400 font-mono font-black text-base tracking-widest">
+                          {pass.passCode}
+                        </Text>
+                      </View>
+
+                      {pass.status === 'EXPECTED' && (
+                        <TouchableOpacity
+                          onPress={() => handleCancelVisitorPass(pass.id)}
+                          className="bg-red-950/80 border border-red-800 px-2.5 py-1 rounded-lg"
+                        >
+                          <Text className="text-red-300 font-bold text-[11px]">Cancel Pass</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View className="bg-slate-800/60 border border-slate-800 p-4 rounded-2xl items-center">
+              <Text className="text-slate-400 text-xs text-center font-medium">
+                No active or past visitor passes created yet.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Information Notice for Non-Technical Students */}
