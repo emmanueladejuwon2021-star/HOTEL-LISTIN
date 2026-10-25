@@ -50,6 +50,10 @@ export const GateScannerScreen: React.FC = () => {
     isQueueModalVisible,
     isSyncing,
     lastSyncResult,
+    activeKeyId,
+    queueIntegrityReport,
+    rotateKey,
+    verifyQueueIntegrity,
     scanQrCode,
     lookupManualPin,
     executeVisitorCheckIn,
@@ -600,6 +604,39 @@ export const GateScannerScreen: React.FC = () => {
                   <Text className="text-slate-400 text-xs font-bold">✕</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Active Security Key Badge & Health Check Control ([OFFLINE-04]) */}
+              <View className="bg-slate-800 p-2.5 rounded-2xl mb-3 flex-row justify-between items-center border border-slate-700">
+                <View className="flex-1 mr-2">
+                  <Text className="text-amber-400 font-bold text-[10px] uppercase">Active Key ID</Text>
+                  <Text className="text-white text-xs font-mono font-bold" numberOfLines={1}>
+                    🔑 {activeKeyId}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => verifyQueueIntegrity()}
+                  className="bg-slate-700 px-3 py-1.5 rounded-xl"
+                >
+                  <Text className="text-emerald-400 text-[10px] font-bold">🛡️ VERIFY HEALTH</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Integrity Report Banner ([OFFLINE-04]) */}
+              {queueIntegrityReport && (
+                <View
+                  className={`p-2.5 rounded-xl mb-3 border ${
+                    queueIntegrityReport.isHealthy
+                      ? 'bg-emerald-950 border-emerald-600'
+                      : 'bg-amber-950 border-amber-600'
+                  }`}
+                >
+                  <Text className="text-white text-[10px] font-bold">
+                    {queueIntegrityReport.isHealthy
+                      ? '✅ Queue Health Verified: All records intact'
+                      : `⚠️ Repaired ${queueIntegrityReport.repairedCount} corrupted scan(s)`}
+                  </Text>
+                </View>
+              )}
 
               {/* Queue Status Breakdown Pills */}
               <View className="flex-row space-x-2 mb-4 bg-slate-800/60 p-2.5 rounded-2xl justify-between">

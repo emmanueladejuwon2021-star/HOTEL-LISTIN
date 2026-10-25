@@ -60,12 +60,14 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
   pendingSyncCount: 0,
   autoResetSeconds: 0,
 
-  // Offline Queue & Background Sync state ([OFFLINE-02], [OFFLINE-03])
+  // Offline Queue & Background Sync state ([OFFLINE-02], [OFFLINE-03], [OFFLINE-04])
   queueItems: [],
   queueSummary: INITIAL_QUEUE_SUMMARY,
   isQueueModalVisible: false,
   isSyncing: false,
   lastSyncResult: null,
+  activeKeyId: 'UNILAG_GATE_OFFLINE_KEY_V1',
+  queueIntegrityReport: null,
 
   scanQrCode: async (tokenString: string, porterId: string): Promise<GatePassVerificationResult> => {
     if (autoResetTimeout) {
@@ -346,6 +348,40 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
     }
   },
 
+  rotateKey: async (newKeyId: string, secret: string) => {
+    try {
+      const key = await OfflineSyncService.rotateSigningKey(newKeyId, secret);
+      set({
+        activeKeyId: key.keyId,
+        audioFeedback: {
+          type: 'SUCCESS_CHIME',
+          timestamp: Date.now(),
+          message: `Cryptographic Key Rotated (v${key.keyVersion})`
+        }
+      });
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+    }
+  },
+
+  verifyQueueIntegrity: async () => {
+    try {
+      const report = await OfflineSyncService.verifyQueueIntegrity();
+      set({ queueIntegrityReport: report });
+      await get().loadQueueItems();
+      return report;
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+      return {
+        isHealthy: false,
+        totalItems: 0,
+        corruptedCount: 0,
+        repairedCount: 0,
+        details: [error.message]
+      };
+    }
+  },
+
   // =========================================================================
   // Background Auto-Sync Actions ([OFFLINE-03])
   // =========================================================================
@@ -433,7 +469,9 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
       queueSummary: INITIAL_QUEUE_SUMMARY,
       isQueueModalVisible: false,
       isSyncing: false,
-      lastSyncResult: null
+      lastSyncResult: null,
+      activeKeyId: 'UNILAG_GATE_OFFLINE_KEY_V1',
+      queueIntegrityReport: null
     });
   }
 }));
