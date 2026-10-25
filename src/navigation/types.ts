@@ -19,6 +19,7 @@ export type StudentTabParamList = {
   Clearance: undefined;
   Payment: undefined;
   GatePass: undefined;
+  Maintenance: undefined;
 };
 
 /**
