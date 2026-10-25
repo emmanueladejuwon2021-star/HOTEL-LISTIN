@@ -191,15 +191,32 @@ export interface OfflineScanQueueItem {
   id: string;
   tokenString: string;
   userId: string;
+  studentMatric?: string;
+  studentName?: string;
   hostelId: string;
   gateType: GateType;
   accessStatus: AccessStatus;
   denialReason?: string;
   scannedByPorterId: string;
   scannedAt: string;
-  syncStatus: 'PENDING_SYNC' | 'SYNCED' | 'FAILED';
+  syncStatus: 'PENDING_SYNC' | 'SYNCING' | 'SYNCED' | 'FAILED';
   retryCount: number;
   errorMessage?: string;
+}
+
+export interface QueueSummary {
+  total: number;
+  pending: number;
+  synced: number;
+  failed: number;
+}
+
+export interface SyncResult {
+  syncedCount: number;
+  failedCount: number;
+  totalProcessed: number;
+  durationMs: number;
+  timestamp: string;
 }
 
 /**
@@ -305,6 +322,18 @@ export interface ScannerStoreState {
   loadShiftStats: () => Promise<void>;
   /** Reports disciplinary incident to warden */
   reportDisciplinaryIncident: (studentId: string, porterId: string, reason: string) => Promise<void>;
+  // Offline Queue & Background Sync features ([OFFLINE-02], [OFFLINE-03]):
+  queueItems: OfflineScanQueueItem[];
+  queueSummary: QueueSummary;
+  isQueueModalVisible: boolean;
+  isSyncing: boolean;
+  lastSyncResult: SyncResult | null;
+  loadQueueItems: () => Promise<void>;
+  setQueueModalVisible: (visible: boolean) => void;
+  retryQueueItem: (id: string) => Promise<void>;
+  deleteQueueItem: (id: string) => Promise<void>;
+  triggerAutoSync: (porterId: string) => Promise<SyncResult>;
+  simulateNetworkChange: (online: boolean, porterId?: string) => Promise<void>;
   /** Resets scanner state */
   resetScanner: () => void;
 }

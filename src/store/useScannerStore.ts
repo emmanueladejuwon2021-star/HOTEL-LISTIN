@@ -7,7 +7,10 @@ import {
   ManualPinLookupResult,
   GateType,
   ShiftStatistics,
-  AudioVisualFeedback
+  AudioVisualFeedback,
+  OfflineScanQueueItem,
+  QueueSummary,
+  SyncResult
 } from '../types/gatepass';
 
 const INITIAL_STATS: ShiftStatistics = {
@@ -23,11 +26,19 @@ const INITIAL_AUDIO: AudioVisualFeedback = {
   timestamp: 0
 };
 
+const INITIAL_QUEUE_SUMMARY: QueueSummary = {
+  total: 0,
+  pending: 0,
+  synced: 0,
+  failed: 0
+};
+
 let autoResetTimeout: any = null;
 
 /**
  * Zustand Store managing Porter High-Visibility Gate Scanner state.
- * Implements [SCANNER-01], [SCANNER-02], [SCANNER-03], [SCANNER-04], [SCANNER-05], and [OFFLINE-01].
+ * Implements [SCANNER-01], [SCANNER-02], [SCANNER-03], [SCANNER-04], [SCANNER-05],
+ * [OFFLINE-01], [OFFLINE-02], and [OFFLINE-03].
  */
 export const useScannerStore = create<ScannerStoreState>((set, get) => ({
   isScanning: true,
@@ -48,6 +59,13 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
   audioFeedback: INITIAL_AUDIO,
   pendingSyncCount: 0,
   autoResetSeconds: 0,
+
+  // Offline Queue & Background Sync state ([OFFLINE-02], [OFFLINE-03])
+  queueItems: [],
+  queueSummary: INITIAL_QUEUE_SUMMARY,
+  isQueueModalVisible: false,
+  isSyncing: false,
+  lastSyncResult: null,
 
   scanQrCode: async (tokenString: string, porterId: string): Promise<GatePassVerificationResult> => {
     if (autoResetTimeout) {
@@ -77,8 +95,11 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
         autoResetSeconds: 3
       });
 
-      // Update shift stats
-      get().loadShiftStats();
+      // Update shift stats & queue
+      await get().loadShiftStats();
+      if (isOffline) {
+        await get().loadQueueItems();
+      }
 
       // Auto-reset back to Ready state after 3 seconds for continuous rush-hour scanning ([SCANNER-04])
       autoResetTimeout = setTimeout(() => {
@@ -131,7 +152,7 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
         }
       });
 
-      get().loadShiftStats();
+      await get().loadShiftStats();
 
       return result;
     } catch (error: any) {
@@ -155,66 +176,68 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
     }
   },
 
-  executeVisitorCheckIn: async (visitorPassId: string, porterId: string) => {
-    set({ isVerifying: true });
+  executeVisitorCheckIn: async (visitorPassId: string, porterId: string): Promise<void> => {
+    set({ isVerifying: true, errorMessage: null });
     try {
-      const updatedPass = await GatePassService.checkInVisitor(visitorPassId, porterId);
-      const prevResult = get().pinLookupResult;
-      set({
-        isVerifying: false,
-        pinLookupResult: prevResult
-          ? {
-              ...prevResult,
-              visitor: updatedPass,
-              actionAllowed: 'CHECK_OUT',
-              message: `VISITOR CHECKED IN: ${updatedPass.visitorName} entry granted.`
-            }
-          : null,
-        audioFeedback: {
-          type: 'SUCCESS_CHIME',
-          timestamp: Date.now(),
-          message: `Visitor Checked In: ${updatedPass.visitorName}`
-        }
-      });
-      get().loadShiftStats();
+      await GatePassService.checkInVisitor(visitorPassId, porterId);
+      const currentResult = get().pinLookupResult;
+      if (currentResult) {
+        set({
+          pinLookupResult: {
+            ...currentResult,
+            actionAllowed: 'NONE',
+            message: `Visitor Check-In Successful at Gate.`
+          },
+          audioFeedback: {
+            type: 'SUCCESS_CHIME',
+            timestamp: Date.now(),
+            message: 'Visitor Checked In'
+          }
+        });
+      }
+      set({ isVerifying: false, manualPinModalVisible: false });
+      await get().loadShiftStats();
     } catch (error: any) {
       set({ isVerifying: false, errorMessage: error.message });
     }
   },
 
-  executeVisitorCheckOut: async (visitorPassId: string, porterId: string) => {
-    set({ isVerifying: true });
+  executeVisitorCheckOut: async (visitorPassId: string, porterId: string): Promise<void> => {
+    set({ isVerifying: true, errorMessage: null });
     try {
-      const updatedPass = await GatePassService.checkOutVisitor(visitorPassId, porterId);
-      const prevResult = get().pinLookupResult;
-      set({
-        isVerifying: false,
-        pinLookupResult: prevResult
-          ? {
-              ...prevResult,
-              visitor: updatedPass,
-              actionAllowed: 'NONE',
-              message: `VISITOR CHECKED OUT: ${updatedPass.visitorName} departed hostel.`
-            }
-          : null,
-        audioFeedback: {
-          type: 'SUCCESS_CHIME',
-          timestamp: Date.now(),
-          message: `Visitor Checked Out: ${updatedPass.visitorName}`
-        }
-      });
-      get().loadShiftStats();
+      await GatePassService.checkOutVisitor(visitorPassId, porterId);
+      const currentResult = get().pinLookupResult;
+      if (currentResult) {
+        set({
+          pinLookupResult: {
+            ...currentResult,
+            actionAllowed: 'NONE',
+            message: `Visitor Check-Out Successful at Gate.`
+          },
+          audioFeedback: {
+            type: 'SUCCESS_CHIME',
+            timestamp: Date.now(),
+            message: 'Visitor Checked Out'
+          }
+        });
+      }
+      set({ isVerifying: false, manualPinModalVisible: false });
+      await get().loadShiftStats();
     } catch (error: any) {
       set({ isVerifying: false, errorMessage: error.message });
     }
   },
 
   setGateMode: (mode: GateType) => {
-    set({ gateMode: mode });
+    set({ gateMode: mode, verificationResult: null, pinLookupResult: null });
   },
 
   setManualPinModalVisible: (visible: boolean) => {
-    set({ manualPinModalVisible: visible });
+    set({
+      manualPinModalVisible: visible,
+      manualPinInput: visible ? get().manualPinInput : '',
+      errorMessage: null
+    });
   },
 
   setManualPinInput: (pin: string) => {
@@ -222,9 +245,6 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
   },
 
   clearScanResult: () => {
-    if (autoResetTimeout) {
-      clearTimeout(autoResetTimeout);
-    }
     set({
       verificationResult: null,
       pinLookupResult: null,
@@ -248,12 +268,11 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
 
   setOfflineMode: (offline: boolean) => {
     set({ offlineMode: offline });
+    OfflineSyncService.setNetworkOnline(!offline);
   },
 
   syncOfflineQueue: async (porterId: string) => {
-    const res = await OfflineSyncService.syncOfflineQueue(porterId);
-    await get().loadShiftStats();
-    return res;
+    return get().triggerAutoSync(porterId);
   },
 
   loadShiftStats: async () => {
@@ -283,11 +302,115 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
     }
   },
 
+  // =========================================================================
+  // Offline Queue Management Actions ([OFFLINE-02])
+  // =========================================================================
+
+  loadQueueItems: async () => {
+    try {
+      const items = await OfflineSyncService.getAllQueueItems(50, 0);
+      const summary = await OfflineSyncService.getQueueSummary();
+      set({
+        queueItems: items,
+        queueSummary: summary,
+        pendingSyncCount: summary.pending
+      });
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+    }
+  },
+
+  setQueueModalVisible: (visible: boolean) => {
+    set({ isQueueModalVisible: visible });
+    if (visible) {
+      get().loadQueueItems();
+    }
+  },
+
+  retryQueueItem: async (id: string) => {
+    try {
+      await OfflineSyncService.retryFailedScan(id);
+      await get().loadQueueItems();
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+    }
+  },
+
+  deleteQueueItem: async (id: string) => {
+    try {
+      await OfflineSyncService.deleteQueueItem(id);
+      await get().loadQueueItems();
+      await get().loadShiftStats();
+    } catch (error: any) {
+      set({ errorMessage: error.message });
+    }
+  },
+
+  // =========================================================================
+  // Background Auto-Sync Actions ([OFFLINE-03])
+  // =========================================================================
+
+  triggerAutoSync: async (porterId: string): Promise<SyncResult> => {
+    set({ isSyncing: true, errorMessage: null });
+    try {
+      const result = await OfflineSyncService.autoSync(porterId);
+      set({
+        isSyncing: false,
+        lastSyncResult: result,
+        audioFeedback: {
+          type: result.syncedCount > 0 ? 'SUCCESS_CHIME' : null,
+          timestamp: Date.now(),
+          message: `Synced ${result.syncedCount} offline scans`
+        }
+      });
+      await get().loadShiftStats();
+      await get().loadQueueItems();
+      return result;
+    } catch (error: any) {
+      set({ isSyncing: false, errorMessage: error.message });
+      return {
+        syncedCount: 0,
+        failedCount: 0,
+        totalProcessed: 0,
+        durationMs: 0,
+        timestamp: new Date().toISOString()
+      };
+    }
+  },
+
+  simulateNetworkChange: async (online: boolean, porterId: string = 'porter_gate_default') => {
+    const wasOffline = get().offlineMode;
+    set({ offlineMode: !online });
+
+    if (online && wasOffline) {
+      set({ isSyncing: true });
+      const result = await OfflineSyncService.setNetworkOnline(online, porterId);
+      if (result) {
+        set({
+          isSyncing: false,
+          lastSyncResult: result,
+          audioFeedback: {
+            type: result.syncedCount > 0 ? 'SUCCESS_CHIME' : null,
+            timestamp: Date.now(),
+            message: `Synced ${result.syncedCount} offline scans`
+          }
+        });
+        await get().loadShiftStats();
+        await get().loadQueueItems();
+      } else {
+        await get().triggerAutoSync(porterId);
+      }
+    } else {
+      await OfflineSyncService.setNetworkOnline(online, porterId);
+    }
+  },
+
   resetScanner: () => {
     if (autoResetTimeout) {
       clearTimeout(autoResetTimeout);
     }
     GatePassService.setLockdown(false);
+    OfflineSyncService.setNetworkOnline(true);
     set({
       isScanning: true,
       isVerifying: false,
@@ -305,7 +428,12 @@ export const useScannerStore = create<ScannerStoreState>((set, get) => ({
       shiftStats: INITIAL_STATS,
       audioFeedback: INITIAL_AUDIO,
       pendingSyncCount: 0,
-      autoResetSeconds: 0
+      autoResetSeconds: 0,
+      queueItems: [],
+      queueSummary: INITIAL_QUEUE_SUMMARY,
+      isQueueModalVisible: false,
+      isSyncing: false,
+      lastSyncResult: null
     });
   }
 }));

@@ -6,7 +6,9 @@ import {
   GatePassVerificationResult,
   GatePassTokenPayload,
   GateType,
-  AccessStatus
+  AccessStatus,
+  QueueSummary,
+  SyncResult
 } from '../types/gatepass';
 
 const DEFAULT_KEY_ID = 'UNILAG_GATE_OFFLINE_KEY_V1';
@@ -18,11 +20,16 @@ const DEFAULT_FALLBACK_SECRET = 'UNILAGSTAY_GATEPASS_HMAC_SECRET_2026_KEY';
  *
  * Implements:
  * - [OFFLINE-01] Offline local public key caching for JWT gate pass verification (Issue #41)
+ * - [OFFLINE-02] Local SQLite queueing for offline gate entry logs (Issue #42)
+ * - [OFFLINE-03] Automatic background sync when internet connection resumes (Issue #43)
  *
  * All operations run on local SQLite edge database ensuring zero downtime during campus network outages.
  * Documented in clear English for non-technical administrators and porters.
  */
 export class OfflineSyncService {
+  private static _isNetworkOnline: boolean = true;
+  private static _networkListeners: Array<(online: boolean) => Promise<void> | void> = [];
+
   /**
    * Initializes local SQLite database tables for offline key caching and scan queueing.
    */
@@ -49,21 +56,43 @@ export class OfflineSyncService {
         id TEXT PRIMARY KEY,
         token_string TEXT NOT NULL,
         user_id TEXT NOT NULL,
+        student_matric TEXT,
+        student_name TEXT,
         hostel_id TEXT NOT NULL,
         gate_type TEXT NOT NULL,
         access_status TEXT NOT NULL,
         denial_reason TEXT,
         scanned_by_porter_id TEXT NOT NULL,
         scanned_at DATETIME NOT NULL,
-        sync_status TEXT CHECK(sync_status IN ('PENDING_SYNC', 'SYNCED', 'FAILED')) DEFAULT 'PENDING_SYNC',
+        sync_status TEXT CHECK(sync_status IN ('PENDING_SYNC', 'SYNCING', 'SYNCED', 'FAILED')) DEFAULT 'PENDING_SYNC',
         retry_count INTEGER DEFAULT 0,
         error_message TEXT
       )`,
       args: []
     });
 
+    // Ensure existing table has student_matric and student_name columns
+    try {
+      await client.execute({
+        sql: `ALTER TABLE offline_scan_queue ADD COLUMN student_matric TEXT`,
+        args: []
+      });
+    } catch {}
+
+    try {
+      await client.execute({
+        sql: `ALTER TABLE offline_scan_queue ADD COLUMN student_name TEXT`,
+        args: []
+      });
+    } catch {}
+
     await client.execute({
       sql: `CREATE INDEX IF NOT EXISTS idx_offline_queue_status ON offline_scan_queue(sync_status)`,
+      args: []
+    });
+
+    await client.execute({
+      sql: `CREATE INDEX IF NOT EXISTS idx_offline_queue_scanned_at ON offline_scan_queue(scanned_at)`,
       args: []
     });
 
@@ -83,7 +112,18 @@ export class OfflineSyncService {
         args: [DEFAULT_KEY_ID, DEFAULT_FALLBACK_SECRET, expDate.toISOString()]
       });
     }
+
+    // Ensure system fallback user exists to satisfy foreign key constraints during offline sync
+    await client.execute({
+      sql: `INSERT OR IGNORE INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, is_active)
+            VALUES ('unknown_user', 'UNREGISTERED_SYS', 'Unregistered / Unknown User', 'unknown@unilag.edu.ng', '08000000000', 'STUDENT', 'MALE', 0)`,
+      args: []
+    });
   }
+
+  // =========================================================================
+  // [OFFLINE-01]: Local Public Key Caching & Offline JWT Verification
+  // =========================================================================
 
   /**
    * Stores or updates a cryptographic public key / secret in the local offline cache.
@@ -162,87 +202,8 @@ export class OfflineSyncService {
   }
 
   /**
-   * Queues an offline gate scan event in the local SQLite database.
-   */
-  public static async queueOfflineScan(
-    scan: Omit<OfflineScanQueueItem, 'syncStatus' | 'retryCount'>
-  ): Promise<OfflineScanQueueItem> {
-    await OfflineSyncService.initializeSchema();
-    const client = AuthService.getDbClient();
-
-    await client.execute({
-      sql: `INSERT INTO offline_scan_queue (id, token_string, user_id, hostel_id, gate_type, access_status, denial_reason, scanned_by_porter_id, scanned_at, sync_status, retry_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_SYNC', 0)`,
-      args: [
-        scan.id,
-        scan.tokenString,
-        scan.userId,
-        scan.hostelId,
-        scan.gateType,
-        scan.accessStatus,
-        scan.denialReason || null,
-        scan.scannedByPorterId,
-        scan.scannedAt
-      ]
-    });
-
-    return {
-      ...scan,
-      syncStatus: 'PENDING_SYNC',
-      retryCount: 0
-    };
-  }
-
-  /**
-   * Returns count of offline scans awaiting synchronization.
-   */
-  public static async getPendingScansCount(): Promise<number> {
-    await OfflineSyncService.initializeSchema();
-    const client = AuthService.getDbClient();
-
-    const res = await client.execute({
-      sql: `SELECT COUNT(*) as count FROM offline_scan_queue WHERE sync_status = 'PENDING_SYNC'`,
-      args: []
-    });
-
-    return Number(res.rows[0]?.count || 0);
-  }
-
-  /**
-   * Retrieves all offline scans pending synchronization.
-   */
-  public static async getPendingScans(): Promise<OfflineScanQueueItem[]> {
-    await OfflineSyncService.initializeSchema();
-    const client = AuthService.getDbClient();
-
-    const res = await client.execute({
-      sql: `SELECT * FROM offline_scan_queue WHERE sync_status = 'PENDING_SYNC' ORDER BY scanned_at ASC`,
-      args: []
-    });
-
-    return res.rows.map(row => ({
-      id: String(row.id),
-      tokenString: String(row.token_string),
-      userId: String(row.user_id),
-      hostelId: String(row.hostel_id),
-      gateType: String(row.gate_type) as GateType,
-      accessStatus: String(row.access_status) as AccessStatus,
-      denialReason: row.denial_reason ? String(row.denial_reason) : undefined,
-      scannedByPorterId: String(row.scanned_by_porter_id),
-      scannedAt: String(row.scanned_at),
-      syncStatus: String(row.sync_status) as any,
-      retryCount: Number(row.retry_count || 0)
-    }));
-  }
-
-  /**
    * Validates a dynamic QR token completely OFFLINE using the local cached cryptographic key.
    * Implements PRD Section 7.3: Offline Signature Verification.
-   *
-   * @param tokenString The scanned dynamic QR token string
-   * @param porterId ID of the verifying porter
-   * @param gateType 'ENTRY' or 'EXIT'
-   * @returns GatePassVerificationResult containing offline verification details and sub-500ms latency
    */
   public static async verifyOfflineToken(
     tokenString: string,
@@ -307,6 +268,8 @@ export class OfflineSyncService {
           id: scanId,
           tokenString,
           userId: payload.userId || 'unknown_user',
+          studentMatric: payload.matricNo,
+          studentName: payload.fullName,
           hostelId: payload.hostelId || 'hostel_main',
           gateType,
           accessStatus: 'DENIED',
@@ -333,6 +296,8 @@ export class OfflineSyncService {
           id: scanId,
           tokenString,
           userId: payload.userId,
+          studentMatric: payload.matricNo,
+          studentName: payload.fullName,
           hostelId: payload.hostelId || 'hostel_main',
           gateType,
           accessStatus: 'DENIED',
@@ -357,6 +322,8 @@ export class OfflineSyncService {
         id: scanId,
         tokenString,
         userId: payload.userId,
+        studentMatric: payload.matricNo,
+        studentName: payload.fullName,
         hostelId: payload.hostelId || 'hostel_main',
         gateType,
         accessStatus: 'GRANTED',
@@ -394,31 +361,272 @@ export class OfflineSyncService {
     }
   }
 
+  // =========================================================================
+  // [OFFLINE-02]: Local SQLite Queueing for Offline Gate Entry Logs
+  // =========================================================================
+
   /**
-   * Synchronizes queued offline gate scans into the central Turso `gate_access_logs` table (PRD Section 7.4).
-   *
-   * @param porterId ID of the syncing porter
-   * @returns Object with counts of synced and failed items
+   * Queues an offline gate scan event in the local SQLite database.
    */
-  public static async syncOfflineQueue(
-    porterId: string
-  ): Promise<{ syncedCount: number; failedCount: number }> {
+  public static async queueOfflineScan(
+    scan: Omit<OfflineScanQueueItem, 'syncStatus' | 'retryCount'>
+  ): Promise<OfflineScanQueueItem> {
     await OfflineSyncService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    const pending = await OfflineSyncService.getPendingScans();
+    await client.execute({
+      sql: `INSERT INTO offline_scan_queue (
+        id, token_string, user_id, student_matric, student_name, hostel_id,
+        gate_type, access_status, denial_reason, scanned_by_porter_id, scanned_at,
+        sync_status, retry_count
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_SYNC', 0)`,
+      args: [
+        scan.id,
+        scan.tokenString,
+        scan.userId,
+        scan.studentMatric || null,
+        scan.studentName || null,
+        scan.hostelId,
+        scan.gateType,
+        scan.accessStatus,
+        scan.denialReason || null,
+        scan.scannedByPorterId,
+        scan.scannedAt
+      ]
+    });
+
+    return {
+      ...scan,
+      syncStatus: 'PENDING_SYNC',
+      retryCount: 0
+    };
+  }
+
+  /**
+   * Returns count of offline scans awaiting synchronization.
+   */
+  public static async getPendingScansCount(): Promise<number> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT COUNT(*) as count FROM offline_scan_queue WHERE sync_status = 'PENDING_SYNC'`,
+      args: []
+    });
+
+    return Number(res.rows[0]?.count || 0);
+  }
+
+  /**
+   * Retrieves all offline scans pending synchronization in FIFO order.
+   */
+  public static async getPendingScans(): Promise<OfflineScanQueueItem[]> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT * FROM offline_scan_queue WHERE sync_status = 'PENDING_SYNC' ORDER BY scanned_at ASC`,
+      args: []
+    });
+
+    return res.rows.map(row => OfflineSyncService.mapRowToQueueItem(row));
+  }
+
+  /**
+   * Retrieves all queue items with optional pagination, ordered in reverse chronological sequence.
+   */
+  public static async getAllQueueItems(limit: number = 50, offset: number = 0): Promise<OfflineScanQueueItem[]> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT * FROM offline_scan_queue ORDER BY scanned_at DESC LIMIT ? OFFSET ?`,
+      args: [limit, offset]
+    });
+
+    return res.rows.map(row => OfflineSyncService.mapRowToQueueItem(row));
+  }
+
+  /**
+   * Retrieves queue items filtered by their sync status.
+   */
+  public static async getQueueItemsByStatus(
+    status: 'PENDING_SYNC' | 'SYNCING' | 'SYNCED' | 'FAILED'
+  ): Promise<OfflineScanQueueItem[]> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT * FROM offline_scan_queue WHERE sync_status = ? ORDER BY scanned_at DESC`,
+      args: [status]
+    });
+
+    return res.rows.map(row => OfflineSyncService.mapRowToQueueItem(row));
+  }
+
+  /**
+   * Returns a breakdown summary of queue statuses.
+   */
+  public static async getQueueSummary(): Promise<QueueSummary> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT
+              COUNT(*) as total,
+              SUM(CASE WHEN sync_status = 'PENDING_SYNC' THEN 1 ELSE 0 END) as pending,
+              SUM(CASE WHEN sync_status = 'SYNCED' THEN 1 ELSE 0 END) as synced,
+              SUM(CASE WHEN sync_status = 'FAILED' THEN 1 ELSE 0 END) as failed
+            FROM offline_scan_queue`,
+      args: []
+    });
+
+    const row = res.rows[0];
+    return {
+      total: Number(row?.total || 0),
+      pending: Number(row?.pending || 0),
+      synced: Number(row?.synced || 0),
+      failed: Number(row?.failed || 0)
+    };
+  }
+
+  /**
+   * Resets a failed queue item back to PENDING_SYNC for retry.
+   */
+  public static async retryFailedScan(queueId: string): Promise<boolean> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `UPDATE offline_scan_queue
+            SET sync_status = 'PENDING_SYNC', error_message = NULL
+            WHERE id = ?`,
+      args: [queueId]
+    });
+
+    return res.rowsAffected > 0;
+  }
+
+  /**
+   * Removes a specific item from the local offline queue.
+   */
+  public static async deleteQueueItem(queueId: string): Promise<boolean> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `DELETE FROM offline_scan_queue WHERE id = ?`,
+      args: [queueId]
+    });
+
+    return res.rowsAffected > 0;
+  }
+
+  /**
+   * Clears all records from the offline queue.
+   */
+  public static async clearAllQueue(): Promise<void> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    await client.execute({
+      sql: `DELETE FROM offline_scan_queue`,
+      args: []
+    });
+  }
+
+  // =========================================================================
+  // [OFFLINE-03]: Automatic Background Sync & Reconciliation
+  // =========================================================================
+
+  /**
+   * Sets the simulated or detected network status and triggers auto-sync if restored.
+   */
+  public static async setNetworkOnline(online: boolean, porterId: string = 'porter_gate_default'): Promise<SyncResult | null> {
+    const wasOffline = !OfflineSyncService._isNetworkOnline;
+    OfflineSyncService._isNetworkOnline = online;
+
+    if (online && wasOffline) {
+      // Network restored: trigger background sync automatically!
+      for (const listener of OfflineSyncService._networkListeners) {
+        try {
+          await listener(online);
+        } catch (e) {
+          console.error('[OfflineSyncService] Listener error:', e);
+        }
+      }
+      return await OfflineSyncService.autoSync(porterId);
+    }
+    return null;
+  }
+
+  public static isNetworkOnline(): boolean {
+    return OfflineSyncService._isNetworkOnline;
+  }
+
+  public static addNetworkListener(listener: (online: boolean) => Promise<void> | void): void {
+    OfflineSyncService._networkListeners.push(listener);
+  }
+
+  public static removeNetworkListener(listener: (online: boolean) => Promise<void> | void): void {
+    OfflineSyncService._networkListeners = OfflineSyncService._networkListeners.filter(l => l !== listener);
+  }
+
+  /**
+   * Performs automated batch synchronization with idempotent deduplication.
+   * Reconciles offline entries into the central `gate_access_logs` table (PRD Section 7.4).
+   *
+   * @param porterId ID of the syncing porter
+   * @param maxBatchSize Maximum number of items to sync per batch (default: 100)
+   */
+  public static async autoSync(
+    porterId: string,
+    maxBatchSize: number = 100
+  ): Promise<SyncResult> {
+    const startTime = Date.now();
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Query pending items up to batch limit
+    const res = await client.execute({
+      sql: `SELECT * FROM offline_scan_queue
+            WHERE sync_status = 'PENDING_SYNC'
+            ORDER BY scanned_at ASC
+            LIMIT ?`,
+      args: [maxBatchSize]
+    });
+
+    const pending = res.rows.map(row => OfflineSyncService.mapRowToQueueItem(row));
     let syncedCount = 0;
     let failedCount = 0;
 
     for (const item of pending) {
       try {
         const logId = `synced_${item.id}`;
+
+        let targetUserId = item.userId;
+        const uRes = await client.execute({
+          sql: `SELECT id FROM users WHERE id = ? LIMIT 1`,
+          args: [targetUserId]
+        });
+        if (uRes.rows.length === 0) {
+          targetUserId = 'unknown_user';
+          await client.execute({
+            sql: `INSERT OR IGNORE INTO users (id, matric_or_staff_no, full_name, email, phone_number, role, gender, is_active)
+                  VALUES ('unknown_user', 'UNREGISTERED_SYS', 'Unregistered / Unknown User', 'unknown@unilag.edu.ng', '08000000000', 'STUDENT', 'MALE', 0)`,
+            args: []
+          });
+        }
+
+        // Idempotent insertion into gate_access_logs
         await client.execute({
-          sql: `INSERT INTO gate_access_logs (id, user_id, hostel_id, gate_type, access_status, denial_reason, nonce, scanned_by_porter_id, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+          sql: `INSERT OR IGNORE INTO gate_access_logs (
+            id, user_id, hostel_id, gate_type, access_status,
+            denial_reason, nonce, scanned_by_porter_id, timestamp
+          ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
           args: [
             logId,
-            item.userId,
+            targetUserId,
             item.hostelId,
             item.gateType,
             item.accessStatus,
@@ -428,7 +636,7 @@ export class OfflineSyncService {
           ]
         });
 
-        // Mark synced in local queue
+        // Mark as SYNCED
         await client.execute({
           sql: `UPDATE offline_scan_queue SET sync_status = 'SYNCED' WHERE id = ?`,
           args: [item.id]
@@ -437,26 +645,72 @@ export class OfflineSyncService {
         syncedCount++;
       } catch (err: any) {
         await client.execute({
-          sql: `UPDATE offline_scan_queue SET retry_count = retry_count + 1, error_message = ? WHERE id = ?`,
-          args: [err.message || 'Sync error', item.id]
+          sql: `UPDATE offline_scan_queue
+                SET sync_status = 'FAILED', retry_count = retry_count + 1, error_message = ?
+                WHERE id = ?`,
+          args: [err.message || 'Auto-sync failed', item.id]
         });
         failedCount++;
       }
     }
 
-    return { syncedCount, failedCount };
+    return {
+      syncedCount,
+      failedCount,
+      totalProcessed: pending.length,
+      durationMs: Date.now() - startTime,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Alias for autoSync maintaining backward compatibility.
+   */
+  public static async syncOfflineQueue(
+    porterId: string
+  ): Promise<{ syncedCount: number; failedCount: number }> {
+    const result = await OfflineSyncService.autoSync(porterId);
+    return {
+      syncedCount: result.syncedCount,
+      failedCount: result.failedCount
+    };
   }
 
   /**
    * Cleans up successfully synced offline items to prevent SQLite database bloat.
    */
-  public static async purgeSyncedQueue(): Promise<void> {
+  public static async purgeSyncedQueue(): Promise<number> {
     await OfflineSyncService.initializeSchema();
     const client = AuthService.getDbClient();
 
-    await client.execute({
+    const res = await client.execute({
       sql: `DELETE FROM offline_scan_queue WHERE sync_status = 'SYNCED'`,
       args: []
     });
+
+    return res.rowsAffected;
+  }
+
+  // =========================================================================
+  // Private Helpers
+  // =========================================================================
+
+  private static mapRowToQueueItem(row: any): OfflineScanQueueItem {
+    return {
+      id: String(row.id),
+      tokenString: String(row.token_string),
+      userId: String(row.user_id),
+      studentMatric: row.student_matric ? String(row.student_matric) : undefined,
+      studentName: row.student_name ? String(row.student_name) : undefined,
+      hostelId: String(row.hostel_id),
+      gateType: String(row.gate_type) as GateType,
+      accessStatus: String(row.access_status) as AccessStatus,
+      denialReason: row.denial_reason ? String(row.denial_reason) : undefined,
+      scannedByPorterId: String(row.scanned_by_porter_id),
+      scannedAt: String(row.scanned_at),
+      syncStatus: String(row.sync_status) as any,
+      retryCount: Number(row.retry_count || 0),
+      errorMessage: row.error_message ? String(row.error_message) : undefined
+    };
   }
 }

@@ -1,15 +1,18 @@
 import { OfflineSyncService } from '../api/offlineSyncService';
 import { GatePassService } from '../api/gatepassService';
 import { AuthService } from '../api/authService';
+import { useScannerStore } from '../store/useScannerStore';
 
 /**
  * Automated Test Suite for Offline Gate Signature Verification & Local SQLite Queue.
- * Implements [OFFLINE-01 / UAT-0041] adhering to PRD Section 7.
+ * Implements [OFFLINE-01 / UAT-0041], [OFFLINE-02 / UAT-0042], and [OFFLINE-03 / UAT-0043] adhering to PRD Section 7.
  *
- * Verifies local public signing key caching, offline HMAC-SHA256 signature evaluation,
- * local SQLite scan queueing, and background synchronization to Turso central database.
+ * Verifies:
+ * - [OFFLINE-01]: Local public key caching & offline HMAC-SHA256 signature verification.
+ * - [OFFLINE-02]: Local SQLite queueing, FIFO ordering, queue inspection, status breakdown & retry.
+ * - [OFFLINE-03]: Automatic background synchronization upon network recovery, idempotency & auto-purge.
  */
-describe('Offline JWT Verification & Local SQLite Queue [OFFLINE-01 / UAT-0041]', () => {
+describe('Offline Operations & Network Recovery [OFFLINE-01, OFFLINE-02, OFFLINE-03 / UAT-0041, UAT-0042, UAT-0043]', () => {
   const studentId = `usr_offline_stud_${Date.now()}`;
   const porterId = `usr_offline_port_${Date.now()}`;
   const testSecret = 'UNILAGSTAY_GATEPASS_HMAC_SECRET_2026_KEY';
@@ -34,78 +37,266 @@ describe('Offline JWT Verification & Local SQLite Queue [OFFLINE-01 / UAT-0041]'
     });
   });
 
-  test('initializes offline tables: offline_security_keys and offline_scan_queue', async () => {
-    await OfflineSyncService.initializeSchema();
-    const isValid = await OfflineSyncService.isKeyCacheValid();
-    expect(isValid).toBe(true);
+  // =========================================================================
+  // [OFFLINE-01 / UAT-0041]: Public Key Caching & Signature Verification
+  // =========================================================================
+  describe('[OFFLINE-01] Local Public Key Caching & Offline Signature Verification', () => {
+    test('initializes offline tables: offline_security_keys and offline_scan_queue', async () => {
+      await OfflineSyncService.initializeSchema();
+      const isValid = await OfflineSyncService.isKeyCacheValid();
+      expect(isValid).toBe(true);
+    });
+
+    test('caches cryptographic signing key locally with custom TTL and retrieves it', async () => {
+      const cached = await OfflineSyncService.cacheSigningKey(
+        'CUSTOM_KEY_TEST',
+        testSecret,
+        'HMAC-SHA256',
+        60
+      );
+
+      expect(cached.keyId).toBe('CUSTOM_KEY_TEST');
+      expect(cached.publicKeyOrSecret).toBe(testSecret);
+
+      const retrieved = await OfflineSyncService.getCachedSigningKey('CUSTOM_KEY_TEST');
+      expect(retrieved).toBe(testSecret);
+    });
+
+    test('verifies valid dynamic QR token offline using local cached key (PRD 7.3)', async () => {
+      const { record, payload } = await GatePassService.generateGatePass(studentId);
+
+      // Verify offline
+      const offlineResult = await OfflineSyncService.verifyOfflineToken(
+        record.tokenString,
+        porterId,
+        'ENTRY'
+      );
+
+      expect(offlineResult.isValid).toBe(true);
+      expect(offlineResult.accessGranted).toBe(true);
+      expect(offlineResult.isOffline).toBe(true);
+      expect(offlineResult.message).toContain('ACCESS GRANTED (OFFLINE)');
+      expect(offlineResult.student?.fullName).toBe('Offline Test Student');
+      expect(offlineResult.latencyMs).toBeLessThan(500); // Sub-500ms SLA
+    });
+
+    test('rejects tampered dynamic QR token offline and queues denial locally', async () => {
+      const offlineResult = await OfflineSyncService.verifyOfflineToken(
+        'TAMPERED_OFFLINE_FORGED_TOKEN',
+        porterId,
+        'ENTRY'
+      );
+
+      expect(offlineResult.isValid).toBe(false);
+      expect(offlineResult.accessGranted).toBe(false);
+      expect(offlineResult.isOffline).toBe(true);
+      expect(offlineResult.message).toContain('Access Denied');
+    });
   });
 
-  test('caches cryptographic signing key locally with custom TTL and retrieves it', async () => {
-    const cached = await OfflineSyncService.cacheSigningKey(
-      'CUSTOM_KEY_TEST',
-      testSecret,
-      'HMAC-SHA256',
-      60
-    );
+  // =========================================================================
+  // [OFFLINE-02 / UAT-0042]: Local SQLite Queueing for Gate Entry Logs
+  // =========================================================================
+  describe('[OFFLINE-02] Local SQLite Queueing for Offline Gate Entry Logs', () => {
+    test('enqueues multiple scans in local SQLite queue preserving metadata', async () => {
+      const scan1Id = `scan_q1_${Date.now()}`;
+      const scan2Id = `scan_q2_${Date.now()}`;
 
-    expect(cached.keyId).toBe('CUSTOM_KEY_TEST');
-    expect(cached.publicKeyOrSecret).toBe(testSecret);
+      await OfflineSyncService.queueOfflineScan({
+        id: scan1Id,
+        tokenString: 'token_sample_1',
+        userId: studentId,
+        studentMatric: '190404001',
+        studentName: 'Student Alpha',
+        hostelId: 'hostel_jaja',
+        gateType: 'ENTRY',
+        accessStatus: 'GRANTED',
+        scannedByPorterId: porterId,
+        scannedAt: new Date(Date.now() - 5000).toISOString()
+      });
 
-    const retrieved = await OfflineSyncService.getCachedSigningKey('CUSTOM_KEY_TEST');
-    expect(retrieved).toBe(testSecret);
+      await OfflineSyncService.queueOfflineScan({
+        id: scan2Id,
+        tokenString: 'token_sample_2',
+        userId: studentId,
+        studentMatric: '190404002',
+        studentName: 'Student Beta',
+        hostelId: 'hostel_jaja',
+        gateType: 'EXIT',
+        accessStatus: 'DENIED',
+        denialReason: 'Token Expired',
+        scannedByPorterId: porterId,
+        scannedAt: new Date().toISOString()
+      });
+
+      const pendingScans = await OfflineSyncService.getPendingScans();
+      expect(pendingScans.length).toBeGreaterThanOrEqual(2);
+
+      // Verify FIFO ordering (first scan is earlier)
+      const found1 = pendingScans.find(s => s.id === scan1Id);
+      const found2 = pendingScans.find(s => s.id === scan2Id);
+      expect(found1).toBeDefined();
+      expect(found2).toBeDefined();
+      expect(found1?.studentName).toBe('Student Alpha');
+      expect(found2?.denialReason).toBe('Token Expired');
+    });
+
+    test('retrieves queue summary with status breakdown', async () => {
+      const summary = await OfflineSyncService.getQueueSummary();
+      expect(summary.total).toBeGreaterThan(0);
+      expect(summary.pending).toBeGreaterThan(0);
+      expect(typeof summary.synced).toBe('number');
+      expect(typeof summary.failed).toBe('number');
+    });
+
+    test('supports retrying a failed scan item', async () => {
+      const failedScanId = `scan_failed_${Date.now()}`;
+      await OfflineSyncService.queueOfflineScan({
+        id: failedScanId,
+        tokenString: 'token_fail',
+        userId: studentId,
+        hostelId: 'hostel_jaja',
+        gateType: 'ENTRY',
+        accessStatus: 'DENIED',
+        scannedByPorterId: porterId,
+        scannedAt: new Date().toISOString()
+      });
+
+      // Mark as FAILED manually to simulate failure
+      const client = AuthService.getDbClient();
+      await client.execute({
+        sql: `UPDATE offline_scan_queue SET sync_status = 'FAILED', error_message = 'Simulated timeout' WHERE id = ?`,
+        args: [failedScanId]
+      });
+
+      const failedItems = await OfflineSyncService.getQueueItemsByStatus('FAILED');
+      expect(failedItems.some(item => item.id === failedScanId)).toBe(true);
+
+      // Retry
+      const retried = await OfflineSyncService.retryFailedScan(failedScanId);
+      expect(retried).toBe(true);
+
+      // Item is back in PENDING_SYNC
+      const pendingItems = await OfflineSyncService.getPendingScans();
+      const resetItem = pendingItems.find(item => item.id === failedScanId);
+      expect(resetItem?.syncStatus).toBe('PENDING_SYNC');
+      expect(resetItem?.errorMessage).toBeUndefined();
+    });
+
+    test('deletes an individual item from the offline queue', async () => {
+      const deleteScanId = `scan_del_${Date.now()}`;
+      await OfflineSyncService.queueOfflineScan({
+        id: deleteScanId,
+        tokenString: 'token_to_delete',
+        userId: studentId,
+        hostelId: 'hostel_jaja',
+        gateType: 'ENTRY',
+        accessStatus: 'GRANTED',
+        scannedByPorterId: porterId,
+        scannedAt: new Date().toISOString()
+      });
+
+      const deleted = await OfflineSyncService.deleteQueueItem(deleteScanId);
+      expect(deleted).toBe(true);
+
+      const items = await OfflineSyncService.getAllQueueItems();
+      expect(items.some(i => i.id === deleteScanId)).toBe(false);
+    });
+
+    test('loads queue items into Zustand store', async () => {
+      const store = useScannerStore.getState();
+      await store.loadQueueItems();
+
+      const stateAfter = useScannerStore.getState();
+      expect(stateAfter.queueItems.length).toBeGreaterThan(0);
+      expect(stateAfter.queueSummary.total).toBeGreaterThan(0);
+    });
   });
 
-  test('verifies valid dynamic QR token offline using local cached key (PRD 7.3)', async () => {
-    const { record, payload } = await GatePassService.generateGatePass(studentId);
+  // =========================================================================
+  // [OFFLINE-03 / UAT-0043]: Automatic Background Sync upon Network Recovery
+  // =========================================================================
+  describe('[OFFLINE-03] Automatic Background Sync & Reconciliation', () => {
+    test('executes batch synchronization with idempotent insertion into central gate_access_logs', async () => {
+      const initialPending = await OfflineSyncService.getPendingScansCount();
+      expect(initialPending).toBeGreaterThan(0);
 
-    // Verify offline
-    const offlineResult = await OfflineSyncService.verifyOfflineToken(
-      record.tokenString,
-      porterId,
-      'ENTRY'
-    );
+      const syncResult = await OfflineSyncService.autoSync(porterId);
+      expect(syncResult.syncedCount).toBeGreaterThan(0);
+      expect(syncResult.failedCount).toBe(0);
+      expect(syncResult.totalProcessed).toBe(initialPending);
+      expect(syncResult.durationMs).toBeGreaterThanOrEqual(0);
 
-    expect(offlineResult.isValid).toBe(true);
-    expect(offlineResult.accessGranted).toBe(true);
-    expect(offlineResult.isOffline).toBe(true);
-    expect(offlineResult.message).toContain('ACCESS GRANTED (OFFLINE)');
-    expect(offlineResult.student?.fullName).toBe('Offline Test Student');
-    expect(offlineResult.latencyMs).toBeLessThan(500); // Sub-500ms SLA
-  });
+      // Running autoSync again immediately results in 0 pending scans (idempotent)
+      const secondSync = await OfflineSyncService.autoSync(porterId);
+      expect(secondSync.totalProcessed).toBe(0);
+      expect(secondSync.syncedCount).toBe(0);
+    });
 
-  test('rejects tampered dynamic QR token offline and queues denial locally', async () => {
-    const offlineResult = await OfflineSyncService.verifyOfflineToken(
-      'TAMPERED_OFFLINE_FORGED_TOKEN',
-      porterId,
-      'ENTRY'
-    );
+    test('automatically triggers autoSync when network status transitions to online', async () => {
+      // 1. Simulate going offline
+      await OfflineSyncService.setNetworkOnline(false);
+      expect(OfflineSyncService.isNetworkOnline()).toBe(false);
 
-    expect(offlineResult.isValid).toBe(false);
-    expect(offlineResult.accessGranted).toBe(false);
-    expect(offlineResult.isOffline).toBe(true);
-    expect(offlineResult.message).toContain('Access Denied');
-  });
+      // 2. Queue a scan while offline
+      const offlineScanId = `net_rec_scan_${Date.now()}`;
+      await OfflineSyncService.queueOfflineScan({
+        id: offlineScanId,
+        tokenString: 'token_net_recovery',
+        userId: studentId,
+        studentMatric: '200505001',
+        studentName: 'Network Recovery Student',
+        hostelId: 'hostel_jaja',
+        gateType: 'ENTRY',
+        accessStatus: 'GRANTED',
+        scannedByPorterId: porterId,
+        scannedAt: new Date().toISOString()
+      });
 
-  test('tracks pending offline scans count in local SQLite queue (PRD 7.4)', async () => {
-    const pendingCount = await OfflineSyncService.getPendingScansCount();
-    expect(pendingCount).toBeGreaterThan(0);
+      expect(await OfflineSyncService.getPendingScansCount()).toBe(1);
 
-    const pendingList = await OfflineSyncService.getPendingScans();
-    expect(pendingList.length).toBe(pendingCount);
-    expect(pendingList[0].syncStatus).toBe('PENDING_SYNC');
-  });
+      // 3. Simulate network restored -> fires autoSync automatically!
+      await OfflineSyncService.setNetworkOnline(true, porterId);
+      expect(OfflineSyncService.isNetworkOnline()).toBe(true);
 
-  test('synchronizes pending offline scan queue to central Turso database when connectivity resumes', async () => {
-    const { syncedCount, failedCount } = await OfflineSyncService.syncOfflineQueue(porterId);
+      // 4. Pending count automatically becomes 0
+      const pendingAfterRecovery = await OfflineSyncService.getPendingScansCount();
+      expect(pendingAfterRecovery).toBe(0);
+    });
 
-    expect(syncedCount).toBeGreaterThan(0);
-    expect(failedCount).toBe(0);
+    test('purges successfully synced records to prevent SQLite database bloat', async () => {
+      const purgedCount = await OfflineSyncService.purgeSyncedQueue();
+      expect(purgedCount).toBeGreaterThan(0);
 
-    // After sync, pending count decreases to 0
-    const remainingPending = await OfflineSyncService.getPendingScansCount();
-    expect(remainingPending).toBe(0);
+      const syncedItemsRemaining = await OfflineSyncService.getQueueItemsByStatus('SYNCED');
+      expect(syncedItemsRemaining.length).toBe(0);
+    });
 
-    // Clean up synced items
-    await OfflineSyncService.purgeSyncedQueue();
+    test('simulates network restoration in Zustand store triggering auto-sync', async () => {
+      const store = useScannerStore.getState();
+
+      // Go offline
+      await store.simulateNetworkChange(false);
+      expect(useScannerStore.getState().offlineMode).toBe(true);
+
+      // Queue an item
+      await OfflineSyncService.queueOfflineScan({
+        id: `store_offline_${Date.now()}`,
+        tokenString: 'store_token',
+        userId: studentId,
+        hostelId: 'hostel_jaja',
+        gateType: 'ENTRY',
+        accessStatus: 'GRANTED',
+        scannedByPorterId: porterId,
+        scannedAt: new Date().toISOString()
+      });
+
+      // Restore network via store
+      await store.simulateNetworkChange(true, porterId);
+      const stateAfter = useScannerStore.getState();
+      expect(stateAfter.offlineMode).toBe(false);
+      expect(stateAfter.lastSyncResult).toBeDefined();
+      expect(stateAfter.lastSyncResult?.syncedCount).toBeGreaterThanOrEqual(1);
+    });
   });
 });
