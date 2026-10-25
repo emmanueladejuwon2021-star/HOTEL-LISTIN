@@ -180,8 +180,17 @@ export interface OfflineSecurityKey {
   keyAlgorithm: string; // e.g. 'HMAC-SHA256'
   publicKeyOrSecret: string;
   keyVersion: number;
+  isActive?: boolean;
   cachedAt: string;
   expiresAt?: string;
+}
+
+export interface QueueIntegrityReport {
+  isHealthy: boolean;
+  totalItems: number;
+  corruptedCount: number;
+  repairedCount: number;
+  details: string[];
 }
 
 /**
@@ -328,10 +337,14 @@ export interface ScannerStoreState {
   isQueueModalVisible: boolean;
   isSyncing: boolean;
   lastSyncResult: SyncResult | null;
+  activeKeyId: string;
+  queueIntegrityReport: QueueIntegrityReport | null;
   loadQueueItems: () => Promise<void>;
   setQueueModalVisible: (visible: boolean) => void;
   retryQueueItem: (id: string) => Promise<void>;
   deleteQueueItem: (id: string) => Promise<void>;
+  rotateKey: (newKeyId: string, secret: string) => Promise<void>;
+  verifyQueueIntegrity: () => Promise<QueueIntegrityReport>;
   triggerAutoSync: (porterId: string) => Promise<SyncResult>;
   simulateNetworkChange: (online: boolean, porterId?: string) => Promise<void>;
   /** Resets scanner state */

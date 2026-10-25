@@ -8,7 +8,8 @@ import {
   GateType,
   AccessStatus,
   QueueSummary,
-  SyncResult
+  SyncResult,
+  QueueIntegrityReport
 } from '../types/gatepass';
 
 const DEFAULT_KEY_ID = 'UNILAG_GATE_OFFLINE_KEY_V1';
@@ -44,6 +45,7 @@ export class OfflineSyncService {
         key_algorithm TEXT NOT NULL DEFAULT 'HMAC-SHA256',
         public_key_or_secret TEXT NOT NULL,
         key_version INTEGER DEFAULT 1,
+        is_active INTEGER DEFAULT 1,
         cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         expires_at DATETIME
       )`,
@@ -102,13 +104,20 @@ export class OfflineSyncService {
       args: [DEFAULT_KEY_ID]
     });
 
+    try {
+      await client.execute({
+        sql: `ALTER TABLE offline_security_keys ADD COLUMN is_active INTEGER DEFAULT 1`,
+        args: []
+      });
+    } catch {}
+
     if (keyCheck.rows.length === 0) {
       const expDate = new Date();
       expDate.setDate(expDate.getDate() + 90); // 90 days key cache validity
 
       await client.execute({
-        sql: `INSERT INTO offline_security_keys (key_id, key_algorithm, public_key_or_secret, key_version, expires_at)
-              VALUES (?, 'HMAC-SHA256', ?, 1, ?)`,
+        sql: `INSERT INTO offline_security_keys (key_id, key_algorithm, public_key_or_secret, key_version, is_active, expires_at)
+              VALUES (?, 'HMAC-SHA256', ?, 1, 1, ?)`,
         args: [DEFAULT_KEY_ID, DEFAULT_FALLBACK_SECRET, expDate.toISOString()]
       });
     }
@@ -148,8 +157,8 @@ export class OfflineSyncService {
     const expiresAt = expDate.toISOString();
 
     await client.execute({
-      sql: `INSERT OR REPLACE INTO offline_security_keys (key_id, key_algorithm, public_key_or_secret, key_version, cached_at, expires_at)
-            VALUES (?, ?, ?, 1, ?, ?)`,
+      sql: `INSERT OR REPLACE INTO offline_security_keys (key_id, key_algorithm, public_key_or_secret, key_version, is_active, cached_at, expires_at)
+            VALUES (?, ?, ?, 1, 1, ?, ?)`,
       args: [keyId, algorithm, secretOrKey, cachedAt, expiresAt]
     });
 
@@ -158,25 +167,107 @@ export class OfflineSyncService {
       keyAlgorithm: algorithm,
       publicKeyOrSecret: secretOrKey,
       keyVersion: 1,
+      isActive: true,
       cachedAt,
       expiresAt
     };
   }
 
   /**
-   * Retrieves the locally cached signing key for offline gate pass validation.
+   * Rotates cryptographic signing key, incrementing key version and setting previous keys as inactive.
+   * Implements [OFFLINE-04] Cryptographic Key Rotation & Expiration Protocol.
    */
-  public static async getCachedSigningKey(keyId: string = DEFAULT_KEY_ID): Promise<string> {
+  public static async rotateSigningKey(
+    newKeyId: string,
+    newSecretOrKey: string,
+    algorithm: string = 'HMAC-SHA256',
+    expiresInDays: number = 90
+  ): Promise<OfflineSecurityKey> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    // Deactivate previous active keys
+    await client.execute({
+      sql: `UPDATE offline_security_keys SET is_active = 0 WHERE is_active = 1`,
+      args: []
+    });
+
+    // Get max key version
+    const maxVerRes = await client.execute({
+      sql: `SELECT MAX(key_version) as max_v FROM offline_security_keys`,
+      args: []
+    });
+    const nextVer = Number(maxVerRes.rows[0]?.max_v || 0) + 1;
+
+    const cachedAt = new Date().toISOString();
+    const expDate = new Date();
+    expDate.setDate(expDate.getDate() + expiresInDays);
+    const expiresAt = expDate.toISOString();
+
+    await client.execute({
+      sql: `INSERT INTO offline_security_keys (key_id, key_algorithm, public_key_or_secret, key_version, is_active, cached_at, expires_at)
+            VALUES (?, ?, ?, ?, 1, ?, ?)`,
+      args: [newKeyId, algorithm, newSecretOrKey, nextVer, cachedAt, expiresAt]
+    });
+
+    return {
+      keyId: newKeyId,
+      keyAlgorithm: algorithm,
+      publicKeyOrSecret: newSecretOrKey,
+      keyVersion: nextVer,
+      isActive: true,
+      cachedAt,
+      expiresAt
+    };
+  }
+
+  /**
+   * Revokes a specific signing key (e.g. if compromised).
+   */
+  public static async revokeSigningKey(keyId: string): Promise<boolean> {
     await OfflineSyncService.initializeSchema();
     const client = AuthService.getDbClient();
 
     const res = await client.execute({
-      sql: `SELECT public_key_or_secret, expires_at FROM offline_security_keys WHERE key_id = ? LIMIT 1`,
+      sql: `UPDATE offline_security_keys SET is_active = 0 WHERE key_id = ?`,
       args: [keyId]
     });
 
-    if (res.rows.length > 0) {
-      return String(res.rows[0].public_key_or_secret);
+    return res.rowsAffected > 0;
+  }
+
+  /**
+   * Retrieves the current active, unexpired locally cached signing key for offline gate pass validation.
+   */
+  public static async getCachedSigningKey(keyId?: string): Promise<string> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    if (keyId) {
+      const res = await client.execute({
+        sql: `SELECT public_key_or_secret, expires_at, is_active FROM offline_security_keys WHERE key_id = ? LIMIT 1`,
+        args: [keyId]
+      });
+
+      if (res.rows.length > 0 && Boolean(res.rows[0].is_active ?? 1)) {
+        const exp = res.rows[0].expires_at;
+        if (!exp || new Date(String(exp)).getTime() > Date.now()) {
+          return String(res.rows[0].public_key_or_secret);
+        }
+      }
+    }
+
+    // Fallback to latest active key
+    const activeRes = await client.execute({
+      sql: `SELECT public_key_or_secret, expires_at FROM offline_security_keys WHERE is_active = 1 ORDER BY key_version DESC LIMIT 1`,
+      args: []
+    });
+
+    if (activeRes.rows.length > 0) {
+      const exp = activeRes.rows[0].expires_at;
+      if (!exp || new Date(String(exp)).getTime() > Date.now()) {
+        return String(activeRes.rows[0].public_key_or_secret);
+      }
     }
 
     return DEFAULT_FALLBACK_SECRET;
@@ -520,6 +611,56 @@ export class OfflineSyncService {
     });
 
     return res.rowsAffected > 0;
+  }
+
+  /**
+   * Performs self-healing queue integrity check to detect and repair corrupted queue items.
+   * Implements [OFFLINE-04] Queue Integrity & Self-Healing Protocol.
+   */
+  public static async verifyQueueIntegrity(): Promise<QueueIntegrityReport> {
+    await OfflineSyncService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT * FROM offline_scan_queue`,
+      args: []
+    });
+
+    const totalItems = res.rows.length;
+    let corruptedCount = 0;
+    let repairedCount = 0;
+    const details: string[] = [];
+
+    for (const row of res.rows) {
+      const id = String(row.id);
+      const token = String(row.token_string || '');
+      const userId = String(row.user_id || '');
+
+      // Check for corrupted or missing mandatory fields
+      if (!token || !userId || token === 'undefined' || userId === 'undefined') {
+        corruptedCount++;
+        // Delete invalid/corrupted queue record to self-heal queue
+        await client.execute({
+          sql: `DELETE FROM offline_scan_queue WHERE id = ?`,
+          args: [id]
+        });
+        repairedCount++;
+        details.push(`Repaired corrupted queue entry ${id}: removed invalid scan data`);
+      }
+    }
+
+    const isHealthy = corruptedCount === 0;
+    if (isHealthy) {
+      details.push(`Offline SQLite queue integrity check passed (${totalItems} items verified)`);
+    }
+
+    return {
+      isHealthy,
+      totalItems,
+      corruptedCount,
+      repairedCount,
+      details
+    };
   }
 
   /**

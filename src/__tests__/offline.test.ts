@@ -5,14 +5,15 @@ import { useScannerStore } from '../store/useScannerStore';
 
 /**
  * Automated Test Suite for Offline Gate Signature Verification & Local SQLite Queue.
- * Implements [OFFLINE-01 / UAT-0041], [OFFLINE-02 / UAT-0042], and [OFFLINE-03 / UAT-0043] adhering to PRD Section 7.
+ * Implements [OFFLINE-01 / UAT-0041], [OFFLINE-02 / UAT-0042], [OFFLINE-03 / UAT-0043], and [OFFLINE-04 / UAT-0044] adhering to PRD Section 7.
  *
  * Verifies:
  * - [OFFLINE-01]: Local public key caching & offline HMAC-SHA256 signature verification.
  * - [OFFLINE-02]: Local SQLite queueing, FIFO ordering, queue inspection, status breakdown & retry.
  * - [OFFLINE-03]: Automatic background synchronization upon network recovery, idempotency & auto-purge.
+ * - [OFFLINE-04]: Cryptographic key rotation, key revocation, active key selection, and queue self-healing/integrity checks.
  */
-describe('Offline Operations & Network Recovery [OFFLINE-01, OFFLINE-02, OFFLINE-03 / UAT-0041, UAT-0042, UAT-0043]', () => {
+describe('Offline Operations & Network Recovery [OFFLINE-01, OFFLINE-02, OFFLINE-03, OFFLINE-04 / UAT-0041, UAT-0042, UAT-0043, UAT-0044]', () => {
   const studentId = `usr_offline_stud_${Date.now()}`;
   const porterId = `usr_offline_port_${Date.now()}`;
   const testSecret = 'UNILAGSTAY_GATEPASS_HMAC_SECRET_2026_KEY';
@@ -22,6 +23,10 @@ describe('Offline Operations & Network Recovery [OFFLINE-01, OFFLINE-02, OFFLINE
     await GatePassService.initializeSchema();
     await OfflineSyncService.initializeSchema();
     const client = AuthService.getDbClient();
+
+    // Reset offline_security_keys table to default active state
+    await client.execute({ sql: `DELETE FROM offline_security_keys`, args: [] });
+    await OfflineSyncService.cacheSigningKey('UNILAG_GATE_OFFLINE_KEY_V1', testSecret, 'HMAC-SHA256', 90);
 
     // Clean up & Seed test student
     await client.execute({
@@ -297,6 +302,76 @@ describe('Offline Operations & Network Recovery [OFFLINE-01, OFFLINE-02, OFFLINE
       expect(stateAfter.offlineMode).toBe(false);
       expect(stateAfter.lastSyncResult).toBeDefined();
       expect(stateAfter.lastSyncResult?.syncedCount).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  // =========================================================================
+  // [OFFLINE-04 / UAT-0044]: Key Rotation, Revocation & Queue Integrity
+  // =========================================================================
+  describe('[OFFLINE-04] Cryptographic Key Rotation, Revocation & Queue Self-Healing Protocol', () => {
+    test('rotates signing key, setting previous keys to inactive and incrementing version', async () => {
+      const rot1KeyId = `ROT_KEY_1_${Date.now()}`;
+      const rot1Secret = 'ROT_SECRET_VALUE_1_2026';
+
+      const rotatedKey = await OfflineSyncService.rotateSigningKey(rot1KeyId, rot1Secret, 'HMAC-SHA256', 90);
+
+      expect(rotatedKey.keyId).toBe(rot1KeyId);
+      expect(rotatedKey.isActive).toBe(true);
+      expect(rotatedKey.keyVersion).toBeGreaterThan(1);
+
+      // Verify active key retrieved by getCachedSigningKey matches rotated key
+      const activeSecret = await OfflineSyncService.getCachedSigningKey();
+      expect(activeSecret).toBe(rot1Secret);
+    });
+
+    test('revokes a key and falls back safely to default or next active key', async () => {
+      const rot2KeyId = `ROT_KEY_TO_REVOKE_${Date.now()}`;
+      const rot2Secret = 'REVOCABLE_SECRET_KEY';
+
+      await OfflineSyncService.rotateSigningKey(rot2KeyId, rot2Secret);
+
+      // Revoke the key
+      const revoked = await OfflineSyncService.revokeSigningKey(rot2KeyId);
+      expect(revoked).toBe(true);
+
+      // Active key should fallback
+      const currentActiveSecret = await OfflineSyncService.getCachedSigningKey();
+      expect(currentActiveSecret).toBeDefined();
+    });
+
+    test('verifies queue integrity and repairs corrupted queue entries', async () => {
+      const client = AuthService.getDbClient();
+
+      // Insert a corrupted entry manually
+      const corruptId = `corrupt_${Date.now()}`;
+      await client.execute({
+        sql: `INSERT INTO offline_scan_queue (id, token_string, user_id, hostel_id, gate_type, access_status, scanned_by_porter_id, scanned_at)
+              VALUES (?, '', 'undefined', 'hostel_jaja', 'ENTRY', 'GRANTED', ?, ?)`,
+        args: [corruptId, porterId, new Date().toISOString()]
+      });
+
+      // Run integrity check
+      const report = await OfflineSyncService.verifyQueueIntegrity();
+      expect(report.corruptedCount).toBeGreaterThan(0);
+      expect(report.repairedCount).toBeGreaterThan(0);
+
+      // Re-running verifyQueueIntegrity shows healthy queue
+      const reportAfter = await OfflineSyncService.verifyQueueIntegrity();
+      expect(reportAfter.isHealthy).toBe(true);
+      expect(reportAfter.corruptedCount).toBe(0);
+    });
+
+    test('integrates key rotation and queue health checks in Zustand store', async () => {
+      const store = useScannerStore.getState();
+
+      const newKeyId = `STORE_KEY_${Date.now()}`;
+      await store.rotateKey(newKeyId, 'SECRET_VIA_STORE');
+
+      const stateAfterRotate = useScannerStore.getState();
+      expect(stateAfterRotate.activeKeyId).toBe(newKeyId);
+
+      const healthReport = await store.verifyQueueIntegrity();
+      expect(healthReport.isHealthy).toBe(true);
     });
   });
 });

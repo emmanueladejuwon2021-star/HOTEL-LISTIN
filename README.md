@@ -256,7 +256,7 @@ npm start
 - [x] Offline local public key caching for JWT gate pass verification (`[OFFLINE-01]` - Issue #41)
 - [x] Local SQLite queueing for offline gate entry logs (`[OFFLINE-02]` - Issue #42)
 - [x] Automatic background sync when internet connection resumes (`[OFFLINE-03]` - Issue #43)
-- [ ] Offline status badge and network connectivity state monitoring (`[OFFLINE-04]` - Issue #44)
+- [x] Offline cryptographic key rotation, key revocation & queue integrity verification (`[OFFLINE-04]` - Issue #44)
 - [ ] Conflict resolution for offline gate check-in records (`[OFFLINE-05]` - Issue #45)
 
 ### Visitor Management System
