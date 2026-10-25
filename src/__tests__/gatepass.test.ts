@@ -106,6 +106,49 @@ describe('Dynamic QR Code Gate Pass Generation (Issue #33 & #34 / GATEPASS-03 & 
     useGatePassStore.getState().tickTimer(testStudentId);
     expect(useGatePassStore.getState().secondsRemaining).toBe(currentSeconds - 1);
   });
+
+  test('creates, lists, and cancels visitor passes in GatePassService and useGatePassStore ([VISITOR-02] / UAT-0047)', async () => {
+    // 1. Create a new visitor pass
+    const createdPass = await GatePassService.createVisitorPass(
+      testStudentId,
+      'Test Visitor Friend',
+      '08099998888',
+      '2026-10-30'
+    );
+
+    expect(createdPass.id).toBeDefined();
+    expect(createdPass.visitorName).toBe('Test Visitor Friend');
+    expect(createdPass.passCode).toHaveLength(6);
+    expect(createdPass.status).toBe('EXPECTED');
+
+    // 2. Retrieve student visitor passes list
+    const passesList = await GatePassService.getVisitorPassesByStudent(testStudentId);
+    expect(passesList.length).toBeGreaterThan(0);
+    const foundPass = passesList.find(p => p.id === createdPass.id);
+    expect(foundPass).toBeDefined();
+    expect(foundPass?.visitorPhone).toBe('08099998888');
+
+    // 3. Cancel the expected visitor pass
+    const cancelledPass = await GatePassService.cancelVisitorPass(createdPass.id, testStudentId);
+    expect(cancelledPass.status).toBe('EXPIRED');
+
+    // 4. Test Zustand useGatePassStore actions
+    const store = useGatePassStore.getState();
+
+    // Create via store
+    const storeCreatedPass = await store.createVisitorPass!(
+      testStudentId,
+      'Store Visitor Guest',
+      '08077776666'
+    );
+    expect(storeCreatedPass.status).toBe('EXPECTED');
+
+    // Cancel via store
+    await store.cancelVisitorPass!(storeCreatedPass.id, testStudentId);
+    const updatedStorePasses = useGatePassStore.getState().visitorPasses;
+    const cancelledStorePass = updatedStorePasses?.find(p => p.id === storeCreatedPass.id);
+    expect(cancelledStorePass?.status).toBe('EXPIRED');
+  });
 });
 
 describe('GatePassService - Dynamic QR Gate Pass & Gatekeeper Engine [GATEPASS-01 & GATEPASS-02]', () => {
