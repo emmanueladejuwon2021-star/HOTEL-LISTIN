@@ -138,3 +138,64 @@ export const validateDocumentFile = (fileUrl: string, documentType: DocumentType
 
   return { isValid: true, detectedMimeType: 'application/octet-stream' };
 };
+
+/**
+ * Validates visitor pass input parameters (visitor full name, phone number, and visit date).
+ *
+ * @param visitorName - Visitor's full name
+ * @param visitorPhone - Visitor's phone number
+ * @param visitDate - Date of expected visit (YYYY-MM-DD or ISO string)
+ * @returns Object with isValid boolean and optional error message
+ */
+export const validateVisitorInput = (
+  visitorName: string,
+  visitorPhone: string,
+  visitDate?: string
+): { isValid: boolean; error?: string } => {
+  const cleanName = visitorName.trim();
+  const cleanPhone = visitorPhone.trim();
+
+  if (!cleanName || cleanName.length < 2) {
+    return {
+      isValid: false,
+      error: "Visitor's full name must be at least 2 characters long."
+    };
+  }
+
+  if (!/^[a-zA-Z\s.'-]+$/.test(cleanName)) {
+    return {
+      isValid: false,
+      error: "Visitor's name can only contain letters, spaces, hyphens, and apostrophes."
+    };
+  }
+
+  if (!cleanPhone) {
+    return {
+      isValid: false,
+      error: "Visitor's phone number is required."
+    };
+  }
+
+  // Nigerian phone format (080..., 070..., 090..., 081..., +234...) or standard 10-15 digit number
+  const isPhoneValid = /^(\+?234|0)[789][01]\d{8}$/.test(cleanPhone.replace(/[\s-]/g, '')) ||
+                       /^\+?\d{10,15}$/.test(cleanPhone.replace(/[\s-]/g, ''));
+
+  if (!isPhoneValid) {
+    return {
+      isValid: false,
+      error: 'Enter a valid phone number (e.g., 08012345678 or +2348012345678).'
+    };
+  }
+
+  if (visitDate && visitDate.trim()) {
+    const parsedDate = new Date(visitDate.trim());
+    if (isNaN(parsedDate.getTime())) {
+      return {
+        isValid: false,
+        error: 'Invalid visit date format. Use YYYY-MM-DD.'
+      };
+    }
+  }
+
+  return { isValid: true };
+};

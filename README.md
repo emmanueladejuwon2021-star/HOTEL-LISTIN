@@ -260,7 +260,7 @@ npm start
 - [ ] Conflict resolution for offline gate check-in records (`[OFFLINE-05]` - Issue #45)
 
 ### Visitor Management System
-- [ ] Student visitor pass creation with guest name, phone, and visit date (`[VISITOR-01]` - Issue #46)
+- [x] Student visitor pass creation with guest name, phone, and visit date (`[VISITOR-01]` - Issue #46)
 - [ ] Temporary 6-digit PIN and temporary QR code for guests (`[VISITOR-02]` - Issue #47)
 - [ ] Porter guest entry check-in and exit logging (`[VISITOR-03]` - Issue #48)
 - [ ] Visitor curfew alert for guests remaining past allowed hours (`[VISITOR-04]` - Issue #49)

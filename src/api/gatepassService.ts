@@ -14,6 +14,7 @@ import {
   ManualPinLookupResult,
   ShiftStatistics
 } from '../types/gatepass';
+import { validateVisitorInput } from '../utils/validation';
 
 export const GATE_PASS_SECRET = 'UNILAGSTAY_GATEPASS_HMAC_SECRET_2026_KEY';
 const GATE_PASS_HMAC_SECRET = GATE_PASS_SECRET;
@@ -608,6 +609,12 @@ export class GatePassService {
     visitorPhone: string,
     visitDate?: string
   ): Promise<VisitorPass> {
+    // Validate inputs
+    const valResult = validateVisitorInput(visitorName, visitorPhone, visitDate);
+    if (!valResult.isValid) {
+      throw new Error(valResult.error || 'Invalid visitor pass details.');
+    }
+
     await GatePassService.initializeSchema();
     const client = AuthService.getDbClient();
 
