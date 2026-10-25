@@ -27,7 +27,7 @@ export type GateType = 'ENTRY' | 'EXIT';
 
 export type AccessStatus = 'GRANTED' | 'DENIED';
 
-export type VisitorPassStatus = 'EXPECTED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'EXPIRED';
+export type VisitorPassStatus = 'EXPECTED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'EXPIRED' | 'OVERSTAYED';
 
 /**
  * Payload encoded inside the dynamic QR code token.
@@ -150,6 +150,25 @@ export interface VisitorPass {
   checkOutTime?: string;
   status: VisitorPassStatus;
   createdAt: string;
+  isOverstayed?: boolean;
+  overstayMinutes?: number;
+  curfewAlertMessage?: string;
+  curfewLimitTime?: string;
+}
+
+/**
+ * Curfew alert payload for guests remaining past allowed hostel visiting hours ([VISITOR-04]).
+ */
+export interface VisitorCurfewAlert {
+  passId: string;
+  visitorName: string;
+  visitorPhone: string;
+  studentId: string;
+  studentName?: string;
+  checkInTime: string;
+  curfewLimitTime: string;
+  overstayMinutes: number;
+  alertMessage: string;
 }
 
 /**
@@ -252,6 +271,7 @@ export interface GatePassState {
   countdownSeconds?: number;
   isOffline?: boolean;
   visitorPasses?: VisitorPass[];
+  curfewAlerts?: VisitorCurfewAlert[];
 }
 
 /**
@@ -264,6 +284,8 @@ export interface GatePassStoreState extends GatePassState {
   resetGatePassState: () => void;
   createVisitorPass?: (studentId: string, visitorName: string, visitorPhone: string, visitDate?: string) => Promise<VisitorPass>;
   loadVisitorPasses?: (studentId: string) => Promise<void>;
+  checkCurfewAlerts?: (studentId: string, curfewHour?: number) => Promise<VisitorCurfewAlert[]>;
+  sendVisitorCurfewReminder?: (passId: string) => Promise<{ success: boolean; message: string }>;
   initializePass?: (userId: string) => Promise<void>;
   refreshPass?: (userId: string) => Promise<void>;
   reset?: () => void;

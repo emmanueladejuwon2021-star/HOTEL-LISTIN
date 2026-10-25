@@ -59,11 +59,14 @@ export const GatePassScreen: React.FC = () => {
     isLoading,
     errorMessage,
     visitorPasses,
+    curfewAlerts,
     loadGatePass,
     refreshGatePass,
     tickTimer,
     createVisitorPass,
-    loadVisitorPasses
+    loadVisitorPasses,
+    checkCurfewAlerts,
+    sendVisitorCurfewReminder
   } = useGatePassStore();
 
   const userId = session?.user?.id || 'demo_student_id';
@@ -78,11 +81,17 @@ export const GatePassScreen: React.FC = () => {
   const [visitorPhone, setVisitorPhone] = useState('');
   const [generatedVisitorPin, setGeneratedVisitorPin] = useState<string | null>(null);
 
-  // Load pass and visitor list on mount
+  // Reminder feedback message state
+  const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+
+  // Load pass, visitor list, and check curfew alerts on mount
   useEffect(() => {
     loadGatePass(userId);
     if (loadVisitorPasses) {
       loadVisitorPasses(userId);
+    }
+    if (checkCurfewAlerts) {
+      checkCurfewAlerts(userId);
     }
   }, [userId]);
 
@@ -102,7 +111,22 @@ export const GatePassScreen: React.FC = () => {
       setGeneratedVisitorPin(pass.passCode);
       setVisitorName('');
       setVisitorPhone('');
+      if (checkCurfewAlerts) {
+        checkCurfewAlerts(userId);
+      }
     } catch {}
+  };
+
+  const handleSendReminder = async (passId: string) => {
+    if (!sendVisitorCurfewReminder) return;
+    try {
+      const res = await sendVisitorCurfewReminder(passId);
+      setReminderMessage(res.message);
+      setTimeout(() => setReminderMessage(null), 5000);
+    } catch (e: any) {
+      setReminderMessage(e.message || 'Failed to send reminder.');
+      setTimeout(() => setReminderMessage(null), 5000);
+    }
   };
 
   // Calculate progress bar percentage width for 30s timer
@@ -167,6 +191,40 @@ export const GatePassScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* Visitor Curfew & Overstay Alert Banner ([VISITOR-04]) */}
+        {curfewAlerts && curfewAlerts.length > 0 ? (
+          <View className="bg-rose-950 border-2 border-rose-600 p-4 rounded-2xl mb-5 w-full max-w-xs shadow-lg">
+            <View className="flex-row items-center mb-1">
+              <Text className="text-rose-400 font-black text-sm uppercase tracking-wide">
+                ⚠️ Visitor Curfew Warning
+              </Text>
+            </View>
+            {curfewAlerts.map((alert, idx) => (
+              <View key={idx} className="mt-1">
+                <Text className="text-rose-200 text-xs font-semibold">
+                  {alert.visitorName} ({alert.visitorPhone})
+                </Text>
+                <Text className="text-rose-300 text-xs mt-0.5">
+                  Overstayed by {alert.overstayMinutes} mins past 8:00 PM curfew limit.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => handleSendReminder(alert.passId)}
+                  className="bg-rose-600 px-3 py-1.5 rounded-lg mt-2 items-center active:opacity-80"
+                >
+                  <Text className="text-white text-xs font-bold">Send Curfew Reminder</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {/* Reminder Notification Toast Banner */}
+        {reminderMessage ? (
+          <View className="bg-emerald-950 border border-emerald-600 p-3 rounded-xl mb-4 w-full max-w-xs">
+            <Text className="text-emerald-300 text-xs text-center font-semibold">{reminderMessage}</Text>
+          </View>
+        ) : null}
+
         {/* Error Badge */}
         {errorMessage ? (
           <View className="bg-red-950 border border-red-800 p-3 rounded-xl mb-4 w-full max-w-xs">
@@ -202,6 +260,67 @@ export const GatePassScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Active & Historical Visitor Passes Section ([VISITOR-04]) */}
+        {visitorPasses && visitorPasses.length > 0 ? (
+          <View className="w-full max-w-xs mt-8">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-amber-400 font-bold text-xs uppercase tracking-wider">
+                My Visitor Pass Log ({visitorPasses.length})
+              </Text>
+              <TouchableOpacity
+                onPress={() => checkCurfewAlerts && checkCurfewAlerts(userId)}
+                className="bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700"
+              >
+                <Text className="text-slate-300 text-xs">↻ Curfew Check</Text>
+              </TouchableOpacity>
+            </View>
+
+            {visitorPasses.slice(0, 5).map((pass) => {
+              const isOverstayed = pass.status === 'OVERSTAYED';
+              const isCheckedIn = pass.status === 'CHECKED_IN';
+              const isExpected = pass.status === 'EXPECTED';
+
+              let badgeColor = 'bg-slate-800 border-slate-700 text-slate-300';
+              if (isOverstayed) badgeColor = 'bg-rose-950 border-rose-500 text-rose-300';
+              if (isCheckedIn) badgeColor = 'bg-emerald-950 border-emerald-500 text-emerald-300';
+              if (isExpected) badgeColor = 'bg-amber-950 border-amber-500 text-amber-300';
+
+              return (
+                <View
+                  key={pass.id}
+                  className="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl mb-2.5"
+                >
+                  <View className="flex-row justify-between items-start">
+                    <View className="flex-1">
+                      <Text className="text-white font-bold text-sm">{pass.visitorName}</Text>
+                      <Text className="text-slate-400 text-xs">{pass.visitorPhone}</Text>
+                      <Text className="text-slate-500 text-xs mt-1">PIN: {pass.passCode} | Date: {pass.visitDate}</Text>
+                    </View>
+
+                    <View className={`px-2.5 py-1 rounded-full border ${badgeColor}`}>
+                      <Text className="text-xs font-bold">{pass.status}</Text>
+                    </View>
+                  </View>
+
+                  {isOverstayed ? (
+                    <View className="mt-2.5 pt-2 border-t border-slate-700 flex-row items-center justify-between">
+                      <Text className="text-rose-400 text-xs font-semibold">
+                        Overstayed Visiting Hours
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleSendReminder(pass.id)}
+                        className="bg-rose-600 px-2.5 py-1 rounded-lg"
+                      >
+                        <Text className="text-white text-xs font-bold">Remind</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
 
         {/* Information Notice for Non-Technical Students */}
         <Text className="text-slate-500 text-xs text-center mt-6 px-4">

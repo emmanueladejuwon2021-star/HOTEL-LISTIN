@@ -312,4 +312,59 @@ describe('GatePassService - Dynamic QR Gate Pass & Gatekeeper Engine [GATEPASS-0
       expect(logs[0].timestamp).toBeDefined();
     });
   });
+
+  describe('[VISITOR-04 / UAT-0049] Visitor Curfew & Overstay Monitoring Engine', () => {
+    let overstayPassId: string;
+
+    test('should create visitor pass and execute check-in for curfew monitoring test', async () => {
+      const pass = await GatePassService.createVisitorPass(
+        residentStudentId,
+        'Olawale Fashola',
+        '08098765432'
+      );
+      expect(pass.status).toBe('EXPECTED');
+
+      const checkedIn = await GatePassService.checkInVisitor(pass.id, porterId);
+      expect(checkedIn.status).toBe('CHECKED_IN');
+      overstayPassId = pass.id;
+    });
+
+    test('should detect curfew overstay and transition visitor pass status to OVERSTAYED', async () => {
+      // Simulate curfew hour inspection at or after 20:00 (8:00 PM)
+      const alerts = await GatePassService.checkVisitorCurfewAlerts(residentStudentId, 0);
+
+      expect(alerts).toBeDefined();
+      expect(alerts.length).toBeGreaterThan(0);
+      const targetAlert = alerts.find(a => a.passId === overstayPassId);
+      expect(targetAlert).toBeDefined();
+      expect(targetAlert?.visitorName).toBe('Olawale Fashola');
+      expect(targetAlert?.alertMessage).toContain('CURFEW VIOLATION');
+
+      // Verify pass status in database updated to OVERSTAYED
+      const passes = await GatePassService.getVisitorPassesByStudent(residentStudentId);
+      const updatedPass = passes.find(p => p.id === overstayPassId);
+      expect(updatedPass?.status).toBe('OVERSTAYED');
+      expect(updatedPass?.isOverstayed).toBe(true);
+    });
+
+    test('should send visitor curfew reminder notification successfully', async () => {
+      const reminder = await GatePassService.sendVisitorCurfewReminder(overstayPassId);
+
+      expect(reminder.success).toBe(true);
+      expect(reminder.message).toContain('Curfew reminder alert sent successfully');
+      expect(reminder.message).toContain('Olawale Fashola');
+    });
+
+    test('should update Zustand store curfew alerts and visitor passes list seamlessly', async () => {
+      const { useGatePassStore } = require('../store/useGatePassStore');
+      const store = useGatePassStore.getState();
+
+      const alerts = await store.checkCurfewAlerts!(residentStudentId, 0);
+      expect(alerts.length).toBeGreaterThan(0);
+
+      const stateVisitorPasses = useGatePassStore.getState().visitorPasses;
+      const overstayedInStore = stateVisitorPasses?.find((p: any) => p.id === overstayPassId);
+      expect(overstayedInStore?.status).toBe('OVERSTAYED');
+    });
+  });
 });

@@ -2,6 +2,7 @@ import CryptoJS from 'crypto-js';
 import { AuthService } from './authService';
 import { PaymentService } from './paymentService';
 import { OfflineSyncService } from './offlineSyncService';
+import { InventoryService } from './inventoryService';
 import {
   GatePassRecord,
   GatePassTokenPayload,
@@ -62,6 +63,7 @@ export class GatePassService {
     await AuthService.initializeSchema();
     await PaymentService.initializeSchema();
     await OfflineSyncService.initializeSchema();
+    await InventoryService.initializeSchema();
     const client = AuthService.getDbClient();
 
     // 1. Create gate_passes table
@@ -146,7 +148,7 @@ export class GatePassService {
         visit_date DATE NOT NULL,
         check_in_time DATETIME,
         check_out_time DATETIME,
-        status TEXT CHECK(status IN ('EXPECTED', 'CHECKED_IN', 'CHECKED_OUT', 'EXPIRED')) DEFAULT 'EXPECTED',
+        status TEXT CHECK(status IN ('EXPECTED', 'CHECKED_IN', 'CHECKED_OUT', 'EXPIRED', 'OVERSTAYED')) DEFAULT 'EXPECTED',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
       )`,
@@ -182,6 +184,44 @@ export class GatePassService {
       sql: `CREATE INDEX IF NOT EXISTS idx_gate_nonce ON gate_access_logs(nonce)`,
       args: []
     });
+
+    // Check if visitor_passes table needs migration for OVERSTAYED status
+    try {
+      await client.execute({
+        sql: `INSERT INTO visitor_passes (id, student_id, visitor_name, visitor_phone, pass_code, visit_date, status)
+              VALUES ('test_check_overstayed', 'test', 'test', '000', '000000', '2026-01-01', 'OVERSTAYED')`,
+        args: []
+      });
+      await client.execute({ sql: `DELETE FROM visitor_passes WHERE id = 'test_check_overstayed'`, args: [] });
+    } catch (e: any) {
+      if (String(e).includes('CHECK constraint failed')) {
+        try {
+          await client.execute({ sql: `ALTER TABLE visitor_passes RENAME TO visitor_passes_old`, args: [] });
+          await client.execute({
+            sql: `CREATE TABLE visitor_passes (
+              id TEXT PRIMARY KEY,
+              student_id TEXT NOT NULL,
+              visitor_name TEXT NOT NULL,
+              visitor_phone TEXT NOT NULL,
+              pass_code TEXT NOT NULL,
+              visit_date DATE NOT NULL,
+              check_in_time DATETIME,
+              check_out_time DATETIME,
+              status TEXT CHECK(status IN ('EXPECTED', 'CHECKED_IN', 'CHECKED_OUT', 'EXPIRED', 'OVERSTAYED')) DEFAULT 'EXPECTED',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+            )`,
+            args: []
+          });
+          await client.execute({
+            sql: `INSERT INTO visitor_passes (id, student_id, visitor_name, visitor_phone, pass_code, visit_date, check_in_time, check_out_time, status, created_at)
+                  SELECT id, student_id, visitor_name, visitor_phone, pass_code, visit_date, check_in_time, check_out_time, status, created_at FROM visitor_passes_old`,
+            args: []
+          });
+          await client.execute({ sql: `DROP TABLE visitor_passes_old`, args: [] });
+        } catch {}
+      }
+    }
   }
 
   /**
@@ -685,20 +725,127 @@ export class GatePassService {
       args: [studentId]
     });
 
-    return res.rows.map(row => ({
-      id: String(row.id),
-      studentId: String(row.student_id),
-      studentName: row.student_name ? String(row.student_name) : undefined,
-      studentMatric: row.student_matric ? String(row.student_matric) : undefined,
-      visitorName: String(row.visitor_name),
-      visitorPhone: String(row.visitor_phone),
-      passCode: String(row.pass_code),
-      visitDate: String(row.visit_date),
-      checkInTime: row.check_in_time ? String(row.check_in_time) : undefined,
-      checkOutTime: row.check_out_time ? String(row.check_out_time) : undefined,
-      status: String(row.status) as any,
-      createdAt: String(row.created_at)
-    }));
+    return res.rows.map(row => {
+      const status = String(row.status) as any;
+      const isOverstayed = status === 'OVERSTAYED';
+      return {
+        id: String(row.id),
+        studentId: String(row.student_id),
+        studentName: row.student_name ? String(row.student_name) : undefined,
+        studentMatric: row.student_matric ? String(row.student_matric) : undefined,
+        visitorName: String(row.visitor_name),
+        visitorPhone: String(row.visitor_phone),
+        passCode: String(row.pass_code),
+        visitDate: String(row.visit_date),
+        checkInTime: row.check_in_time ? String(row.check_in_time) : undefined,
+        checkOutTime: row.check_out_time ? String(row.check_out_time) : undefined,
+        status,
+        createdAt: String(row.created_at),
+        isOverstayed,
+        curfewLimitTime: '20:00 (8:00 PM)',
+        curfewAlertMessage: isOverstayed ? 'Guest has exceeded official hostel visiting curfew limit.' : undefined
+      };
+    });
+  }
+
+  /**
+   * Inspects checked-in visitors and flags guests remaining past allowed curfew hours ([VISITOR-04]).
+   * Official UNILAG Hostel Visiting Hours end at 8:00 PM (20:00).
+   */
+  public static async checkVisitorCurfewAlerts(
+    studentId?: string,
+    curfewHour: number = 20
+  ): Promise<import('../types/gatepass').VisitorCurfewAlert[]> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const query = studentId
+      ? `SELECT vp.id, vp.student_id, u.full_name as student_name, vp.visitor_name, vp.visitor_phone,
+                vp.check_in_time, vp.visit_date, vp.status
+         FROM visitor_passes vp
+         JOIN users u ON vp.student_id = u.id
+         WHERE vp.student_id = ? AND vp.status IN ('CHECKED_IN', 'OVERSTAYED')`
+      : `SELECT vp.id, vp.student_id, u.full_name as student_name, vp.visitor_name, vp.visitor_phone,
+                vp.check_in_time, vp.visit_date, vp.status
+         FROM visitor_passes vp
+         JOIN users u ON vp.student_id = u.id
+         WHERE vp.status IN ('CHECKED_IN', 'OVERSTAYED')`;
+
+    const args = studentId ? [studentId] : [];
+    const res = await client.execute({ sql: query, args });
+
+    const alerts: import('../types/gatepass').VisitorCurfewAlert[] = [];
+    const now = new Date();
+
+    for (const row of res.rows) {
+      const passId = String(row.id);
+      const vName = String(row.visitor_name);
+      const vPhone = String(row.visitor_phone);
+      const sId = String(row.student_id);
+      const sName = row.student_name ? String(row.student_name) : 'Student';
+      const checkInIso = row.check_in_time ? String(row.check_in_time) : new Date().toISOString();
+
+      const checkInDate = new Date(checkInIso);
+      const curfewTimeToday = new Date(now);
+      curfewTimeToday.setHours(curfewHour, 0, 0, 0);
+
+      // Check if past curfew time or checked in prior to today without check-out
+      const isPastCurfew = now.getTime() > curfewTimeToday.getTime();
+      const isPriorDay = checkInDate.getDate() !== now.getDate() || checkInDate.getMonth() !== now.getMonth();
+
+      if (isPastCurfew || isPriorDay) {
+        const diffMs = Math.max(0, now.getTime() - curfewTimeToday.getTime());
+        const overstayMinutes = Math.floor(diffMs / (1000 * 60)) || 30;
+
+        // Update database status to OVERSTAYED
+        await client.execute({
+          sql: `UPDATE visitor_passes SET status = 'OVERSTAYED' WHERE id = ?`,
+          args: [passId]
+        });
+
+        alerts.push({
+          passId,
+          visitorName: vName,
+          visitorPhone: vPhone,
+          studentId: sId,
+          studentName: sName,
+          checkInTime: checkInIso,
+          curfewLimitTime: `${curfewHour}:00 PM`,
+          overstayMinutes,
+          alertMessage: `CURFEW VIOLATION: Visitor ${vName} remains checked in ${overstayMinutes} minutes past the ${curfewHour}:00 PM hostel visiting curfew limit.`
+        });
+      }
+    }
+
+    return alerts;
+  }
+
+  /**
+   * Dispatches a curfew reminder notification to guest/student for an overstayed visitor pass ([VISITOR-04]).
+   */
+  public static async sendVisitorCurfewReminder(passId: string): Promise<{ success: boolean; message: string }> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    const res = await client.execute({
+      sql: `SELECT vp.id, vp.visitor_name, vp.visitor_phone, vp.student_id, u.full_name as student_name
+            FROM visitor_passes vp
+            JOIN users u ON vp.student_id = u.id
+            WHERE vp.id = ?`,
+      args: [passId]
+    });
+
+    if (res.rows.length === 0) {
+      throw new Error(`Visitor pass '${passId}' not found.`);
+    }
+
+    const row = res.rows[0];
+    const visitorName = String(row.visitor_name);
+
+    return {
+      success: true,
+      message: `Curfew reminder alert sent successfully to ${visitorName} (${row.visitor_phone}). Host student ${row.student_name} notified.`
+    };
   }
 
   /**

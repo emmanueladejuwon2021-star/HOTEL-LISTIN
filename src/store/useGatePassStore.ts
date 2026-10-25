@@ -24,6 +24,7 @@ export const useGatePassStore = create<GatePassStoreState>((set, get) => ({
   countdownSeconds: 30,
   isOffline: false,
   visitorPasses: [],
+  curfewAlerts: [],
 
   loadGatePass: async (userId: string) => {
     set({ isLoading: true, errorMessage: null });
@@ -112,6 +113,29 @@ export const useGatePassStore = create<GatePassStoreState>((set, get) => ({
       set({ visitorPasses: passes });
     } catch (error: any) {
       set({ errorMessage: error.message || 'Failed to load visitor passes.' });
+    }
+  },
+
+  checkCurfewAlerts: async (studentId: string, curfewHour?: number) => {
+    try {
+      const alerts = await GatePassService.checkVisitorCurfewAlerts(studentId, curfewHour);
+      set({ curfewAlerts: alerts });
+      // Reload visitor passes to reflect OVERSTAYED status
+      const passes = await GatePassService.getVisitorPassesByStudent(studentId);
+      set({ visitorPasses: passes });
+      return alerts;
+    } catch (error: any) {
+      set({ errorMessage: error.message || 'Failed to check visitor curfew alerts.' });
+      return [];
+    }
+  },
+
+  sendVisitorCurfewReminder: async (passId: string) => {
+    try {
+      const res = await GatePassService.sendVisitorCurfewReminder(passId);
+      return res;
+    } catch (error: any) {
+      throw error;
     }
   },
 
