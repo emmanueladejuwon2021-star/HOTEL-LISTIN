@@ -21,6 +21,7 @@ export class AuthService {
 
   /**
    * Helper method to turn a plain password into a secure hashed string using SHA-256 algorithm and a salt string.
+   * NOTE: Hardcoded salt is a known security debt. Future migration to per-user random salts + Argon2/bcrypt recommended.
    * This ensures we never compare passwords as plain text for maximum security.
    *
    * @param password - Plain text password typed by the user
@@ -29,6 +30,15 @@ export class AuthService {
    */
   public static hashPassword(password: string, salt: string = 'UNILAG_STAY_SECRET_SALT'): string {
     return CryptoJS.SHA256(password + salt).toString();
+  }
+
+  /**
+   * Generates a cryptographically stronger session token using random bytes.
+   */
+  private static generateSecureToken(userId: string): string {
+    const randomBytes = CryptoJS.lib.WordArray.random(32).toString();
+    const timestamp = Date.now();
+    return `sess_${userId}_${timestamp}_${randomBytes}`;
   }
 
   /**
@@ -175,11 +185,11 @@ export class AuthService {
       }
     }
 
-    // Return the successful login session details and a new session token
+    // Return the successful login session details and a new secure session token
     return {
       user,
       studentProfile,
-      token: `jwt_session_token_${user.id}_${Date.now()}`
+      token: AuthService.generateSecureToken(user.id)
     };
   }
 
@@ -197,8 +207,8 @@ export class AuthService {
       throw new Error('Session invalid: Missing token or user identity.');
     }
 
-    // Check token format basic structure
-    if (!token.startsWith(`jwt_session_token_${userId}`)) {
+    // Check token format basic structure (supports both old and new format for compatibility)
+    if (!token.startsWith(`jwt_session_token_${userId}`) && !token.startsWith(`sess_${userId}_`)) {
       throw new Error('Session invalid: Session token format is unverified or expired.');
     }
 
