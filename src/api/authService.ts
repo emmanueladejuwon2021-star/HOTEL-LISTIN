@@ -80,9 +80,29 @@ export class AuthService {
         priority_category TEXT CHECK(priority_category IN ('FRESHER', 'FINALIST', 'SCHOLAR', 'SPECIAL_NEEDS', 'STALLITE')) NOT NULL,
         fees_paid INTEGER DEFAULT 0,
         clearance_status TEXT CHECK(clearance_status IN ('NOT_STARTED', 'PENDING', 'APPROVED', 'REJECTED')) DEFAULT 'NOT_STARTED',
+        residency_status TEXT DEFAULT 'PENDING_CHECKIN',
+        clearance_rejection_reason TEXT,
+        clearance_certificate_hash TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );`
     ], 'write');
+
+    // Safe schema alterations for existing student_profiles tables in local DBs
+    try {
+      await client.execute(`ALTER TABLE student_profiles ADD COLUMN residency_status TEXT DEFAULT 'PENDING_CHECKIN'`);
+    } catch (_e) {
+      // Column may already exist
+    }
+    try {
+      await client.execute(`ALTER TABLE student_profiles ADD COLUMN clearance_rejection_reason TEXT`);
+    } catch (_e) {
+      // Column may already exist
+    }
+    try {
+      await client.execute(`ALTER TABLE student_profiles ADD COLUMN clearance_certificate_hash TEXT`);
+    } catch (_e) {
+      // Column may already exist
+    }
   }
 
   /**
