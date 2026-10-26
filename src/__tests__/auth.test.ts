@@ -12,8 +12,8 @@ describe('[AUTH-01 to AUTH-05] Authentication & Turso DB Integration Tests', () 
     const client = AuthService.getDbClient();
 
     // Clean existing user records with matric 190407088 and inactive test user
-    await client.execute({ sql: `DELETE FROM student_profiles WHERE user_id IN (SELECT id FROM users WHERE matric_or_staff_no IN ('190407088', '190407099'))`, args: [] });
-    await client.execute({ sql: `DELETE FROM users WHERE matric_or_staff_no IN ('190407088', '190407099')`, args: [] });
+    await client.execute({ sql: `DELETE FROM student_profiles WHERE user_id IN ('usr_190407088', 'usr_190407099') OR user_id IN (SELECT id FROM users WHERE matric_or_staff_no IN ('190407088', '190407099'))`, args: [] });
+    await client.execute({ sql: `DELETE FROM users WHERE id IN ('usr_190407088', 'usr_190407099') OR matric_or_staff_no IN ('190407088', '190407099')`, args: [] });
 
     // Seed test active student with password_hash column
     await client.execute({
