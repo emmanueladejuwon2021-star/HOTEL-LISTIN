@@ -267,10 +267,10 @@ npm start
 - [ ] Visitor log history and frequent guest management (`[VISITOR-05]` - Issue #50)
 
 ### Maintenance & Artisan Ticket System
-- [ ] Student maintenance ticket creation with live problem photo capture (`[MAINTENANCE-01]` - Issue #51)
-- [ ] Categorization by defect type (Plumbing, Electrical, Carpentry, Masonry) (`[MAINTENANCE-02]` - Issue #52)
-- [ ] Artisan repair job queue sorted by urgency SLA (`[MAINTENANCE-01]` - Issue #56)
-- [ ] Proof-of-fix 'After' photo upload by maintenance staff (`[MAINTENANCE-02]` - Issue #57)
+- [x] Student maintenance ticket creation with live problem photo capture (`[MAINTENANCE-01]` - Issue #51)
+- [x] Categorization by defect type (Plumbing, Electrical, Carpentry, Masonry) (`[MAINTENANCE-02]` - Issue #52)
+- [x] Artisan repair job queue sorted by urgency SLA (`[MAINTENANCE-01]` - Issue #56)
+- [x] Proof-of-fix 'After' photo upload by maintenance staff (`[MAINTENANCE-02]` - Issue #57)
 - [ ] Student inspection and fix confirmation trigger (`[MAINTENANCE-03]` - Issue #58)
 
 ### Night Exeat & Overnight Permission
