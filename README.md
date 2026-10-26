@@ -272,6 +272,7 @@ npm start
 - [ ] Artisan repair job queue sorted by urgency SLA (`[MAINTENANCE-01]` - Issue #56)
 - [ ] Proof-of-fix 'After' photo upload by maintenance staff (`[MAINTENANCE-02]` - Issue #57)
 - [ ] Student inspection and fix confirmation trigger (`[MAINTENANCE-03]` - Issue #58)
+- [x] Artisan repair job queue screen and proof-of-fix photo upload system (`[MAINTENANCE-05]` - Issue #60)
 
 ### Night Exeat & Overnight Permission
 - [ ] Student night exeat application specifying destination and duration (`[EXEAT-01]` - Issue #61)
