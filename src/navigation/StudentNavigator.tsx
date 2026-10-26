@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import { StudentTabParamList } from './types';
 import { EligibilityScreen } from '../screens/EligibilityScreen';
 import { BallotingSelectorScreen } from '../screens/BallotingSelectorScreen';
@@ -10,6 +10,7 @@ import { BedspaceLockScreen } from '../screens/BedspaceLockScreen';
 import { ClearanceScreen } from '../screens/ClearanceScreen';
 import { PaymentHoldScreen } from '../screens/PaymentHoldScreen';
 import { StudentGatePassScreen } from '../screens/StudentGatePassScreen';
+import { StudentMaintenanceScreen } from '../screens/StudentMaintenanceScreen';
 import { useAuthStore } from '../store/useAuthStore';
 
 const Tab = createBottomTabNavigator<StudentTabParamList>();
@@ -32,22 +33,22 @@ const BallotingStackNavigator: React.FC = () => {
  * StudentNavigator Component.
  * Implements isolated navigation tab/stack tree for UNILAG Student role.
  * Guides student through the sequential accommodation workflow:
- * Eligibility → Balloting → Clearance → Payment → GatePass.
+ * Eligibility → Balloting → Clearance → Payment → GatePass → Maintenance.
  * Provides clear labels, high-contrast badges, and sign-out controls for non-technical users.
  */
 export const StudentNavigator: React.FC = () => {
-  const { session, logoutUser } = useAuthStore();
+  const { logoutUser } = useAuthStore();
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#7A0000'
+          backgroundColor: '#7A0000',
         },
         headerTintColor: '#FFFFFF',
         headerTitleStyle: {
           fontWeight: 'bold',
-          fontSize: 18
+          fontSize: 18,
         },
         tabBarActiveTintColor: '#7A0000',
         tabBarInactiveTintColor: '#64748B',
@@ -56,11 +57,11 @@ export const StudentNavigator: React.FC = () => {
           borderTopColor: '#E2E8F0',
           height: 64,
           paddingBottom: 10,
-          paddingTop: 8
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600'
+          fontSize: 11,
+          fontWeight: '600',
         },
         headerRight: () => (
           <TouchableOpacity
@@ -69,7 +70,7 @@ export const StudentNavigator: React.FC = () => {
           >
             <Text className="text-white text-xs font-bold">Sign Out</Text>
           </TouchableOpacity>
-        )
+        ),
       }}
     >
       <Tab.Screen
@@ -77,8 +78,8 @@ export const StudentNavigator: React.FC = () => {
         component={EligibilityScreen}
         options={{
           title: 'Eligibility',
-          tabBarLabel: '1. Eligibility',
-          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📋</Text>
+          tabBarLabel: 'Eligibility',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📋</Text>,
         }}
       />
       <Tab.Screen
@@ -86,8 +87,8 @@ export const StudentNavigator: React.FC = () => {
         component={BallotingStackNavigator}
         options={{
           title: 'Hostel Balloting',
-          tabBarLabel: '2. Balloting',
-          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>🎟️</Text>
+          tabBarLabel: 'Balloting',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>🎟️</Text>,
         }}
       />
       <Tab.Screen
@@ -95,8 +96,8 @@ export const StudentNavigator: React.FC = () => {
         component={ClearanceScreen}
         options={{
           title: 'Digital Clearance',
-          tabBarLabel: '3. Clearance',
-          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📄</Text>
+          tabBarLabel: 'Clearance',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📄</Text>,
         }}
       />
       <Tab.Screen
@@ -104,8 +105,8 @@ export const StudentNavigator: React.FC = () => {
         component={PaymentHoldScreen}
         options={{
           title: 'Fee Payment',
-          tabBarLabel: '4. Payment',
-          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>💳</Text>
+          tabBarLabel: 'Payment',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>💳</Text>,
         }}
       />
       <Tab.Screen
@@ -113,8 +114,17 @@ export const StudentNavigator: React.FC = () => {
         component={StudentGatePassScreen}
         options={{
           title: 'Gate Pass',
-          tabBarLabel: '5. Gate Pass',
-          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📲</Text>
+          tabBarLabel: 'Gate Pass',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📲</Text>,
+        }}
+      />
+      <Tab.Screen
+        name="Maintenance"
+        component={StudentMaintenanceScreen}
+        options={{
+          title: 'Repairs',
+          tabBarLabel: 'Repairs',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>🔧</Text>,
         }}
       />
     </Tab.Navigator>
