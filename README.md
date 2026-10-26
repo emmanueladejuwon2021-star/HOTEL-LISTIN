@@ -58,7 +58,7 @@ The accommodation lifecycle in `UnilagStay` guides students step-by-step through
 
 ## 6. STATUS OF APPLICATION FEATURES
 
-- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, and offline JWT key caching with SQLite queueing.
+- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, offline JWT key caching with SQLite queueing, and photo-backed repair request categorization with dynamic SLA target indicators.
 - **In Active Development / Planned**: Network connectivity monitoring state, visitor pass management, artisan work queue dispatch screen, night exeat Warden workflow UI, and emergency SOS gate panic alarm UI.
 
 ---
@@ -118,7 +118,7 @@ You can run and test the complete user interfaces, navigation flows, and forms d
 ### Option C: Automated Test Verification (Headless CLI)
 To verify that all backend database constraints, SQLite encryption, JWT signatures, role permissions, payment locks, and offline gate sync queues are functioning with zero regressions:
 
-1. **Run All 11 Automated Test Suites (163+ Tests)**:
+1. **Run All 12 Automated Test Suites (176+ Tests)**:
    ```bash
    cd HOTEL-LISTIN
    npm test -- --runInBand
@@ -126,6 +126,9 @@ To verify that all backend database constraints, SQLite encryption, JWT signatur
 
 2. **Run a Specific Feature Test Suite**:
    ```bash
+   # Test Student Maintenance Defect Categorization & Tickets (Issue #52)
+   npx jest src/__tests__/maintenance.test.ts --runInBand
+
    # Test Offline Key Caching & Background Sync (Issue #41)
    npx jest src/__tests__/offline.test.ts --runInBand
 
@@ -268,7 +271,7 @@ npm start
 
 ### Maintenance & Artisan Ticket System
 - [ ] Student maintenance ticket creation with live problem photo capture (`[MAINTENANCE-01]` - Issue #51)
-- [ ] Categorization by defect type (Plumbing, Electrical, Carpentry, Masonry) (`[MAINTENANCE-02]` - Issue #52)
+- [x] Categorization by defect type (Plumbing, Electrical, Carpentry, Masonry) (`[MAINTENANCE-02]` - Issue #52)
 - [ ] Artisan repair job queue sorted by urgency SLA (`[MAINTENANCE-01]` - Issue #56)
 - [ ] Proof-of-fix 'After' photo upload by maintenance staff (`[MAINTENANCE-02]` - Issue #57)
 - [ ] Student inspection and fix confirmation trigger (`[MAINTENANCE-03]` - Issue #58)

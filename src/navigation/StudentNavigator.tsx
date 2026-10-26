@@ -10,6 +10,7 @@ import { BedspaceLockScreen } from '../screens/BedspaceLockScreen';
 import { ClearanceScreen } from '../screens/ClearanceScreen';
 import { PaymentHoldScreen } from '../screens/PaymentHoldScreen';
 import { StudentGatePassScreen } from '../screens/StudentGatePassScreen';
+import { StudentMaintenanceScreen } from '../screens/StudentMaintenanceScreen';
 import { useAuthStore } from '../store/useAuthStore';
 
 const Tab = createBottomTabNavigator<StudentTabParamList>();
@@ -32,7 +33,7 @@ const BallotingStackNavigator: React.FC = () => {
  * StudentNavigator Component.
  * Implements isolated navigation tab/stack tree for UNILAG Student role.
  * Guides student through the sequential accommodation workflow:
- * Eligibility → Balloting → Clearance → Payment → GatePass.
+ * Eligibility → Balloting → Clearance → Payment → GatePass → Maintenance.
  * Provides clear labels, high-contrast badges, and sign-out controls for non-technical users.
  */
 export const StudentNavigator: React.FC = () => {
@@ -59,7 +60,7 @@ export const StudentNavigator: React.FC = () => {
           paddingTop: 8
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600'
         },
         headerRight: () => (
@@ -77,7 +78,7 @@ export const StudentNavigator: React.FC = () => {
         component={EligibilityScreen}
         options={{
           title: 'Eligibility',
-          tabBarLabel: '1. Eligibility',
+          tabBarLabel: 'Eligibility',
           tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📋</Text>
         }}
       />
@@ -86,7 +87,7 @@ export const StudentNavigator: React.FC = () => {
         component={BallotingStackNavigator}
         options={{
           title: 'Hostel Balloting',
-          tabBarLabel: '2. Balloting',
+          tabBarLabel: 'Balloting',
           tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>🎟️</Text>
         }}
       />
@@ -95,7 +96,7 @@ export const StudentNavigator: React.FC = () => {
         component={ClearanceScreen}
         options={{
           title: 'Digital Clearance',
-          tabBarLabel: '3. Clearance',
+          tabBarLabel: 'Clearance',
           tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📄</Text>
         }}
       />
@@ -104,7 +105,7 @@ export const StudentNavigator: React.FC = () => {
         component={PaymentHoldScreen}
         options={{
           title: 'Fee Payment',
-          tabBarLabel: '4. Payment',
+          tabBarLabel: 'Payment',
           tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>💳</Text>
         }}
       />
@@ -113,8 +114,17 @@ export const StudentNavigator: React.FC = () => {
         component={StudentGatePassScreen}
         options={{
           title: 'Gate Pass',
-          tabBarLabel: '5. Gate Pass',
+          tabBarLabel: 'Gate Pass',
           tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📲</Text>
+        }}
+      />
+      <Tab.Screen
+        name="Maintenance"
+        component={StudentMaintenanceScreen}
+        options={{
+          title: 'Maintenance',
+          tabBarLabel: 'Maintenance',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>🛠️</Text>
         }}
       />
     </Tab.Navigator>
