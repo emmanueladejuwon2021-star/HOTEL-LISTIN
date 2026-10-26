@@ -269,6 +269,7 @@ npm start
 ### Maintenance & Artisan Ticket System
 - [ ] Student maintenance ticket creation with live problem photo capture (`[MAINTENANCE-01]` - Issue #51)
 - [ ] Categorization by defect type (Plumbing, Electrical, Carpentry, Masonry) (`[MAINTENANCE-02]` - Issue #52)
+- [x] Photo-Backed Repair Request Creator for students (`[MAINTENANCE-05]` - Issue #55)
 - [ ] Artisan repair job queue sorted by urgency SLA (`[MAINTENANCE-01]` - Issue #56)
 - [ ] Proof-of-fix 'After' photo upload by maintenance staff (`[MAINTENANCE-02]` - Issue #57)
 - [ ] Student inspection and fix confirmation trigger (`[MAINTENANCE-03]` - Issue #58)
