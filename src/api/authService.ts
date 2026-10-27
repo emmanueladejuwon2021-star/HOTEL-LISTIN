@@ -80,9 +80,14 @@ export class AuthService {
         priority_category TEXT CHECK(priority_category IN ('FRESHER', 'FINALIST', 'SCHOLAR', 'SPECIAL_NEEDS', 'STALLITE')) NOT NULL,
         fees_paid INTEGER DEFAULT 0,
         clearance_status TEXT CHECK(clearance_status IN ('NOT_STARTED', 'PENDING', 'APPROVED', 'REJECTED')) DEFAULT 'NOT_STARTED',
+        residency_status TEXT DEFAULT 'NOT_CHECKED_IN',
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );`
     ], 'write');
+
+    try {
+      await client.execute({ sql: `ALTER TABLE student_profiles ADD COLUMN residency_status TEXT DEFAULT 'NOT_CHECKED_IN'`, args: [] });
+    } catch {}
   }
 
   /**
