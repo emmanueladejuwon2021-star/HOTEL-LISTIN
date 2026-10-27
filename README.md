@@ -281,7 +281,7 @@ npm start
 - [ ] Exeat return deadline tracking and overdue alert logging (`[EXEAT-05]` - Issue #65)
 
 ### Emergency SOS & Security Alerts
-- [ ] Student 3-second red SOS panic button trigger (`[EMERGENCY-01]` - Issue #66)
+- [x] Student 3-second red SOS panic button trigger (`[EMERGENCY-01]` - Issue #66)
 - [ ] Loud audible alarm and red screen alert at Porter Gate Desk (`[EMERGENCY-02]` - Issue #67)
 - [ ] Instant room location, student name, and phone display on porter desk (`[EMERGENCY-03]` - Issue #68)
 - [ ] Automatic SMS alert dispatch to Hall Warden and UNILAG Security (`[EMERGENCY-04]` - Issue #69)
