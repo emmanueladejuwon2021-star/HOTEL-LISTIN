@@ -9,6 +9,7 @@ import { BallotingCountdownScreen } from '../screens/BallotingCountdownScreen';
 import { BedspaceLockScreen } from '../screens/BedspaceLockScreen';
 import { ClearanceScreen } from '../screens/ClearanceScreen';
 import { PaymentHoldScreen } from '../screens/PaymentHoldScreen';
+import { ExeatScreen } from '../screens/ExeatScreen';
 import { StudentGatePassScreen } from '../screens/StudentGatePassScreen';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -106,6 +107,15 @@ export const StudentNavigator: React.FC = () => {
           title: 'Fee Payment',
           tabBarLabel: '4. Payment',
           tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>💳</Text>
+        }}
+      />
+      <Tab.Screen
+        name="Exeat"
+        component={ExeatScreen}
+        options={{
+          title: 'Night Exeat',
+          tabBarLabel: 'Exeat',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>🌙</Text>
         }}
       />
       <Tab.Screen
