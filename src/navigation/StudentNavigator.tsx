@@ -10,6 +10,7 @@ import { BedspaceLockScreen } from '../screens/BedspaceLockScreen';
 import { ClearanceScreen } from '../screens/ClearanceScreen';
 import { PaymentHoldScreen } from '../screens/PaymentHoldScreen';
 import { StudentGatePassScreen } from '../screens/StudentGatePassScreen';
+import { EmergencySOSScreen } from '../screens/EmergencySOSScreen';
 import { useAuthStore } from '../store/useAuthStore';
 
 const Tab = createBottomTabNavigator<StudentTabParamList>();
@@ -115,6 +116,15 @@ export const StudentNavigator: React.FC = () => {
           title: 'Gate Pass',
           tabBarLabel: '5. Gate Pass',
           tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📲</Text>
+        }}
+      />
+      <Tab.Screen
+        name="EmergencySOS"
+        component={EmergencySOSScreen}
+        options={{
+          title: 'Emergency SOS',
+          tabBarLabel: 'SOS Alarm',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>🚨</Text>
         }}
       />
     </Tab.Navigator>
