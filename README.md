@@ -274,11 +274,11 @@ npm start
 - [ ] Student inspection and fix confirmation trigger (`[MAINTENANCE-03]` - Issue #58)
 
 ### Night Exeat & Overnight Permission
-- [ ] Student night exeat application specifying destination and duration (`[EXEAT-01]` - Issue #61)
-- [ ] Automated push notification to Hall Warden for exeat approval (`[EXEAT-02]` - Issue #62)
-- [ ] Warden single-tap exeat approval or decline with comments (`[EXEAT-03]` - Issue #63)
-- [ ] Gate scanner sync permitting student exit without curfew flags (`[EXEAT-04]` - Issue #64)
-- [ ] Exeat return deadline tracking and overdue alert logging (`[EXEAT-05]` - Issue #65)
+- [x] Student night exeat application specifying destination and duration (`[EXEAT-01]` - Issue #61)
+- [x] Automated push notification to Hall Warden for exeat approval (`[EXEAT-02]` - Issue #62)
+- [x] Warden single-tap exeat approval or decline with comments (`[EXEAT-03]` - Issue #63)
+- [x] Gate scanner sync permitting student exit without curfew flags (`[EXEAT-04]` - Issue #64)
+- [x] Exeat return deadline tracking, emergency exeat flagging, warden batch approval & summary metrics (`[EXEAT-05]` - Issue #65)
 
 ### Emergency SOS & Security Alerts
 - [ ] Student 3-second red SOS panic button trigger (`[EMERGENCY-01]` - Issue #66)
