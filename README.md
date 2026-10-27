@@ -58,8 +58,8 @@ The accommodation lifecycle in `UnilagStay` guides students step-by-step through
 
 ## 6. STATUS OF APPLICATION FEATURES
 
-- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, and offline JWT key caching with SQLite queueing.
-- **In Active Development / Planned**: Network connectivity monitoring state, visitor pass management, artisan work queue dispatch screen, night exeat Warden workflow UI, and emergency SOS gate panic alarm UI.
+- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, offline JWT key caching with SQLite queueing, and night exeat permission application with Warden approval workflow.
+- **In Active Development / Planned**: Network connectivity monitoring state, visitor pass management, artisan work queue dispatch screen, and emergency SOS gate panic alarm UI.
 
 ---
 
@@ -274,7 +274,7 @@ npm start
 - [ ] Student inspection and fix confirmation trigger (`[MAINTENANCE-03]` - Issue #58)
 
 ### Night Exeat & Overnight Permission
-- [ ] Student night exeat application specifying destination and duration (`[EXEAT-01]` - Issue #61)
+- [x] Student night exeat application specifying destination and duration (`[EXEAT-01]` - Issue #61)
 - [ ] Automated push notification to Hall Warden for exeat approval (`[EXEAT-02]` - Issue #62)
 - [ ] Warden single-tap exeat approval or decline with comments (`[EXEAT-03]` - Issue #63)
 - [ ] Gate scanner sync permitting student exit without curfew flags (`[EXEAT-04]` - Issue #64)

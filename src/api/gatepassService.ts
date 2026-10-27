@@ -129,11 +129,27 @@ export class GatePassService {
         return_date DATE NOT NULL,
         warden_approval_status TEXT CHECK(warden_approval_status IN ('PENDING', 'APPROVED', 'DECLINED')) DEFAULT 'PENDING',
         warden_id TEXT,
+        warden_comment TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
       )`,
       args: []
     });
+
+    try {
+      await client.execute({
+        sql: `ALTER TABLE exeat_requests ADD COLUMN warden_comment TEXT`,
+        args: []
+      });
+    } catch {}
+
+    try {
+      await client.execute({
+        sql: `ALTER TABLE exeat_requests ADD COLUMN updated_at DATETIME`,
+        args: []
+      });
+    } catch {}
 
     // 5. Create visitor_passes table
     await client.execute({
