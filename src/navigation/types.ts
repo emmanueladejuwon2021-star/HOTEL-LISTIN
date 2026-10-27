@@ -18,6 +18,7 @@ export type StudentTabParamList = {
   BedspaceLock: { roomId?: string } | undefined;
   Clearance: undefined;
   Payment: undefined;
+  Exeat: undefined;
   GatePass: undefined;
 };
 

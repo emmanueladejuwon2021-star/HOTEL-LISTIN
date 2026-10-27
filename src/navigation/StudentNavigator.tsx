@@ -9,6 +9,7 @@ import { BallotingCountdownScreen } from '../screens/BallotingCountdownScreen';
 import { BedspaceLockScreen } from '../screens/BedspaceLockScreen';
 import { ClearanceScreen } from '../screens/ClearanceScreen';
 import { PaymentHoldScreen } from '../screens/PaymentHoldScreen';
+import { ExeatApplicationScreen } from '../screens/ExeatApplicationScreen';
 import { StudentGatePassScreen } from '../screens/StudentGatePassScreen';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -109,11 +110,20 @@ export const StudentNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
+        name="Exeat"
+        component={ExeatApplicationScreen}
+        options={{
+          title: 'Night Exeat',
+          tabBarLabel: '5. Exeat',
+          tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>🌙</Text>
+        }}
+      />
+      <Tab.Screen
         name="GatePass"
         component={StudentGatePassScreen}
         options={{
           title: 'Gate Pass',
-          tabBarLabel: '5. Gate Pass',
+          tabBarLabel: '6. Gate Pass',
           tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 16 }}>📲</Text>
         }}
       />
