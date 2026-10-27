@@ -9,7 +9,7 @@ export type AuthStackParamList = {
 
 /**
  * Parameter list interface for Student Navigation Stack and Tabs.
- * Routes between Login → Eligibility → Balloting → Clearance → Payment → GatePass.
+ * Routes between Login → Eligibility → Balloting → Clearance → Payment → GatePass → Exeat.
  */
 export type StudentTabParamList = {
   Eligibility: undefined;
@@ -19,6 +19,7 @@ export type StudentTabParamList = {
   Clearance: undefined;
   Payment: undefined;
   GatePass: undefined;
+  Exeat: undefined;
 };
 
 /**
