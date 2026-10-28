@@ -26,6 +26,7 @@ export interface StudentProfile {
   priorityCategory: PriorityCategory;
   feesPaid: boolean;
   clearanceStatus: ClearanceStatus;
+  residencyStatus?: string;
 }
 
 export interface AuthSession {
