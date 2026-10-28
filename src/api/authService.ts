@@ -80,6 +80,7 @@ export class AuthService {
         priority_category TEXT CHECK(priority_category IN ('FRESHER', 'FINALIST', 'SCHOLAR', 'SPECIAL_NEEDS', 'STALLITE')) NOT NULL,
         fees_paid INTEGER DEFAULT 0,
         clearance_status TEXT CHECK(clearance_status IN ('NOT_STARTED', 'PENDING', 'APPROVED', 'REJECTED')) DEFAULT 'NOT_STARTED',
+        residency_status TEXT CHECK(residency_status IN ('NOT_CHECKED_IN', 'ACTIVE_RESIDENT', 'CHECKED_OUT', 'EVICTED')) DEFAULT 'NOT_CHECKED_IN',
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );`
     ], 'write');
@@ -155,7 +156,7 @@ export class AuthService {
     // If the logged in user is a student, look up their detailed student profile record
     if (user.role === 'STUDENT') {
       const profileResult = await client.execute({
-        sql: `SELECT user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status
+        sql: `SELECT user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, residency_status
               FROM student_profiles WHERE user_id = ?`,
         args: [user.id]
       });
@@ -170,7 +171,8 @@ export class AuthService {
           campus: String(pRow.campus) as StudentProfile['campus'],
           priorityCategory: String(pRow.priority_category) as StudentProfile['priorityCategory'],
           feesPaid: Boolean(pRow.fees_paid),
-          clearanceStatus: String(pRow.clearance_status) as StudentProfile['clearanceStatus']
+          clearanceStatus: String(pRow.clearance_status) as StudentProfile['clearanceStatus'],
+          residencyStatus: pRow.residency_status ? (String(pRow.residency_status) as StudentProfile['residencyStatus']) : 'NOT_CHECKED_IN'
         };
       }
     }
@@ -236,7 +238,7 @@ export class AuthService {
     // Fetch latest student profile information if the user is a student
     if (user.role === 'STUDENT') {
       const profileResult = await client.execute({
-        sql: `SELECT user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status
+        sql: `SELECT user_id, faculty, department, level, campus, priority_category, fees_paid, clearance_status, residency_status
               FROM student_profiles WHERE user_id = ?`,
         args: [user.id]
       });
@@ -251,7 +253,8 @@ export class AuthService {
           campus: String(pRow.campus) as StudentProfile['campus'],
           priorityCategory: String(pRow.priority_category) as StudentProfile['priorityCategory'],
           feesPaid: Boolean(pRow.fees_paid),
-          clearanceStatus: String(pRow.clearance_status) as StudentProfile['clearanceStatus']
+          clearanceStatus: String(pRow.clearance_status) as StudentProfile['clearanceStatus'],
+          residencyStatus: pRow.residency_status ? (String(pRow.residency_status) as StudentProfile['residencyStatus']) : 'NOT_CHECKED_IN'
         };
       }
     }
