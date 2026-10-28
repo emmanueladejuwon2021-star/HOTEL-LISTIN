@@ -291,7 +291,7 @@ npm start
 - [ ] Roommate lifestyle survey questionnaire (sleep schedule, study habits) (`[ROOMMATE-01]` - Issue #71)
 - [ ] Automated compatibility matching score display (`[ROOMMATE-02]` - Issue #72)
 - [ ] Mutual bedspace swap request between two willing students (`[ROOMMATE-03]` - Issue #73)
-- [ ] Warden approval check for bedswap requests (`[ROOMMATE-04]` - Issue #74)
+- [x] Warden approval check for bedswap requests (`[ROOMMATE-04]` - Issue #74)
 - [ ] Database swap transaction execution updating bed assignments (`[ROOMMATE-05]` - Issue #75)
 
 ### Administration & Warden Operations
