@@ -64,6 +64,15 @@ export class GatePassService {
     await OfflineSyncService.initializeSchema();
     const client = AuthService.getDbClient();
 
+    try {
+      await client.execute({
+        sql: `ALTER TABLE student_profiles ADD COLUMN residency_status TEXT DEFAULT 'PENDING_CHECKIN'`,
+        args: []
+      });
+    } catch {
+      // Column already exists, ignore error
+    }
+
     // 1. Create gate_passes table
     await client.execute({
       sql: `CREATE TABLE IF NOT EXISTS gate_passes (
