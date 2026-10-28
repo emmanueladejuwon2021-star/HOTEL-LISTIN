@@ -3,6 +3,7 @@ export type Gender = 'MALE' | 'FEMALE';
 export type Campus = 'MAIN_CAMPUS' | 'CMUL_IDI_ARABA';
 export type PriorityCategory = 'FRESHER' | 'FINALIST' | 'SCHOLAR' | 'SPECIAL_NEEDS' | 'STALLITE';
 export type ClearanceStatus = 'NOT_STARTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+export type ResidencyStatus = 'NOT_CHECKED_IN' | 'ACTIVE_RESIDENT' | 'CHECKED_OUT' | 'EVICTED';
 
 export interface User {
   id: string;
@@ -26,6 +27,7 @@ export interface StudentProfile {
   priorityCategory: PriorityCategory;
   feesPaid: boolean;
   clearanceStatus: ClearanceStatus;
+  residencyStatus?: ResidencyStatus;
 }
 
 export interface AuthSession {
