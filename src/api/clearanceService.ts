@@ -523,4 +523,78 @@ export class ClearanceService {
       timestamp: String(row.timestamp || new Date().toISOString())
     }));
   }
+
+  /**
+   * Fetches all pending, approved, or rejected student clearance submissions for Warden review queue.
+   *
+   * @param filterStatus Optional status filter (e.g. 'PENDING', 'APPROVED', 'REJECTED', or 'ALL')
+   * @returns Array of WardenClearanceSubmission records
+   */
+  public static async getPendingClearanceQueue(filterStatus: 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED' = 'ALL'): Promise<any[]> {
+    await ClearanceService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    let sqlQuery = `
+      SELECT u.id as user_id, u.full_name, u.matric_or_staff_no, u.email, u.phone_number,
+             sp.faculty, sp.department, sp.level, sp.campus, sp.clearance_status,
+             sp.clearance_rejection_reason, sp.clearance_certificate_hash
+      FROM student_profiles sp
+      JOIN users u ON sp.user_id = u.id
+    `;
+
+    const args: any[] = [];
+    if (filterStatus !== 'ALL') {
+      sqlQuery += ` WHERE sp.clearance_status = ?`;
+      args.push(filterStatus);
+    } else {
+      sqlQuery += ` WHERE sp.clearance_status IN ('PENDING', 'APPROVED', 'REJECTED')`;
+    }
+
+    sqlQuery += ` ORDER BY u.full_name ASC`;
+
+    const result = await client.execute({ sql: sqlQuery, args });
+
+    const submissions = [];
+    for (const row of result.rows) {
+      const uId = String(row.user_id);
+      const docsRes = await client.execute({
+        sql: `SELECT id, user_id, document_type, file_url, file_name, verification_status, rejection_reason, uploaded_at, file_size_bytes, mime_type, notes
+              FROM clearance_documents WHERE user_id = ? ORDER BY uploaded_at DESC`,
+        args: [uId]
+      });
+
+      const docs: ClearanceDocument[] = docsRes.rows.map(dRow => ({
+        id: String(dRow.id),
+        userId: String(dRow.user_id),
+        documentType: String(dRow.document_type) as DocumentType,
+        fileUrl: String(dRow.file_url),
+        fileName: String(dRow.file_name),
+        uploadedAt: String(dRow.uploaded_at || new Date().toISOString()),
+        verificationStatus: String(dRow.verification_status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED',
+        rejectionReason: dRow.rejection_reason ? String(dRow.rejection_reason) : undefined,
+        fileSizeBytes: dRow.file_size_bytes ? Number(dRow.file_size_bytes) : undefined,
+        mimeType: dRow.mime_type ? String(dRow.mime_type) : undefined,
+        notes: dRow.notes ? String(dRow.notes) : undefined
+      }));
+
+      submissions.push({
+        userId: uId,
+        fullName: String(row.full_name),
+        matricNo: String(row.matric_or_staff_no),
+        email: String(row.email),
+        phoneNumber: String(row.phone_number),
+        faculty: String(row.faculty),
+        department: String(row.department),
+        level: Number(row.level),
+        campus: String(row.campus),
+        clearanceStatus: String(row.clearance_status) as ClearanceStatus,
+        rejectionReason: row.clearance_rejection_reason ? String(row.clearance_rejection_reason) : undefined,
+        clearanceCertificateHash: row.clearance_certificate_hash ? String(row.clearance_certificate_hash) : undefined,
+        documents: docs,
+        submittedAt: docs.length > 0 ? docs[0].uploadedAt : new Date().toISOString()
+      });
+    }
+
+    return submissions;
+  }
 }
