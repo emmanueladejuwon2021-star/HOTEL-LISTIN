@@ -235,4 +235,36 @@ describe('ClearanceService - Digital Document Screening & Clearance [CLEARANCE-0
     expect(certLookup.isValid).toBe(true);
     expect(certLookup.clearanceStatus).toBe('APPROVED');
   });
+
+  test('should fetch pending clearance queue and support Warden approval/rejection [ADMIN-02 / UAT-0077]', async () => {
+    const queue = await ClearanceService.getPendingClearanceQueue('ALL');
+    expect(queue).toBeDefined();
+    expect(Array.isArray(queue)).toBe(true);
+
+    const studentSubmission = queue.find(s => s.userId === testStudentId);
+    expect(studentSubmission).toBeDefined();
+    expect(studentSubmission.fullName).toBe('Test Clearance Student');
+    expect(studentSubmission.documents.length).toBeGreaterThan(0);
+
+    // Reject clearance package with reason feedback
+    const rejectedPkg = await ClearanceService.reviewClearancePackage({
+      userId: testStudentId,
+      wardenId: testWardenId,
+      status: 'REJECTED',
+      rejectionReason: 'Medical certificate stamp illegible. Resubmit with clear scan.'
+    });
+
+    expect(rejectedPkg.overallStatus).toBe('REJECTED');
+    expect(rejectedPkg.rejectionReason).toContain('Medical certificate stamp illegible');
+
+    // Approve clearance package again
+    const reApprovedPkg = await ClearanceService.reviewClearancePackage({
+      userId: testStudentId,
+      wardenId: testWardenId,
+      status: 'APPROVED'
+    });
+
+    expect(reApprovedPkg.overallStatus).toBe('APPROVED');
+    expect(reApprovedPkg.clearanceCertificateHash).toBeDefined();
+  });
 });

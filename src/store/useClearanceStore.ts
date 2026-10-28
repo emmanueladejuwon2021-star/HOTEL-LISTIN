@@ -16,6 +16,8 @@ import { ClearanceService } from '../api/clearanceService';
 export interface ClearanceState {
   // Current student clearance package details containing status and uploaded documents
   clearancePackage: DigitalClearancePackage | null;
+  // Queue of student clearance package submissions for Warden review
+  pendingQueue: any[];
   // Loading indicator flag active while fetching database data
   isLoading: boolean;
   // Uploading indicator flag active during document file uploads or updates
@@ -32,6 +34,10 @@ export interface ClearanceState {
   // Actions
   // Fetches latest clearance documents and status for a student from Turso DB
   fetchClearancePackage: (userId: string) => Promise<void>;
+  // Fetches pending clearance submissions queue for Warden portal review
+  fetchPendingQueue: (filterStatus?: 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED') => Promise<void>;
+  // Reviews a student clearance package (Approve/Reject) with optional feedback
+  reviewClearancePackage: (userId: string, wardenId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string) => Promise<boolean>;
   // Uploads or updates a clearance document file with optional student notes
   uploadDocument: (userId: string, documentType: DocumentType, fileUrl: string, fileName: string, notes?: string) => Promise<ClearanceDocument | null>;
   // Removes/deletes an uploaded document record from student clearance package
@@ -61,6 +67,7 @@ export interface ClearanceState {
  */
 export const useClearanceStore = create<ClearanceState>((set, get) => ({
   clearancePackage: null,
+  pendingQueue: [],
   isLoading: false,
   isUploading: false,
   errorMessage: null,
@@ -78,6 +85,46 @@ export const useClearanceStore = create<ClearanceState>((set, get) => ({
         errorMessage: error.message || 'Failed to load clearance document package.',
         isLoading: false
       });
+    }
+  },
+
+  fetchPendingQueue: async (filterStatus: 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED' = 'ALL') => {
+    set({ isLoading: true, errorMessage: null });
+    try {
+      const queue = await ClearanceService.getPendingClearanceQueue(filterStatus);
+      set({ pendingQueue: queue, isLoading: false });
+    } catch (error: any) {
+      set({
+        errorMessage: error.message || 'Failed to load clearance queue for Warden review.',
+        isLoading: false
+      });
+    }
+  },
+
+  reviewClearancePackage: async (userId: string, wardenId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string) => {
+    set({ isLoading: true, errorMessage: null, successMessage: null });
+    try {
+      await ClearanceService.reviewClearancePackage({
+        userId,
+        wardenId,
+        status,
+        rejectionReason
+      });
+
+      // Refresh queue after decision
+      const updatedQueue = await ClearanceService.getPendingClearanceQueue();
+      set({
+        pendingQueue: updatedQueue,
+        isLoading: false,
+        successMessage: `Student clearance package ${status === 'APPROVED' ? 'approved and certificate issued' : 'rejected with feedback'}.`
+      });
+      return true;
+    } catch (error: any) {
+      set({
+        errorMessage: error.message || 'Failed to submit clearance review decision.',
+        isLoading: false
+      });
+      return false;
     }
   },
 

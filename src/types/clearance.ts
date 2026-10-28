@@ -199,3 +199,23 @@ export interface ClearanceReviewHistoryEntry {
   notes?: string;
   timestamp: string;
 }
+
+/**
+ * Interface representing a student's clearance package submission item for Warden review queue.
+ */
+export interface WardenClearanceSubmission {
+  userId: string;
+  fullName: string;
+  matricNo: string;
+  email: string;
+  phoneNumber: string;
+  faculty: string;
+  department: string;
+  level: number;
+  campus: string;
+  clearanceStatus: ClearanceStatus;
+  rejectionReason?: string;
+  clearanceCertificateHash?: string;
+  documents: ClearanceDocument[];
+  submittedAt?: string;
+}
