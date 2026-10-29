@@ -37,6 +37,7 @@ export type WardenStackParamList = {
   WardenDashboard: undefined;
   ApprovalQueue: undefined;
   DisciplinaryFlags: undefined;
+  DisciplinaryManagement: undefined;
 };
 
 /**
