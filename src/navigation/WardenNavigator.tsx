@@ -1,17 +1,24 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WardenStackParamList } from './types';
 import { useAuthStore } from '../store/useAuthStore';
+import { DisciplinaryScreen } from '../screens/DisciplinaryScreen';
 
 const Stack = createNativeStackNavigator<WardenStackParamList>();
+
+type WardenDashboardNavProp = NativeStackNavigationProp<WardenStackParamList, 'WardenDashboard'>;
+
+interface WardenDashboardProps {
+  navigation: WardenDashboardNavProp;
+}
 
 /**
  * WardenDashboardScreen Component.
  * Executive overview dashboard for Hall Wardens and Student Affairs Division officials.
  * Allows clearance document approval, exeat requests processing, and disciplinary flag management.
  */
-const WardenDashboardScreen: React.FC = () => {
+const WardenDashboardScreen: React.FC<WardenDashboardProps> = ({ navigation }) => {
   const { session, logoutUser } = useAuthStore();
 
   return (
@@ -30,6 +37,23 @@ const WardenDashboardScreen: React.FC = () => {
 
         {/* Operational Overview Cards */}
         <View className="space-y-4 mb-6">
+          {/* Disciplinary Management Gateway Card */}
+          <TouchableOpacity
+            className="bg-white p-5 rounded-2xl border border-red-200 shadow-sm active:bg-red-50"
+            onPress={() => navigation.navigate('DisciplinaryFlags')}
+          >
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-xs font-bold text-red-800 uppercase tracking-wider">
+                Disciplinary & Blacklist Portal
+              </Text>
+              <Text className="text-xs font-bold text-[#7A0000]">Open Portal →</Text>
+            </View>
+            <Text className="text-xl font-bold text-slate-900">Flag, Suspend or Clear Students</Text>
+            <Text className="text-xs text-slate-500 mt-1">
+              Search student records by matric number, issue sanctions, and view infraction history.
+            </Text>
+          </TouchableOpacity>
+
           <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
               Hall Occupancy Overview
@@ -77,13 +101,18 @@ export const WardenNavigator: React.FC = () => {
       screenOptions={{
         headerStyle: { backgroundColor: '#7A0000' },
         headerTintColor: '#FFFFFF',
-        headerTitleStyle: { fontWeight: 'bold' }
+        headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
       <Stack.Screen
         name="WardenDashboard"
         component={WardenDashboardScreen}
         options={{ title: 'Warden Executive Portal' }}
+      />
+      <Stack.Screen
+        name="DisciplinaryFlags"
+        component={DisciplinaryScreen}
+        options={{ title: 'Disciplinary Governance & Blacklists' }}
       />
     </Stack.Navigator>
   );
