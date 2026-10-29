@@ -297,7 +297,8 @@ npm start
 ### Administration & Warden Operations
 - [x] Warden executive dashboard displaying hall occupancy rate (`[ADMIN-01]` - Issue #76)
 - [x] Pending student clearance review queue (`[ADMIN-02]` - Issue #77)
-- [ ] Disciplinary blacklist flagging preventing unauthorized balloting (`[ADMIN-01]` - Issue #81)
+- [x] Disciplinary blacklist flagging preventing unauthorized balloting (`[ADMIN-01]` - Issue #81)
+- [x] Warden student disciplinary control and sanction management (`[ADMIN-02]` - Issue #82)
 - [ ] Official hostel noticeboard announcement broadcast system (`[COMMUNITY-01]` - Issue #86)
 - [ ] Detailed occupancy and revenue reporting export (`[ADMIN-05]` - Issue #80)
 
