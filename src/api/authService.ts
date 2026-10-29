@@ -80,6 +80,7 @@ export class AuthService {
         priority_category TEXT CHECK(priority_category IN ('FRESHER', 'FINALIST', 'SCHOLAR', 'SPECIAL_NEEDS', 'STALLITE')) NOT NULL,
         fees_paid INTEGER DEFAULT 0,
         clearance_status TEXT CHECK(clearance_status IN ('NOT_STARTED', 'PENDING', 'APPROVED', 'REJECTED')) DEFAULT 'NOT_STARTED',
+        residency_status TEXT DEFAULT 'PENDING_CHECKIN',
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );`
     ], 'write');
