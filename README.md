@@ -58,7 +58,7 @@ The accommodation lifecycle in `UnilagStay` guides students step-by-step through
 
 ## 6. STATUS OF APPLICATION FEATURES
 
-- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, and offline JWT key caching with SQLite queueing.
+- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, warden executive dashboard occupancy rate, student clearance review queue, student disciplinary search, sanction issuing (flag/suspend/rusticate), sanction clearing, and offline JWT key caching with SQLite queueing.
 - **In Active Development / Planned**: Network connectivity monitoring state, visitor pass management, artisan work queue dispatch screen, night exeat Warden workflow UI, and emergency SOS gate panic alarm UI.
 
 ---
@@ -118,7 +118,7 @@ You can run and test the complete user interfaces, navigation flows, and forms d
 ### Option C: Automated Test Verification (Headless CLI)
 To verify that all backend database constraints, SQLite encryption, JWT signatures, role permissions, payment locks, and offline gate sync queues are functioning with zero regressions:
 
-1. **Run All 11 Automated Test Suites (163+ Tests)**:
+1. **Run All Automated Test Suites**:
    ```bash
    cd HOTEL-LISTIN
    npm test -- --runInBand
@@ -126,6 +126,9 @@ To verify that all backend database constraints, SQLite encryption, JWT signatur
 
 2. **Run a Specific Feature Test Suite**:
    ```bash
+   # Test Disciplinary Blacklists & Warden Sanctions (Issue #83 / [ADMIN-03])
+   npx jest src/__tests__/disciplinary.test.ts --runInBand
+
    # Test Offline Key Caching & Background Sync (Issue #41)
    npx jest src/__tests__/offline.test.ts --runInBand
 
@@ -172,7 +175,7 @@ If you need an installable `.apk` file to install directly onto Android devices 
 ### Installation & Execution
 ```bash
 # 1. Install dependencies
-npm install
+npm install --legacy-peer-deps
 
 # 2. Run automated test suites (Jest with SQLite concurrency isolation)
 npm test -- --runInBand
@@ -297,7 +300,7 @@ npm start
 ### Administration & Warden Operations
 - [x] Warden executive dashboard displaying hall occupancy rate (`[ADMIN-01]` - Issue #76)
 - [x] Pending student clearance review queue (`[ADMIN-02]` - Issue #77)
-- [ ] Disciplinary blacklist flagging preventing unauthorized balloting (`[ADMIN-01]` - Issue #81)
+- [x] Disciplinary blacklist flagging preventing unauthorized balloting (`[ADMIN-03]` - Issue #83)
 - [ ] Official hostel noticeboard announcement broadcast system (`[COMMUNITY-01]` - Issue #86)
 - [ ] Detailed occupancy and revenue reporting export (`[ADMIN-05]` - Issue #80)
 

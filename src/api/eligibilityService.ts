@@ -41,7 +41,7 @@ export class EligibilityService {
         room_number TEXT NOT NULL,
         total_beds INTEGER DEFAULT 4,
         occupied_beds INTEGER DEFAULT 0,
-        FOREIGN KEY (hostel_id) REFERENCES hostels(id) ON DELETE CASCADE
+        FOREIGN KEY(hostel_id) REFERENCES hostels(id) ON DELETE CASCADE
       );`,
       `CREATE TABLE IF NOT EXISTS bedspaces (
         id TEXT PRIMARY KEY,
@@ -51,15 +51,21 @@ export class EligibilityService {
         allocated_to_user_id TEXT,
         hold_expires_at DATETIME,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
-        FOREIGN KEY (allocated_to_user_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY(allocated_to_user_id) REFERENCES users(id) ON DELETE SET NULL
       );`,
       `CREATE TABLE IF NOT EXISTS disciplinary_records (
-        user_id TEXT PRIMARY KEY,
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
         status TEXT CHECK(status IN ('CLEARED', 'FLAGGED', 'SUSPENDED', 'RUSTICATED')) DEFAULT 'CLEARED',
         reason TEXT,
         flagged_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        flagged_by TEXT DEFAULT 'WARDEN-ADMIN',
+        duration_days INTEGER,
+        resolved_at TEXT,
+        resolved_by TEXT,
+        resolution_note TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       );`,
       `CREATE TABLE IF NOT EXISTS payments (
         id TEXT PRIMARY KEY,
@@ -70,8 +76,8 @@ export class EligibilityService {
         payment_type TEXT DEFAULT 'TUITION_FEE',
         payment_status TEXT CHECK(payment_status IN ('SUCCESSFUL', 'FAILED', 'PENDING')) DEFAULT 'SUCCESSFUL',
         paid_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (bedspace_id) REFERENCES bedspaces(id) ON DELETE SET NULL
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(bedspace_id) REFERENCES bedspaces(id) ON DELETE SET NULL
       );`
     ], 'write');
 
@@ -82,7 +88,13 @@ export class EligibilityService {
       `ALTER TABLE student_profiles ADD COLUMN special_needs_registered INTEGER DEFAULT 0`,
       `ALTER TABLE student_profiles ADD COLUMN special_needs_details TEXT`,
       `ALTER TABLE student_profiles ADD COLUMN clearance_certificate_hash TEXT`,
-      `ALTER TABLE student_profiles ADD COLUMN clearance_rejection_reason TEXT`
+      `ALTER TABLE student_profiles ADD COLUMN clearance_rejection_reason TEXT`,
+      `ALTER TABLE disciplinary_records ADD COLUMN id TEXT`,
+      `ALTER TABLE disciplinary_records ADD COLUMN flagged_by TEXT DEFAULT 'WARDEN-ADMIN'`,
+      `ALTER TABLE disciplinary_records ADD COLUMN duration_days INTEGER`,
+      `ALTER TABLE disciplinary_records ADD COLUMN resolved_at TEXT`,
+      `ALTER TABLE disciplinary_records ADD COLUMN resolved_by TEXT`,
+      `ALTER TABLE disciplinary_records ADD COLUMN resolution_note TEXT`
     ];
 
     for (const stmt of migrationColumns) {
