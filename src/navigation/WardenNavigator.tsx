@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { WardenStackParamList } from './types';
+import { NoticeboardScreen } from '../screens/NoticeboardScreen';
 import { useAuthStore } from '../store/useAuthStore';
 
 const Stack = createNativeStackNavigator<WardenStackParamList>();
@@ -84,6 +85,11 @@ export const WardenNavigator: React.FC = () => {
         name="WardenDashboard"
         component={WardenDashboardScreen}
         options={{ title: 'Warden Executive Portal' }}
+      />
+      <Stack.Screen
+        name="Noticeboard"
+        component={NoticeboardScreen}
+        options={{ title: 'Hostel Noticeboard' }}
       />
     </Stack.Navigator>
   );

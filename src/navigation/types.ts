@@ -19,6 +19,7 @@ export type StudentTabParamList = {
   Clearance: undefined;
   Payment: undefined;
   GatePass: undefined;
+  Noticeboard: undefined;
 };
 
 /**
@@ -37,6 +38,7 @@ export type WardenStackParamList = {
   WardenDashboard: undefined;
   ApprovalQueue: undefined;
   DisciplinaryFlags: undefined;
+  Noticeboard: undefined;
 };
 
 /**
