@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-na
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { WardenStackParamList } from './types';
 import { useAuthStore } from '../store/useAuthStore';
+import { DisciplinaryScreen } from '../screens/DisciplinaryScreen';
 
 const Stack = createNativeStackNavigator<WardenStackParamList>();
 
@@ -11,7 +12,7 @@ const Stack = createNativeStackNavigator<WardenStackParamList>();
  * Executive overview dashboard for Hall Wardens and Student Affairs Division officials.
  * Allows clearance document approval, exeat requests processing, and disciplinary flag management.
  */
-const WardenDashboardScreen: React.FC = () => {
+const WardenDashboardScreen: React.FC<any> = ({ navigation }) => {
   const { session, logoutUser } = useAuthStore();
 
   return (
@@ -46,13 +47,16 @@ const WardenDashboardScreen: React.FC = () => {
             <Text className="text-xs text-slate-500 mt-1">Awaiting Warden document inspection and certificate hash issuance</Text>
           </View>
 
-          <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Overnight Exeat Requests
+          <TouchableOpacity
+            className="bg-white p-5 rounded-2xl border border-[#7A0000] shadow-sm active:opacity-90 mb-4"
+            onPress={() => navigation.navigate('DisciplinaryFlags')}
+          >
+            <Text className="text-xs font-bold text-[#7A0000] uppercase tracking-wider mb-2">
+              Student Disciplinary & Blacklist Controls
             </Text>
-            <Text className="text-3xl font-extrabold text-blue-700">6 Requests</Text>
-            <Text className="text-xs text-slate-500 mt-1">Pending single-tap warden departure permission</Text>
-          </View>
+            <Text className="text-2xl font-extrabold text-[#7A0000]">Manage Sanctions</Text>
+            <Text className="text-xs text-slate-500 mt-1">Flag, suspend, rusticate students or clear sanctions</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Sign Out Button */}
@@ -84,6 +88,11 @@ export const WardenNavigator: React.FC = () => {
         name="WardenDashboard"
         component={WardenDashboardScreen}
         options={{ title: 'Warden Executive Portal' }}
+      />
+      <Stack.Screen
+        name="DisciplinaryFlags"
+        component={DisciplinaryScreen}
+        options={{ title: 'Disciplinary & Blacklist Controls' }}
       />
     </Stack.Navigator>
   );
