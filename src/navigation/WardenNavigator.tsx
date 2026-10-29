@@ -1,17 +1,20 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WardenStackParamList } from './types';
 import { useAuthStore } from '../store/useAuthStore';
+import { DisciplinaryManagementScreen } from '../screens/DisciplinaryManagementScreen';
 
 const Stack = createNativeStackNavigator<WardenStackParamList>();
+
+type WardenNavProp = NativeStackNavigationProp<WardenStackParamList, 'WardenDashboard'>;
 
 /**
  * WardenDashboardScreen Component.
  * Executive overview dashboard for Hall Wardens and Student Affairs Division officials.
  * Allows clearance document approval, exeat requests processing, and disciplinary flag management.
  */
-const WardenDashboardScreen: React.FC = () => {
+const WardenDashboardScreen: React.FC<{ navigation: WardenNavProp }> = ({ navigation }) => {
   const { session, logoutUser } = useAuthStore();
 
   return (
@@ -26,6 +29,20 @@ const WardenDashboardScreen: React.FC = () => {
           <Text className="text-slate-700 text-xs mt-3 font-semibold">
             Warden: {session?.user.fullName} ({session?.user.email})
           </Text>
+        </View>
+
+        {/* Quick Navigation Controls */}
+        <View className="mb-6 space-y-3">
+          <TouchableOpacity
+            onPress={() => navigation.navigate('DisciplinaryFlags')}
+            className="bg-red-900 p-4 rounded-xl flex-row items-center justify-between shadow-sm"
+          >
+            <View>
+              <Text className="text-white font-bold text-base">Disciplinary Management</Text>
+              <Text className="text-red-200 text-xs">Flag, blacklist, or clear student infractions</Text>
+            </View>
+            <Text className="text-white text-xl font-bold">→</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Operational Overview Cards */}
@@ -84,6 +101,11 @@ export const WardenNavigator: React.FC = () => {
         name="WardenDashboard"
         component={WardenDashboardScreen}
         options={{ title: 'Warden Executive Portal' }}
+      />
+      <Stack.Screen
+        name="DisciplinaryFlags"
+        component={DisciplinaryManagementScreen}
+        options={{ title: 'Disciplinary Management' }}
       />
     </Stack.Navigator>
   );
