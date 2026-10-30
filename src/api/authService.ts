@@ -70,7 +70,7 @@ export class AuthService {
         is_active INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );`,
-      // Student profile table holding student-specific details like department, level, fees status, and clearance status
+      // Student profile table holding student-specific details like department, level, fees status, clearance status, and residency status
       `CREATE TABLE IF NOT EXISTS student_profiles (
         user_id TEXT PRIMARY KEY,
         faculty TEXT NOT NULL,
@@ -80,6 +80,7 @@ export class AuthService {
         priority_category TEXT CHECK(priority_category IN ('FRESHER', 'FINALIST', 'SCHOLAR', 'SPECIAL_NEEDS', 'STALLITE')) NOT NULL,
         fees_paid INTEGER DEFAULT 0,
         clearance_status TEXT CHECK(clearance_status IN ('NOT_STARTED', 'PENDING', 'APPROVED', 'REJECTED')) DEFAULT 'NOT_STARTED',
+        residency_status TEXT DEFAULT 'PENDING_CHECKIN',
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );`
     ], 'write');
