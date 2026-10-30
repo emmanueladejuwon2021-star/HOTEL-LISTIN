@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { WardenStackParamList } from './types';
 import { useAuthStore } from '../store/useAuthStore';
+import { NoticeboardBroadcastScreen } from '../screens/NoticeboardBroadcastScreen';
 
 const Stack = createNativeStackNavigator<WardenStackParamList>();
 
@@ -13,6 +15,7 @@ const Stack = createNativeStackNavigator<WardenStackParamList>();
  */
 const WardenDashboardScreen: React.FC = () => {
   const { session, logoutUser } = useAuthStore();
+  const navigation = useNavigation();
 
   return (
     <SafeAreaView className="flex-1 bg-slate-100">
@@ -27,6 +30,18 @@ const WardenDashboardScreen: React.FC = () => {
             Warden: {session?.user.fullName} ({session?.user.email})
           </Text>
         </View>
+
+        {/* Noticeboard Navigation Button */}
+        <TouchableOpacity
+          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 flex-row justify-between items-center"
+          onPress={() => (navigation as any).navigate('NoticeboardBroadcast')}
+        >
+          <View>
+            <Text className="text-base font-bold text-[#7A0000]">Hostel Noticeboard Broadcast</Text>
+            <Text className="text-slate-500 text-xs mt-0.5">Issue & manage hall announcements for students</Text>
+          </View>
+          <Text className="text-[#7A0000] text-xl font-bold">➔</Text>
+        </TouchableOpacity>
 
         {/* Operational Overview Cards */}
         <View className="space-y-4 mb-6">
@@ -84,6 +99,11 @@ export const WardenNavigator: React.FC = () => {
         name="WardenDashboard"
         component={WardenDashboardScreen}
         options={{ title: 'Warden Executive Portal' }}
+      />
+      <Stack.Screen
+        name="NoticeboardBroadcast"
+        component={NoticeboardBroadcastScreen}
+        options={{ title: 'Noticeboard Broadcasts' }}
       />
     </Stack.Navigator>
   );
