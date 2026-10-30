@@ -81,6 +81,20 @@ export class AuthService {
         fees_paid INTEGER DEFAULT 0,
         clearance_status TEXT CHECK(clearance_status IN ('NOT_STARTED', 'PENDING', 'APPROVED', 'REJECTED')) DEFAULT 'NOT_STARTED',
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );`,
+      // Hostel noticeboard announcements table for warden broadcast system
+      `CREATE TABLE IF NOT EXISTS noticeboard_announcements (
+        id TEXT PRIMARY KEY,
+        hostel_id TEXT NOT NULL,
+        warden_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        priority TEXT CHECK(priority IN ('NORMAL', 'HIGH', 'URGENT')) DEFAULT 'NORMAL',
+        target_audience TEXT CHECK(target_audience IN ('ALL_STUDENTS', 'FRESHERS_ONLY', 'FINALISTS_ONLY')) DEFAULT 'ALL_STUDENTS',
+        is_pinned INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (hostel_id) REFERENCES hostels(id) ON DELETE CASCADE,
+        FOREIGN KEY (warden_id) REFERENCES users(id) ON DELETE CASCADE
       );`
     ], 'write');
   }
