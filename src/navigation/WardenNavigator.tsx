@@ -3,15 +3,16 @@ import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-na
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { WardenStackParamList } from './types';
 import { useAuthStore } from '../store/useAuthStore';
+import { NoticeboardScreen } from '../screens/NoticeboardScreen';
 
 const Stack = createNativeStackNavigator<WardenStackParamList>();
 
 /**
  * WardenDashboardScreen Component.
  * Executive overview dashboard for Hall Wardens and Student Affairs Division officials.
- * Allows clearance document approval, exeat requests processing, and disciplinary flag management.
+ * Allows clearance document approval, exeat requests processing, disciplinary flag management, and noticeboard broadcasting.
  */
-const WardenDashboardScreen: React.FC = () => {
+const WardenDashboardScreen: React.FC<any> = ({ navigation }) => {
   const { session, logoutUser } = useAuthStore();
 
   return (
@@ -38,6 +39,19 @@ const WardenDashboardScreen: React.FC = () => {
             <Text className="text-xs text-slate-500 mt-1">1,104 of 1,200 beds allocated and verified</Text>
           </View>
 
+          <TouchableOpacity
+            className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm active:opacity-90"
+            onPress={() => navigation.navigate('Noticeboard')}
+          >
+            <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              Hostel Noticeboard System
+            </Text>
+            <Text className="text-2xl font-bold text-[#7A0000]">📢 Broadcast Notices</Text>
+            <Text className="text-xs text-slate-500 mt-1">
+              Publish official announcements, emergency alerts, and maintenance updates to students
+            </Text>
+          </TouchableOpacity>
+
           <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
               Pending Clearance Submissions
@@ -57,7 +71,7 @@ const WardenDashboardScreen: React.FC = () => {
 
         {/* Sign Out Button */}
         <TouchableOpacity
-          className="bg-[#7A0000] py-4 rounded-xl items-center shadow-md active:opacity-90"
+          className="bg-[#7A0000] py-4 rounded-xl items-center shadow-md active:opacity-90 min-h-[56px] justify-center"
           onPress={logoutUser}
         >
           <Text className="text-white text-base font-bold">Sign Out (Warden Portal)</Text>
@@ -77,13 +91,18 @@ export const WardenNavigator: React.FC = () => {
       screenOptions={{
         headerStyle: { backgroundColor: '#7A0000' },
         headerTintColor: '#FFFFFF',
-        headerTitleStyle: { fontWeight: 'bold' }
+        headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
       <Stack.Screen
         name="WardenDashboard"
         component={WardenDashboardScreen}
         options={{ title: 'Warden Executive Portal' }}
+      />
+      <Stack.Screen
+        name="Noticeboard"
+        component={NoticeboardScreen}
+        options={{ title: 'Hostel Noticeboard' }}
       />
     </Stack.Navigator>
   );
