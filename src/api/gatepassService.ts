@@ -668,6 +668,50 @@ export class GatePassService {
   }
 
   /**
+   * Cancels/revokes an expected visitor pass created by a student ([VISITOR-05]).
+   */
+  public static async cancelVisitorPass(visitorPassId: string, studentId: string): Promise<VisitorPass> {
+    await GatePassService.initializeSchema();
+    const client = AuthService.getDbClient();
+
+    await client.execute({
+      sql: `UPDATE visitor_passes
+            SET status = 'EXPIRED'
+            WHERE id = ? AND student_id = ? AND status = 'EXPECTED'`,
+      args: [visitorPassId, studentId]
+    });
+
+    const res = await client.execute({
+      sql: `SELECT vp.*, u.full_name as student_name, u.matric_or_staff_no as student_matric
+            FROM visitor_passes vp
+            JOIN users u ON vp.student_id = u.id
+            WHERE vp.id = ?`,
+      args: [visitorPassId]
+    });
+
+    if (res.rows.length === 0) {
+      throw new Error(`Visitor pass '${visitorPassId}' not found.`);
+    }
+
+    const row = res.rows[0];
+
+    return {
+      id: String(row.id),
+      studentId: String(row.student_id),
+      studentName: row.student_name ? String(row.student_name) : undefined,
+      studentMatric: row.student_matric ? String(row.student_matric) : undefined,
+      visitorName: String(row.visitor_name),
+      visitorPhone: String(row.visitor_phone),
+      passCode: String(row.pass_code),
+      visitDate: String(row.visit_date),
+      checkInTime: row.check_in_time ? String(row.check_in_time) : undefined,
+      checkOutTime: row.check_out_time ? String(row.check_out_time) : undefined,
+      status: String(row.status) as any,
+      createdAt: String(row.created_at)
+    };
+  }
+
+  /**
    * Retrieves visitor passes issued by a student.
    */
   public static async getVisitorPassesByStudent(studentId: string): Promise<VisitorPass[]> {
