@@ -301,6 +301,9 @@ npm start
 - [ ] Official hostel noticeboard announcement broadcast system (`[COMMUNITY-01]` - Issue #86)
 - [ ] Detailed occupancy and revenue reporting export (`[ADMIN-05]` - Issue #80)
 
+### Turso Database Schema & Seed
+- [x] Turso libSQL database schema DDL initialization & performance search indexes (`[DATABASE-01]` - Issue #91)
+
 ---
 
 *UnilagStay Hostel Management Mobile Application • University of Lagos (UNILAG)*
