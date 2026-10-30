@@ -35,6 +35,7 @@ export type PorterStackParamList = {
  */
 export type WardenStackParamList = {
   WardenDashboard: undefined;
+  NoticeboardBroadcast: undefined;
   ApprovalQueue: undefined;
   DisciplinaryFlags: undefined;
 };
