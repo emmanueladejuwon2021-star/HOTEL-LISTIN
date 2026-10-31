@@ -20,7 +20,7 @@ UNILAG is home to over 50,000 undergraduate and postgraduate students, but unive
 2. **Hostel Porters (Gatekeepers)**: Scan student and visitor QR codes at hostel gatehouses in under 500 milliseconds (even when offline), record joint room check-in inventory audits with touchscreen signatures, and respond to emergency panic alerts.
 3. **Hall Wardens**: Review uploaded digital student clearance packages, approve or decline overnight exeat applications, track real-time hall occupancy metrics, issue hall announcements, and manage student disciplinary flags.
 4. **Maintenance Personnel (Artisans)**: View assigned hostel repair tickets, inspect student issue descriptions and photographs, update repair status ('In Progress' / 'Resolved'), and upload proof-of-fix photos.
-5. **System Administrators**: Manage role permissions, configure balloting quotas, audit gate access logs, and monitor Turso database sync operations.
+5. **System Administrators**: Manage role permissions, configure balloting quotas, audit gate access logs, initialize database table structures and search indexes, and monitor Turso database sync operations.
 
 ---
 
@@ -58,7 +58,7 @@ The accommodation lifecycle in `UnilagStay` guides students step-by-step through
 
 ## 6. STATUS OF APPLICATION FEATURES
 
-- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, and offline JWT key caching with SQLite queueing.
+- **Available Now (Implemented & Verified)**: Student authentication, eligibility verification, priority balloting engine, 72-hour payment lock & Remita gateway, digital clearance document upload & verification hash lookup, physical room inspection logging, immutable check-in certificate hashing, check-out audit recovery, dynamic QR gatepass generation, camera scanner UI with manual PIN lookup, sub-500ms validation, 3-second scanner auto-reset, audio chime/buzz feedback triggers, disciplinary security flag alerts, incident reporting dispatch, porter shift statistics ribbon, emergency gate lockdown mode, offline JWT key caching with SQLite queueing, warden occupancy metrics dashboard, noticeboard announcement broadcasts, and Turso libSQL database schema DDL & index initialization engine.
 - **In Active Development / Planned**: Network connectivity monitoring state, visitor pass management, artisan work queue dispatch screen, night exeat Warden workflow UI, and emergency SOS gate panic alarm UI.
 
 ---
@@ -118,7 +118,7 @@ You can run and test the complete user interfaces, navigation flows, and forms d
 ### Option C: Automated Test Verification (Headless CLI)
 To verify that all backend database constraints, SQLite encryption, JWT signatures, role permissions, payment locks, and offline gate sync queues are functioning with zero regressions:
 
-1. **Run All 11 Automated Test Suites (163+ Tests)**:
+1. **Run All 12 Automated Test Suites (176+ Tests)**:
    ```bash
    cd HOTEL-LISTIN
    npm test -- --runInBand
@@ -126,6 +126,9 @@ To verify that all backend database constraints, SQLite encryption, JWT signatur
 
 2. **Run a Specific Feature Test Suite**:
    ```bash
+   # Test Database DDL Schema & Index Creation Engine (Issue #92)
+   npx jest src/__tests__/database.test.ts --runInBand
+
    # Test Offline Key Caching & Background Sync (Issue #41)
    npx jest src/__tests__/offline.test.ts --runInBand
 
@@ -172,7 +175,7 @@ If you need an installable `.apk` file to install directly onto Android devices 
 ### Installation & Execution
 ```bash
 # 1. Install dependencies
-npm install
+npm install --legacy-peer-deps
 
 # 2. Run automated test suites (Jest with SQLite concurrency isolation)
 npm test -- --runInBand
@@ -294,9 +297,10 @@ npm start
 - [ ] Warden approval check for bedswap requests (`[ROOMMATE-04]` - Issue #74)
 - [ ] Database swap transaction execution updating bed assignments (`[ROOMMATE-05]` - Issue #75)
 
-### Administration & Warden Operations
+### Administration, Warden Operations & Database Management
 - [x] Warden executive dashboard displaying hall occupancy rate (`[ADMIN-01]` - Issue #76)
 - [x] Pending student clearance review queue (`[ADMIN-02]` - Issue #77)
+- [x] Master database system schema initialization and index creation engine (`[DATABASE-02]` - Issue #92)
 - [ ] Disciplinary blacklist flagging preventing unauthorized balloting (`[ADMIN-01]` - Issue #81)
 - [ ] Official hostel noticeboard announcement broadcast system (`[COMMUNITY-01]` - Issue #86)
 - [ ] Detailed occupancy and revenue reporting export (`[ADMIN-05]` - Issue #80)
