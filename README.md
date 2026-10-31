@@ -259,6 +259,13 @@ npm start
 - [ ] Offline status badge and network connectivity state monitoring (`[OFFLINE-04]` - Issue #44)
 - [ ] Conflict resolution for offline gate check-in records (`[OFFLINE-05]` - Issue #45)
 
+### Database Schema & Seed Data Engine
+- [x] Turso libSQL SQLite database DDL schema setup for PRD tables (`[DATABASE-01]` - Issue #91)
+- [x] Optimization indexes for matric numbers, bedspace status, and gate logs (`[DATABASE-02]` - Issue #92)
+- [x] Seed engine for UNILAG & CMUL hostel directory, blocks, rooms, and bedspaces (`[DATABASE-03]` - Issue #93)
+- [x] Database management metrics, schema integrity check, and live table status (`[DATABASE-04]` - Issue #94)
+- [x] Foreign key enforcement, schema verification, and database reset routines (`[DATABASE-05]` - Issue #95)
+
 ### Visitor Management System
 - [ ] Student visitor pass creation with guest name, phone, and visit date (`[VISITOR-01]` - Issue #46)
 - [ ] Temporary 6-digit PIN and temporary QR code for guests (`[VISITOR-02]` - Issue #47)
