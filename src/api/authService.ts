@@ -21,19 +21,21 @@ export class AuthService {
 
   /**
    * Helper method to turn a plain password into a secure hashed string using SHA-256 algorithm and a salt string.
-   * This ensures we never compare passwords as plain text for maximum security.
+   * NOTE: For production, use per-user salts stored in DB and stronger algorithms like bcrypt/Argon2 via a backend.
+   * This is a temporary improvement; client-side hashing is not fully secure.
    *
    * @param password - Plain text password typed by the user
    * @param salt - Extra secret text added to make the password hash unique and secure
    * @returns A long scramble string representing the hashed password
    */
-  public static hashPassword(password: string, salt: string = 'UNILAG_STAY_SECRET_SALT'): string {
-    return CryptoJS.SHA256(password + salt).toString();
+  public static hashPassword(password: string, salt?: string): string {
+    const effectiveSalt = salt || process.env.PASSWORD_SALT || 'UNILAG_STAY_DYNAMIC_SALT_' + Date.now().toString(36);
+    return CryptoJS.SHA256(password + effectiveSalt).toString();
   }
 
   /**
    * Gets or initializes the database client connected to our Turso libSQL edge database.
-   * If no connection exists yet, it creates a new one using configuration settings or local fallback.
+   * WARNING: Direct client-side Turso connection exposes credentials. Prefer backend proxy in production.
    *
    * @returns Active libSQL client ready to execute database queries
    */
@@ -176,11 +178,15 @@ export class AuthService {
       }
     }
 
+    // Generate a more secure session token with random component
+    const randomPart = CryptoJS.lib.WordArray.random(16).toString();
+    const token = `jwt_session_token_${user.id}_${Date.now()}_${randomPart}`;
+
     // Return the successful login session details and a new session token
     return {
       user,
       studentProfile,
-      token: `jwt_session_token_${user.id}_${Date.now()}`
+      token
     };
   }
 
@@ -198,8 +204,8 @@ export class AuthService {
       throw new Error('Session invalid: Missing token or user identity.');
     }
 
-    // Check token format basic structure
-    if (!token.startsWith(`jwt_session_token_${userId}`)) {
+    // Check token format basic structure (now more flexible for random parts)
+    if (!token.startsWith(`jwt_session_token_${userId}_`)) {
       throw new Error('Session invalid: Session token format is unverified or expired.');
     }
 
