@@ -127,7 +127,7 @@ export class GatePassService {
         reason TEXT NOT NULL,
         departure_date DATE NOT NULL,
         return_date DATE NOT NULL,
-        warden_approval_status TEXT CHECK(warden_approval_status IN ('PENDING', 'APPROVED', 'DECLINED')) DEFAULT 'PENDING',
+        warden_approval_status TEXT CHECK(warden_approval_status IN ('PENDING', 'APPROVED', 'DECLINED', 'CANCELLED', 'EXPIRED')) DEFAULT 'PENDING',
         warden_id TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
