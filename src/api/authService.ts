@@ -70,7 +70,7 @@ export class AuthService {
         is_active INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );`,
-      // Student profile table holding student-specific details like department, level, fees status, and clearance status
+      // Student profile table holding student-specific details like department, level, fees status, clearance status, and residency status
       `CREATE TABLE IF NOT EXISTS student_profiles (
         user_id TEXT PRIMARY KEY,
         faculty TEXT NOT NULL,
