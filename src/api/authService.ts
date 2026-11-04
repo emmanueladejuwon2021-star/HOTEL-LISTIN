@@ -84,6 +84,15 @@ export class AuthService {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );`
     ], 'write');
+
+    try {
+      await client.execute({
+        sql: `ALTER TABLE student_profiles ADD COLUMN residency_status TEXT DEFAULT 'PENDING_CHECKIN'`,
+        args: []
+      });
+    } catch {
+      // Column already exists, safe to ignore
+    }
   }
 
   /**
