@@ -1,17 +1,20 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WardenStackParamList } from './types';
 import { useAuthStore } from '../store/useAuthStore';
+import { NoticeboardBroadcastScreen } from '../screens/NoticeboardBroadcastScreen';
 
 const Stack = createNativeStackNavigator<WardenStackParamList>();
+
+type WardenDashboardNavProp = NativeStackNavigationProp<WardenStackParamList, 'WardenDashboard'>;
 
 /**
  * WardenDashboardScreen Component.
  * Executive overview dashboard for Hall Wardens and Student Affairs Division officials.
  * Allows clearance document approval, exeat requests processing, and disciplinary flag management.
  */
-const WardenDashboardScreen: React.FC = () => {
+const WardenDashboardScreen: React.FC<{ navigation: WardenDashboardNavProp }> = ({ navigation }) => {
   const { session, logoutUser } = useAuthStore();
 
   return (
@@ -30,6 +33,20 @@ const WardenDashboardScreen: React.FC = () => {
 
         {/* Operational Overview Cards */}
         <View className="space-y-4 mb-6">
+          {/* Noticeboard Broadcast Action Card */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('NoticeboardBroadcast')}
+            className="bg-white p-5 rounded-2xl border border-[#7A0000] shadow-sm active:opacity-90"
+          >
+            <Text className="text-xs font-bold text-[#7A0000] uppercase tracking-wider mb-2">
+              Hostel Noticeboard & Broadcast System
+            </Text>
+            <Text className="text-xl font-extrabold text-slate-800">Post Warden Announcement</Text>
+            <Text className="text-xs text-slate-500 mt-1">
+              Broadcast official news, alerts, and guidelines directly to resident student feeds
+            </Text>
+          </TouchableOpacity>
+
           <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
               Hall Occupancy Overview
@@ -84,6 +101,11 @@ export const WardenNavigator: React.FC = () => {
         name="WardenDashboard"
         component={WardenDashboardScreen}
         options={{ title: 'Warden Executive Portal' }}
+      />
+      <Stack.Screen
+        name="NoticeboardBroadcast"
+        component={NoticeboardBroadcastScreen}
+        options={{ title: 'Hostel Noticeboard Broadcast' }}
       />
     </Stack.Navigator>
   );
